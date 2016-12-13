@@ -57,9 +57,6 @@ using namespace std;
 /*! \var BamAlignment::MapQuality
     \brief mapping quality score
 */
-/*! \var BamAlignment::AlignmentFlag
-    \brief alignment bit-flag (use the provided methods to query/modify)
-*/
 /*! \var BamAlignment::CigarData
     \brief CIGAR operations for this alignment
 */
@@ -118,6 +115,29 @@ BamAlignment::BamAlignment(const BamAlignment& other)
     \brief destructor
 */
 BamAlignment::~BamAlignment(void) { }
+
+std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
+   const string sep="\t";
+   ous << ba.getQueryName() << sep << ba.getQueryLength() << sep
+      << ba.getPosition() << sep
+      << "primary: " << ba.IsPrimaryAlignment() << sep
+      << "reverseStrand: " << ba.IsReverseStrand() << sep
+      << "mateReverseStrand: " << ba.IsMateReverseStrand() << sep
+      << "duplicate: " << ba.IsDuplicate() << sep
+      << "firstMate: " << ba.IsFirstMate() << sep
+      << "secondMate: " << ba.IsSecondMate() << sep
+      << "mapped: " << ba.IsMapped() << sep 
+      << "mateMapped: " << ba.IsMateMapped() << sep
+      << "paired: " << ba.IsPaired() << sep
+      << "properPair: " << ba.IsProperPair() << sep
+      << "passedQC: " << !ba.IsFailedQC() << sep
+      << "refid: " << ba.getReferenceId() << sep;
+      if (ba.IsPaired()) {
+         ous << "materefid: " << ba.getMateReferenceId() << sep
+            << ba.getMatePosition() << sep;
+      }
+   return ous;
+}
 
 /*! \fn bool BamAlignment::BuildCharData(void)
     \brief Populates alignment string fields (read name, bases, qualities, tag data).

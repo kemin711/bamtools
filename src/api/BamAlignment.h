@@ -17,6 +17,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <iostream>
 
 namespace BamTools {
 
@@ -30,12 +31,14 @@ namespace Internal {
 
 // BamAlignment data structure
 class API_EXPORT BamAlignment {
+   // API_EXPORT are constructed used for Window DDL
 
     // constructors & destructor
     public:
         BamAlignment(void);
         BamAlignment(const BamAlignment& other);
         ~BamAlignment(void);
+        friend std::ostream& operator<<(std::ostream& ous, const BamAlignment& ba);
 
     // queries against alignment flags
     public:        
@@ -77,6 +80,13 @@ class API_EXPORT BamAlignment {
         template<typename T> bool EditTag(const std::string& tag, const std::vector<T>& values);
 
         // retrieves tag data
+        /** 
+            Retrieves the value associated with a BAM tag.
+
+            @param tag[in]          2-character tag name
+            @param destination[out] retrieved value
+            @return true if found
+        */
         template<typename T> bool GetTag(const std::string& tag, T& destination) const;
         template<typename T> bool GetTag(const std::string& tag, std::vector<T>& destination) const;
 
@@ -112,7 +122,27 @@ class API_EXPORT BamAlignment {
                           std::vector<int>& genomePositions,
                           bool usePadded = false) const;
 
-    // public data fields
+    // getter methods, adding these getter methods for security
+    // using public methods is a security issue and may not pass FDA
+    // quality
+        /**
+         * get the name of the query squence
+         */
+        const std::string& getQueryName() const { return Name; }
+        /**
+         * getter method for the length of the query (read)
+         */
+        int32_t getQueryLength() const { return Length; }
+        const std::string& getQueryBases() const { return QueryBases; }
+        const std::string& getAlignedQueryBases() const { return AlignedBases; }
+        int32_t getReferenceId() const { return RefID; }
+        int32_t getPosition() const { return Position; }
+        int16_t getMapQuality() const { return MapQuality; }
+        int32_t getMateReferenceId() const { return MateRefID; }
+        int32_t getMatePosition() const { return MatePosition; }
+        int32_t getInsertSize() const { return InsertSize; }
+
+    // public data fields, these fileds should all become private in the future
     public:
         std::string Name;               // read name
         int32_t     Length;             // length of query sequence
@@ -124,11 +154,18 @@ class API_EXPORT BamAlignment {
         int32_t     Position;           // position (0-based) where alignment starts
         uint16_t    Bin;                // BAM (standard) index bin number for this alignment
         uint16_t    MapQuality;         // mapping quality score
+        /**
+         * This is sam/bam file field #2 containing 12 bit information
+         * alignment bit-flag. 
+         * use the provided methods to query/modify.
+         */
         uint32_t    AlignmentFlag;      // alignment bit-flag (use provided methods to query/modify)
         std::vector<CigarOp> CigarData; // CIGAR operations for this alignment
         int32_t     MateRefID;          // ID number for reference sequence where alignment's mate was aligned
         int32_t     MatePosition;       // position (0-based) where alignment's mate starts
         int32_t     InsertSize;         // mate-pair insert size
+        // alignment should not store its file name
+        // information repetation, remove in future version
         std::string Filename;           // name of BAM file which this alignment comes from
 
     //! \internal
@@ -151,10 +188,10 @@ class API_EXPORT BamAlignment {
       
             // data members
             std::string AllCharData;
-            uint32_t    BlockLength;
-            uint32_t    NumCigarOperations;
-            uint32_t    QueryNameLength;
-            uint32_t    QuerySequenceLength;
+            uint32_t    BlockLength;  // not sure what this is
+            uint32_t    NumCigarOperations; // should be calculated on the fly
+            uint32_t    QueryNameLength;  // duplicate data discard in the future
+            uint32_t    QuerySequenceLength; // is this duplicate of QueryLength?
             bool        HasCoreOnly;
             
             // constructor
@@ -405,13 +442,6 @@ inline bool BamAlignment::EditTag(const std::string& tag, const std::vector<T>& 
 }
 
 
-/*! \fn template<typename T> bool GetTag(const std::string& tag, T& destination) const
-    \brief Retrieves the value associated with a BAM tag.
-
-    \param tag[in]          2-character tag name
-    \param destination[out] retrieved value
-    \return \c true if found
-*/
 template<typename T>
 inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
 

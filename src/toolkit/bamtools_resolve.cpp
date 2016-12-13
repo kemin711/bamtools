@@ -410,7 +410,8 @@ bool ResolveTool::ReadNamesFileReader::Read(map<string, ReadGroupResolver>& read
         ReadGroupResolver& resolver = (*rgIter).second;
 
         // store read name with resolver
-        resolver.ReadNames.insert( make_pair<string,bool>(fields[1], true) ) ;
+        //resolver.ReadNames.insert( make_pair<string,bool>(fields[1], true) ) ;
+        resolver.ReadNames.insert( make_pair(fields[1], true) ) ;
     }
 
     // if here, return success
@@ -607,7 +608,8 @@ bool ResolveTool::StatsFileReader::ParseReadGroupLine(const string& line,
     resolver.IsAmbiguous = ( fields.at(6) == TRUE_KEYWORD );
 
     // store RG entry and return success
-    readGroups.insert( make_pair<string, ReadGroupResolver>(name, resolver) );
+    //readGroups.insert( make_pair<string, ReadGroupResolver>(name, resolver) );
+    readGroups.insert( make_pair(name, resolver) );
     return true;
 }
 
@@ -1012,9 +1014,9 @@ bool ResolveTool::ResolveToolPrivate::MakeStats(void) {
             // unique or not, remove read name from map
             resolver.ReadNames.erase(readNameIter);
         }
-
         // if read name not found, store new entry
-        else resolver.ReadNames.insert( make_pair<string, bool>(al.Name, isCurrentMateUnique) );
+        //else resolver.ReadNames.insert( make_pair<string, bool>(al.Name, isCurrentMateUnique) );
+        else resolver.ReadNames.insert( make_pair(al.Name, isCurrentMateUnique) );
     }
 
     // close files
@@ -1046,7 +1048,8 @@ void ResolveTool::ResolveToolPrivate::ParseHeader(const SamHeader& header) {
     SamReadGroupConstIterator rgEnd  = header.ReadGroups.ConstEnd();
     for ( ; rgIter != rgEnd; ++rgIter ) {
         const SamReadGroup& rg = (*rgIter);
-        m_readGroups.insert( make_pair<string, ReadGroupResolver>(rg.ID, ReadGroupResolver()) );
+        //m_readGroups.insert( make_pair<string, ReadGroupResolver>(rg.ID, ReadGroupResolver()) );
+        m_readGroups.insert( make_pair(rg.ID, ReadGroupResolver()) );
     }
 }
 
@@ -1203,7 +1206,8 @@ bool ResolveTool::ResolveToolPrivate::Run(void) {
     }
 
     // initialize read group map with default (empty name) read group
-    m_readGroups.insert( make_pair<string, ReadGroupResolver>("", ReadGroupResolver()) );
+    //m_readGroups.insert( make_pair<string, ReadGroupResolver>("", ReadGroupResolver()) );
+    m_readGroups.insert( make_pair("", ReadGroupResolver()) );
 
     // init readname filename
     // uses (adjusted) stats filename if provided (req'd for makeStats, markPairs modes; optional for twoPass)
