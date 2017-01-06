@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 /*! \file BamAux.h
 
     Provides data structures & utility methods that are used throughout the API.
@@ -39,7 +41,6 @@ namespace BamTools {
     \sa \samSpecURL for more details on using CIGAR operations.
 */
 struct API_EXPORT CigarOp {
-  
     char     Type;   //!< CIGAR operation type (MIDNSHPX=)
     uint32_t Length; //!< CIGAR operation length (number of bases)
     
@@ -49,6 +50,16 @@ struct API_EXPORT CigarOp {
         : Type(type)
         , Length(length) 
     { }
+    friend ostream& operator<<(ostream& ous, const CigarOp& co) {
+       ous << co.Type << co.Length; return ous; 
+    }
+    /**
+     * Convert this to a more universal type
+     * If this class does not provide any special operation,
+     * then there is no use to use a special type. Just 
+     * more noise.
+     */
+    pair<char, int> topair() const { return pair<char,int>(Type, Length); }
 };
 
 // ----------------------------------------------------------------

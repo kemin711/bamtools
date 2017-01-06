@@ -9,6 +9,9 @@
 
 #include "api/BamAlignment.h"
 #include "api/BamConstants.h"
+#include <functional>
+#include <algorithm>
+
 using namespace BamTools;
 using namespace std;
 
@@ -111,11 +114,79 @@ BamAlignment::BamAlignment(const BamAlignment& other)
     , SupportData(other.SupportData)
 { }
 
+BamAlignment::BamAlignment(BamAlignment&& other)
+    : Name(std::move(other.Name)), 
+      Length(other.Length), 
+      QueryBases(std::move(other.QueryBases)),
+      AlignedBases(std::move(other.AlignedBases)),
+      Qualities(std::move(other.Qualities)),
+      TagData(std::move(other.TagData)), 
+      RefID(other.RefID), Position(other.Position), Bin(other.Bin), 
+      MapQuality(other.MapQuality), AlignmentFlag(other.AlignmentFlag), 
+      CigarData(std::move(other.CigarData)), 
+      MateRefID(other.MateRefID), MatePosition(other.MatePosition), 
+      InsertSize(other.InsertSize), Filename(other.Filename), 
+      SupportData(std::move(other.SupportData))
+{ }
+
+BamAlignment& BamAlignment::operator=(const BamAlignment& other) {
+   if (this != &other) {
+      Name=other.Name;
+      Length=other.Length;
+      QueryBases=other.QueryBases;
+      AlignedBases=other.AlignedBases;
+      Qualities=other.Qualities;
+      TagData=other.TagData;
+      RefID=other.RefID;
+      Position=other.Position;
+      Bin=other.Bin;
+      MapQuality=other.MapQuality;
+      AlignmentFlag=other.AlignmentFlag;
+      CigarData=other.CigarData;
+      MateRefID=other.MateRefID;
+      MatePosition=other.MatePosition;
+      InsertSize=other.InsertSize;
+      Filename=other.Filename;
+      SupportData=other.SupportData;
+      // ErrorString is not copied
+   }
+   return *this;
+}
+
+BamAlignment& BamAlignment::operator=(BamAlignment&& other) {
+   if (this != &other) {
+      Name=std::move(other.Name);
+      Length=other.Length;
+      QueryBases=std::move(other.QueryBases);
+      AlignedBases=std::move(other.AlignedBases);
+      Qualities=std::move(other.Qualities);
+      TagData=std::move(other.TagData);
+      RefID=other.RefID;
+      Position=other.Position;
+      Bin=other.Bin;
+      MapQuality=other.MapQuality;
+      AlignmentFlag=other.AlignmentFlag;
+      CigarData=std::move(other.CigarData);
+      MateRefID=other.MateRefID;
+      MatePosition=other.MatePosition;
+      InsertSize=other.InsertSize;
+      Filename=std::move(other.Filename);
+      SupportData=std::move(other.SupportData);
+      // ErrorString is not copied
+   }
+   return *this;
+}
+
 /*! \fn BamAlignment::~BamAlignment(void)
     \brief destructor
 */
 BamAlignment::~BamAlignment(void) { }
 
+//std::ostream& BamTools::operator<<(std::ostream &ous, const BamTools::BamAlignment &ba) {
+// error: ‘std::ostream& BamTools::operator<<(std::ostream&, const BamTools::BamAlignment&)’ should have been declared inside ‘BamTools’
+//  std::ostream& BamTools::operator<<(std::ostream &ous, const BamTools::BamAlignment &ba) {
+//
+namespace BamTools {
 std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    const string sep="\t";
    ous << ba.getQueryName() << sep << ba.getQueryLength() << sep
@@ -126,8 +197,8 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
       << "duplicate: " << ba.IsDuplicate() << sep
       << "firstMate: " << ba.IsFirstMate() << sep
       << "secondMate: " << ba.IsSecondMate() << sep
-      << "mapped: " << ba.IsMapped() << sep 
-      << "mateMapped: " << ba.IsMateMapped() << sep
+      //<< "mapped: " << ba.IsMapped() << sep 
+      //<< "mateMapped: " << ba.IsMateMapped() << sep
       << "paired: " << ba.IsPaired() << sep
       << "properPair: " << ba.IsProperPair() << sep
       << "passedQC: " << !ba.IsFailedQC() << sep
@@ -136,7 +207,20 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
          ous << "materefid: " << ba.getMateReferenceId() << sep
             << ba.getMatePosition() << sep;
       }
+   ous << ba.getAlignedQueryBases() << sep;
+   for (size_t i=0; i<ba.CigarData.size(); ++i) {
+      ous << ba.CigarData[i];
+   }
+   ous << sep;
+   ous << ba.getQueryBases() << sep;
    return ous;
+}
+}
+
+vector<pair<char,int> > BamAlignment::getCigarOperation() const {
+   vector<pair<char,int> > tmp(CigarData.size());
+   transform(CigarData.begin(), CigarData.end(), tmp.begin(), mem_fn(&CigarOp::topair));
+   return tmp;
 }
 
 /*! \fn bool BamAlignment::BuildCharData(void)
@@ -1101,3 +1185,12 @@ bool BamAlignment::SkipToNextTag(const char storageType,
     // if we get here, tag skipped OK - return success
     return true;
 }
+
+vector<int> BamAlignment::getQualityScore() const {
+   vector<int> qual(Qualities.size());
+   for (string::size_type i=0; i<Qualities.size(); ++i) {
+      qual[i] = Qualities[i] + 33;
+   }
+   return qual;
+}
+

@@ -467,11 +467,10 @@ void SplitTool::SplitToolPrivate::CloseWriters(map<T, BamWriter*>& writers) {
     writers.clear();
 }
 
-// handle list-type tags
+// handle list-type tags, TODO: potential design issue
 template<typename T>
 bool SplitTool::SplitToolPrivate::SplitListTagImpl(BamAlignment& al) {
-
-    typedef T         TagElementType;
+    //typedef T         TagElementType; // never used, comment it out
     typedef vector<T> TagValueType;
     typedef map<string, BamWriter*> WriterMap;
     typedef typename WriterMap::iterator WriterMapIterator;

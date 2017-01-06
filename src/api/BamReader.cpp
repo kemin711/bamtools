@@ -136,7 +136,7 @@ std::string BamReader::GetHeaderText(void) const {
     return d->GetHeaderText();
 }
 
-/*! \fn bool BamReader::GetNextAlignment(BamAlignment& alignment)
+/* \fn bool BamReader::GetNextAlignment(BamAlignment& alignment)
     \brief Retrieves next available alignment.
 
     Attempts to read the next alignment record from BAM file, and checks to see
@@ -161,6 +161,7 @@ std::string BamReader::GetHeaderText(void) const {
     \returns \c true if a valid alignment was found
 */
 bool BamReader::GetNextAlignment(BamAlignment& alignment) {
+   // uses Internal::BamReaderPrivate to do the work
     return d->GetNextAlignment(alignment);
 }
 

@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <utility>
 
 namespace BamTools {
 
@@ -35,12 +36,63 @@ class API_EXPORT BamAlignment {
 
     // constructors & destructor
     public:
+        /** 
+         *   Default constructor
+         */
         BamAlignment(void);
+        /** 
+         *  Copy constructor
+         */
         BamAlignment(const BamAlignment& other);
+        /**
+         * Move constructor
+         */
+        BamAlignment(BamAlignment&& other);
         ~BamAlignment(void);
+        /**
+         * Test version for looking at the critical information about the alignment.
+         * Should output a human readable tab-dlimited forms with most of the essential
+         * information about an alignment.
+         */
         friend std::ostream& operator<<(std::ostream& ous, const BamAlignment& ba);
+        /**
+         * Assignment operator
+         */
+        BamAlignment& operator=(const BamAlignment& other);
+        /**
+         * move assignment operator
+         */
+        BamAlignment& operator=(BamAlignment&& other);
 
     // queries against alignment flags
+    // // BAM alignment flags
+    // const int BAM_ALIGNMENT_PAIRED              = 0x0001;
+    // const int BAM_ALIGNMENT_PROPER_PAIR         = 0x0002;
+    // const int BAM_ALIGNMENT_UNMAPPED            = 0x0004;
+    // const int BAM_ALIGNMENT_MATE_UNMAPPED       = 0x0008;
+    // const int BAM_ALIGNMENT_REVERSE_STRAND      = 0x0010;
+    // const int BAM_ALIGNMENT_MATE_REVERSE_STRAND = 0x0020;
+    // const int BAM_ALIGNMENT_READ_1              = 0x0040;
+    // const int BAM_ALIGNMENT_READ_2              = 0x0080;
+    // const int BAM_ALIGNMENT_SECONDARY           = 0x0100;
+    // const int BAM_ALIGNMENT_QC_FAILED           = 0x0200;
+    // const int BAM_ALIGNMENT_DUPLICATE           = 0x0400;
+    //
+    // The naming in this is different from the Bam documentation
+    //                     Description
+    // 1    0x1   template having multiple segments in sequencing (paired)
+    // 2    0x2   each segment properly aligned according to the aligner
+    // 4    0x4   segment unmapped
+    // 8    0x8   next segment in the template unmapped
+    // 16   0x10  SEQ being reverse complemented
+    // 32   0x20  SEQ of the next segment in the template being reverse complemented
+    // 64   0x40  the first segment in the template
+    // 128  0x80  the last segment in the template (second mate)
+    // 256  0x100 secondary alignment
+    // 512  0x200 not passing filters, such as platform/vendor quality controls
+    // 1024 0x400 PCR or optical duplicate
+    // 2048 0x800 supplementary alignment
+    // the following tests the flag field against different bits
     public:        
         bool IsDuplicate(void) const;         // returns true if this read is a PCR duplicate
         bool IsFailedQC(void) const;          // returns true if this read failed quality control
@@ -50,6 +102,8 @@ class API_EXPORT BamAlignment {
         bool IsMateReverseStrand(void) const; // returns true if alignment's mate mapped to reverse strand
         bool IsPaired(void) const;            // returns true if alignment part of paired-end read
         bool IsPrimaryAlignment(void) const;  // returns true if reported position is primary alignment
+        bool isSecondaryAlignment() const { return AlignmentFlag & 0x100; }
+        bool isSupplementaryAlignment() const { return AlignmentFlag & 0x800; }
         bool IsProperPair(void) const;        // returns true if alignment is part of read that satisfied paired-end resolution
         bool IsReverseStrand(void) const;     // returns true if alignment mapped to reverse strand
         bool IsSecondMate(void) const;        // returns true if alignment is second mate on read
@@ -76,6 +130,21 @@ class API_EXPORT BamAlignment {
         template<typename T> bool AddTag(const std::string& tag, const std::vector<T>& values);
 
         // edit (or append) tag
+        /** 
+         *  \brief Edits a BAM tag field.
+         *
+         *  If \a tag does not exist, a new entry is created.
+         *
+         *  @param tag[in]   2-character tag name
+         *  @param type[in]  1-character tag type (must be "Z" or "H")
+         *     Z for string. H for byte array in Hex format.
+         *  @param value[in] new data value
+         *
+         *  @return \c true if the tag was modified/created successfully
+         *
+         *  @see BamAlignment::RemoveTag()
+         *  @see \samSpecURL for more details on reserved tag names, supported tag types, etc.
+        */
         template<typename T> bool EditTag(const std::string& tag, const std::string& type, const T& value);
         template<typename T> bool EditTag(const std::string& tag, const std::vector<T>& values);
 
@@ -109,9 +178,27 @@ class API_EXPORT BamAlignment {
     public:
         // populates alignment string fields
         bool BuildCharData(void);
-
-        // calculates alignment end position
+        /** 
+         *  Calculates alignment end position, based on its starting position and CIGAR data.
+         * 
+         *  @warning The position returned now represents a zero-based, HALF-OPEN interval.
+         *  In previous versions of BamTools (0.x & 1.x) all intervals were treated
+         *  as zero-based, CLOSED.
+         *
+         *  @param[in] usePadded      Allow inserted bases to affect the reported position. Default is
+         *                               false, so that reported position stays synced with reference
+         *                               coordinates.
+         *  @param[in] closedInterval Setting this to true will return a 0-based end coordinate. Default is
+         *                               false, so that his value represents a standard, half-open interval.
+         * 
+         *  @return alignment end position
+         */
         int GetEndPosition(bool usePadded = false, bool closedInterval = false) const;
+        /**
+         * return the [start, end] range of the mapping 
+         * of reads on the reference.
+         */
+        std::pair<int,int> getRange() const { return std::pair<int,int>(getPosition(), GetEndPosition(false, true)); }
 
         // returns a description of the last error that occurred
         std::string GetErrorString(void) const;
@@ -123,7 +210,7 @@ class API_EXPORT BamAlignment {
                           bool usePadded = false) const;
 
     // getter methods, adding these getter methods for security
-    // using public methods is a security issue and may not pass FDA
+    // using public member is a security issue and may not pass FDA
     // quality
         /**
          * get the name of the query squence
@@ -133,14 +220,44 @@ class API_EXPORT BamAlignment {
          * getter method for the length of the query (read)
          */
         int32_t getQueryLength() const { return Length; }
+        /**
+         * 'original' sequence (contained in BAM file)
+         */
         const std::string& getQueryBases() const { return QueryBases; }
+        /**
+         * 'aligned' sequence (QueryBases plus deletion, padding, clipping chars)
+         */
         const std::string& getAlignedQueryBases() const { return AlignedBases; }
+        /** 
+         * @return the FASTQ qualities (ASCII characters, not numeric values)
+         */
+        std::string getQuality() const { return Qualities; }
+        /**
+         * @return the fastq quality as integer value
+         */
+        vector<int> getQualityScore() const;
+        /**
+         * @return ID number for reference sequence
+         * use this id and RefVector to get reference name.
+         * The RefVector is only available in BamReader's
+         * header section.
+         */
         int32_t getReferenceId() const { return RefID; }
+        /**
+         * get the fist mapping position in 0-based index on the reference
+         * sequence
+         * Not sure what happens with soft clips at the beginning.
+         */
         int32_t getPosition() const { return Position; }
         int16_t getMapQuality() const { return MapQuality; }
         int32_t getMateReferenceId() const { return MateRefID; }
         int32_t getMatePosition() const { return MatePosition; }
         int32_t getInsertSize() const { return InsertSize; }
+        /**
+         * @return a const reference to the CIGAR operations for this alignment
+         */
+        const std::vector<CigarOp>& getCigar() const { return CigarData; } 
+        vector<pair<char,int> > getCigarOperation() const;
 
     // public data fields, these fileds should all become private in the future
     public:
@@ -166,6 +283,7 @@ class API_EXPORT BamAlignment {
         int32_t     InsertSize;         // mate-pair insert size
         // alignment should not store its file name
         // information repetation, remove in future version
+        // TODO: remove in next release
         std::string Filename;           // name of BAM file which this alignment comes from
 
     //! \internal
@@ -184,8 +302,8 @@ class API_EXPORT BamAlignment {
     // internal data
     private:
 
+        // nested class TODO: simplify in future versions
         struct BamAlignmentSupportData {
-      
             // data members
             std::string AllCharData;
             uint32_t    BlockLength;  // not sure what this is
@@ -202,6 +320,40 @@ class API_EXPORT BamAlignment {
                 , QuerySequenceLength(0)
                 , HasCoreOnly(false)
             { }
+            BamAlignmentSupportData(const BamAlignmentSupportData& o) 
+               : AllCharData(o.AllCharData), BlockLength(o.BlockLength),
+                 NumCigarOperations(o.NumCigarOperations),
+                 QueryNameLength(o.QueryNameLength),
+                 QuerySequenceLength(o.QuerySequenceLength),
+                 HasCoreOnly(o.HasCoreOnly) { }
+            BamAlignmentSupportData(BamAlignmentSupportData&& o) 
+               : AllCharData(std::move(o.AllCharData)), BlockLength(o.BlockLength),
+                 NumCigarOperations(o.NumCigarOperations),
+                 QueryNameLength(o.QueryNameLength),
+                 QuerySequenceLength(o.QuerySequenceLength),
+                 HasCoreOnly(o.HasCoreOnly) { }
+            BamAlignmentSupportData& operator=(const BamAlignmentSupportData& o) {
+               if (this != &o) {
+                 AllCharData=o.AllCharData;
+                 BlockLength=o.BlockLength;
+                 NumCigarOperations=o.NumCigarOperations;
+                 QueryNameLength=o.QueryNameLength;
+                 QuerySequenceLength=o.QuerySequenceLength;
+                 HasCoreOnly=o.HasCoreOnly; 
+               }
+               return *this;
+            }
+            BamAlignmentSupportData& operator=(BamAlignmentSupportData&& o) {
+               if (this != &o) {
+                 AllCharData=std::move(o.AllCharData);
+                 BlockLength=o.BlockLength;
+                 NumCigarOperations=o.NumCigarOperations;
+                 QueryNameLength=o.QueryNameLength;
+                 QuerySequenceLength=o.QuerySequenceLength;
+                 HasCoreOnly=o.HasCoreOnly; 
+               }
+               return *this;
+            }
         };
         BamAlignmentSupportData SupportData;
         friend class Internal::BamReaderPrivate;
@@ -390,20 +542,6 @@ inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& v
     return true;
 }
 
-/*! \fn template<typename T> bool EditTag(const std::string& tag, const std::string& type, const T& value)
-    \brief Edits a BAM tag field.
-
-    If \a tag does not exist, a new entry is created.
-
-    \param tag[in]   2-character tag name
-    \param type[in]  1-character tag type (must be "Z" or "H")
-    \param value[in] new data value
-
-    \return \c true if the tag was modified/created successfully
-
-    \sa BamAlignment::RemoveTag()
-    \sa \samSpecURL for more details on reserved tag names, supported tag types, etc.
-*/
 template<typename T>
 inline bool BamAlignment::EditTag(const std::string& tag, const std::string& type, const T& value) {
 
@@ -450,24 +588,20 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
         // TODO: set error string?
         return false;
     }
-
     // skip if no tags present
     if ( TagData.empty() ) {
         // TODO: set error string?
         return false;
     }
-
     // localize the tag data
     char* pTagData = (char*)TagData.data();
     const unsigned int tagDataLength = TagData.size();
     unsigned int numBytesParsed = 0;
-
     // return failure if tag not found
     if ( !FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
         // TODO: set error string?
         return false;
     }
-
     // fetch data type
     const char type = *(pTagData - 1);
     if ( !TagTypeHelper<T>::CanConvertFrom(type) ) {
@@ -478,27 +612,23 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
     // determine data length
     int destinationLength = 0;
     switch ( type ) {
-
         // 1 byte data
         case (Constants::BAM_TAG_TYPE_ASCII) :
         case (Constants::BAM_TAG_TYPE_INT8)  :
         case (Constants::BAM_TAG_TYPE_UINT8) :
             destinationLength = 1;
             break;
-
         // 2 byte data
         case (Constants::BAM_TAG_TYPE_INT16)  :
         case (Constants::BAM_TAG_TYPE_UINT16) :
             destinationLength = 2;
             break;
-
         // 4 byte data
         case (Constants::BAM_TAG_TYPE_INT32)  :
         case (Constants::BAM_TAG_TYPE_UINT32) :
         case (Constants::BAM_TAG_TYPE_FLOAT)  :
             destinationLength = 4;
             break;
-
         // var-length types not supported for numeric destination
         case (Constants::BAM_TAG_TYPE_STRING) :
         case (Constants::BAM_TAG_TYPE_HEX)    :
@@ -506,18 +636,15 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
             SetErrorString("BamAlignment::GetTag",
                            "cannot store variable length tag data into a numeric destination");
             return false;
-
         // unrecognized tag type
         default:
             const std::string message = std::string("invalid tag type: ") + type;
             SetErrorString("BamAlignment::GetTag", message);
             return false;
-    }
-
+    } // using a string specialization version for string data
     // store data in destination
     destination = 0;
     memcpy(&destination, pTagData, destinationLength);
-
     // return success
     return true;
 }
@@ -531,18 +658,15 @@ inline bool BamAlignment::GetTag<std::string>(const std::string& tag,
         // TODO: set error string?
         return false;
     }
-
     // skip if no tags present
     if ( TagData.empty() ) {
         // TODO: set error string?
         return false;
     }
-
     // localize the tag data
     char* pTagData = (char*)TagData.data();
     const unsigned int tagDataLength = TagData.size();
     unsigned int numBytesParsed = 0;
-
     // return failure if tag not found
     if ( !FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
         // TODO: set error string?
@@ -574,31 +698,26 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
         // TODO: set error string?
         return false;
     }
-
     // skip if no tags present
     if ( TagData.empty() ) {
         // TODO: set error string?
         return false;
     }
-
     // localize the tag data
     char* pTagData = (char*)TagData.data();
     const unsigned int tagDataLength = TagData.size();
     unsigned int numBytesParsed = 0;
-
     // return false if tag not found
     if ( !FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
         // TODO: set error string?
         return false;
     }
-
     // check that tag is array type
     const char tagType = *(pTagData - 1);
     if ( tagType != Constants::BAM_TAG_TYPE_ARRAY ) {
         SetErrorString("BamAlignment::GetTag", "cannot store a non-array tag in array destination");
         return false;
     }
-
     // fetch element type
     const char elementType = *pTagData;
     if ( !TagTypeHelper<T>::CanConvertFrom(elementType) ) {
@@ -615,18 +734,15 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
         case (Constants::BAM_TAG_TYPE_UINT8) :
             elementLength = sizeof(uint8_t);
             break;
-
         case (Constants::BAM_TAG_TYPE_INT16)  :
         case (Constants::BAM_TAG_TYPE_UINT16) :
             elementLength = sizeof(uint16_t);
             break;
-
         case (Constants::BAM_TAG_TYPE_INT32)  :
         case (Constants::BAM_TAG_TYPE_UINT32) :
         case (Constants::BAM_TAG_TYPE_FLOAT)  :
             elementLength = sizeof(uint32_t);
             break;
-
         // var-length types not supported for numeric destination
         case (Constants::BAM_TAG_TYPE_STRING) :
         case (Constants::BAM_TAG_TYPE_HEX)    :
@@ -634,13 +750,15 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
             SetErrorString("BamAlignment::GetTag",
                            "invalid array data, variable-length elements are not allowed");
             return false;
-
         // unknown tag type
         default:
             const std::string message = std::string("invalid array element type: ") + elementType;
             SetErrorString("BamAlignment::GetTag", message);
             return false;
     }
+    // not using elementLength
+    // TODO: remove above code block
+    std::cerr << "BamTagData arrary element data width (Byte): " << elementLength << std::endl;
 
     // get number of elements
     int32_t numElements;

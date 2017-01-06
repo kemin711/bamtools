@@ -113,25 +113,21 @@ SamHeader BamReaderPrivate::GetSamHeader(void) const {
 }
 
 // get next alignment (with character data fully parsed)
+// doing its own error string, should use the standard 
+// try catch method
 bool BamReaderPrivate::GetNextAlignment(BamAlignment& alignment) {
-
     // if valid alignment found
     if ( GetNextAlignmentCore(alignment) ) {
-
         // store alignment's "source" filename
         alignment.Filename = m_filename;
-
         // return success/failure of parsing char data
         if ( alignment.BuildCharData() )
             return true;
-        else {
-            const string alError = alignment.GetErrorString();
-            const string message = string("could not populate alignment data: \n\t") + alError;
-            SetErrorString("BamReader::GetNextAlignment", message);
-            return false;
-        }
+         const string alError = alignment.GetErrorString();
+         const string message = string("could not populate alignment data: \n\t") + alError;
+         SetErrorString("BamReader::GetNextAlignment", message);
+         return false;
     }
-
     // no valid alignment found
     return false;
 }
@@ -141,13 +137,10 @@ bool BamReaderPrivate::GetNextAlignment(BamAlignment& alignment) {
 //    these can be accessed, if necessary, from the supportData
 // useful for operations requiring ONLY positional or other alignment-related information
 bool BamReaderPrivate::GetNextAlignmentCore(BamAlignment& alignment) {
-
     // skip if stream not opened
     if ( !m_stream.IsOpen() )
         return false;
-
     try {
-
         // skip if region is set but has no alignments
         if ( m_randomAccessController.HasRegion() &&
              !m_randomAccessController.RegionHasAlignments() )
