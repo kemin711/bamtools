@@ -55,6 +55,12 @@ class API_EXPORT BamWriter {
                   const SamHeader& samHeader,
                   const RefVector& referenceSequences);
         // saves the alignment to the alignment archive
+      /** 
+       * Saves an alignment to the BAM file.
+       * 
+       * @param[in] alignment BamAlignment record to save
+       * @see  BamReader::GetNextAlignment(), BamReader::GetNextAlignmentCore()
+      */
         bool SaveAlignment(const BamAlignment& alignment);
         // sets the output compression mode
         void SetCompressionMode(const BamWriter::CompressionMode& compressionMode);

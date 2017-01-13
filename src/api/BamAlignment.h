@@ -86,8 +86,8 @@ class API_EXPORT BamAlignment {
     // 8    0x8   next segment in the template unmapped
     // 16   0x10  SEQ being reverse complemented
     // 32   0x20  SEQ of the next segment in the template being reverse complemented
-    // 64   0x40  the first segment in the template
-    // 128  0x80  the last segment in the template (second mate)
+    // 64   0x40  the first segment in the template (first mate or read)
+    // 128  0x80  the last segment in the template (second mate or read)
     // 256  0x100 secondary alignment
     // 512  0x200 not passing filters, such as platform/vendor quality controls
     // 1024 0x400 PCR or optical duplicate
@@ -96,17 +96,28 @@ class API_EXPORT BamAlignment {
     public:        
         bool IsDuplicate(void) const;         // returns true if this read is a PCR duplicate
         bool IsFailedQC(void) const;          // returns true if this read failed quality control
-        bool IsFirstMate(void) const;         // returns true if alignment is first mate on read
+        /**
+         *  @returns true if alignment is first mate on paired-end read
+         */
+        bool IsFirstMate(void) const;         
+        bool isFirstMate(void) const { return AlignmentFlag & 0x40; }
+        /** 
+         * @returns true if alignment is second mate on paired-end read
+         */
+        bool IsSecondMate(void) const;        
+        bool isSecondMate(void) const { return AlignmentFlag & 0x80; }
         bool IsMapped(void) const;            // returns true if alignment is mapped
         bool IsMateMapped(void) const;        // returns true if alignment's mate is mapped
         bool IsMateReverseStrand(void) const; // returns true if alignment's mate mapped to reverse strand
         bool IsPaired(void) const;            // returns true if alignment part of paired-end read
         bool IsPrimaryAlignment(void) const;  // returns true if reported position is primary alignment
+        /**
+         * @return true if is secondary alignment
+         */
         bool isSecondaryAlignment() const { return AlignmentFlag & 0x100; }
         bool isSupplementaryAlignment() const { return AlignmentFlag & 0x800; }
         bool IsProperPair(void) const;        // returns true if alignment is part of read that satisfied paired-end resolution
         bool IsReverseStrand(void) const;     // returns true if alignment mapped to reverse strand
-        bool IsSecondMate(void) const;        // returns true if alignment is second mate on read
 
     // manipulate alignment flags
     public:        
@@ -122,10 +133,34 @@ class API_EXPORT BamAlignment {
         void SetIsReverseStrand(bool ok);     // sets value of "alignment mapped to reverse strand" flag
         void SetIsSecondMate(bool ok);        // sets value of "alignment is second mate on read" flag
 
+        // convenient constants
+       static const int PAIRED              = 0x0001;
+       static const int PROPER_PAIR         = 0x0002;
+       static const int UNMAPPED            = 0x0004;
+       static const int MATE_UNMAPPED       = 0x0008;
+       static const int REVERSE_STRAND      = 0x0010;
+       static const int MATE_REVERSE_STRAND = 0x0020;
+       static const int READ_1              = 0x0040;
+       static const int READ_2              = 0x0080;
+       static const int SECONDARY           = 0x0100;
+       static const int QC_FAILED           = 0x0200;
+       static const int DUPLICATE           = 0x0400;
+       static const int SUPPLEMENTARY       = 0x0800; 
+
     // tag data access methods
     public:
 
-        // add a new tag
+      /** 
+       * \brief Adds a field to the BAM tags.
+
+       * Does NOT modify an existing tag - use \link BamAlignment::EditTag() \endlink instead.
+
+       * @param[in] tag   2-character tag name
+       * @param[in] type  1-character tag type
+       * @param[in] value data to store
+       * @return \c true if the \b new tag was added successfully
+       * @see \samSpecURL for more details on reserved tag names, supported tag types, etc.
+      */
         template<typename T> bool AddTag(const std::string& tag, const std::string& type, const T& value);
         template<typename T> bool AddTag(const std::string& tag, const std::vector<T>& values);
 
@@ -258,12 +293,44 @@ class API_EXPORT BamAlignment {
          */
         const std::vector<CigarOp>& getCigar() const { return CigarData; } 
         vector<pair<char,int> > getCigarOperation() const;
+        /**
+         * Some alignment's cigar entry is *
+         * this is the same as no cigar. This function test this situation
+         * @return true if no cigar
+         */
+        bool lackCigar() const { return CigarData.empty(); }
+
+        /// setter methods
+        void setQueryName(const std::string &qname) { Name = qname; }
+        void setQuerySequenceLength(int32_t qlen) {  Length = qlen; }
+        void setQueryBases(const std::string &qseq) { QueryBases = qseq; }
+        void setAlignedBases(const std::string &alnedseq) { AlignedBases = alnedseq; }
+        /** set quality from string data */
+        void setQuality(const std::string &qual) { Qualities = qual; }
+        /** integer version
+         * @param qual is a vector of interger qualities
+         */
+        void setQuality(const std::vector<int> &qual);
+        void setRefID(int32_t refid) { RefID = refid; }
+        void setPosition(int32_t alnstart) { Position = alnstart; }
+        /** alias for setPosition */
+        void setStart(int32_t alnstart) { Position = alnstart; }
+        void setBin(uint16_t indexbin) { Bin = indexbin; }
+        void setMapQuality(uint16_t mqual) { MapQuality = mqual; }
+        void setCigarData(const std::vector<CigarOp> &cd) { CigarData = cd; } 
+        /** set cigarop from a vector a pair */
+        void setCigarOperation(const std::vector<pair<char,int> > &cd); 
+        void setMateRefID(int32_t materefid)  {  MateRefID = materefid; } 
+        void setMatePosition(int32_t matepos) { MatePosition = matepos; } 
+        void setInsertSize(int32_t insize) { InsertSize = insize; }  
 
     // public data fields, these fileds should all become private in the future
     public:
-        std::string Name;               // read name
+        /** read or query name */
+        std::string Name;    
         int32_t     Length;             // length of query sequence
         std::string QueryBases;         // 'original' sequence (contained in BAM file)
+        /** not sure this is useful */
         std::string AlignedBases;       // 'aligned' sequence (QueryBases plus deletion, padding, clipping chars)
         std::string Qualities;          // FASTQ qualities (ASCII characters, not numeric values)
         std::string TagData;            // tag data (use provided methods to query/modify)
@@ -366,17 +433,6 @@ class API_EXPORT BamAlignment {
 // ---------------------------------------------------------
 // BamAlignment tag access methods
 
-/*! \fn bool AddTag(const std::string& tag, const std::string& type, const T& value)
-    \brief Adds a field to the BAM tags.
-
-    Does NOT modify an existing tag - use \link BamAlignment::EditTag() \endlink instead.
-
-    \param[in] tag   2-character tag name
-    \param[in] type  1-character tag type
-    \param[in] value data to store
-    \return \c true if the \b new tag was added successfully
-    \sa \samSpecURL for more details on reserved tag names, supported tag types, etc.
-*/
 template<typename T>
 inline bool BamAlignment::AddTag(const std::string& tag, const std::string& type, const T& value) {
 

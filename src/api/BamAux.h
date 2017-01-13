@@ -44,12 +44,15 @@ struct API_EXPORT CigarOp {
     char     Type;   //!< CIGAR operation type (MIDNSHPX=)
     uint32_t Length; //!< CIGAR operation length (number of bases)
     
-    //! constructor
-    CigarOp(const char type = '\0', 
-            const uint32_t& length = 0)
-        : Type(type)
-        , Length(length) 
-    { }
+    /** 
+     * default constructor 
+     */
+    CigarOp() : Type('\0'), Length(0) { }
+    /**
+     * Constructor from known value
+     */
+    CigarOp(const char type, const uint32_t& length)
+        : Type(type) , Length(length) { }
     friend ostream& operator<<(ostream& ous, const CigarOp& co) {
        ous << co.Type << co.Length; return ous; 
     }
@@ -60,6 +63,7 @@ struct API_EXPORT CigarOp {
      * more noise.
      */
     pair<char, int> topair() const { return pair<char,int>(Type, Length); }
+    void fromPair(const pair<char,int> &p) { Type=p.first; Length = p.second; }
 };
 
 // ----------------------------------------------------------------

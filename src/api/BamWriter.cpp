@@ -119,12 +119,6 @@ bool BamWriter::Open(const std::string& filename,
     return d->Open(filename, samHeader.ToString(), referenceSequences);
 }
 
-/*! \fn void BamWriter::SaveAlignment(const BamAlignment& alignment)
-    \brief Saves an alignment to the BAM file.
-
-    \param[in] alignment BamAlignment record to save
-    \sa BamReader::GetNextAlignment(), BamReader::GetNextAlignmentCore()
-*/
 bool BamWriter::SaveAlignment(const BamAlignment& alignment) {
     return d->SaveAlignment(alignment);
 }

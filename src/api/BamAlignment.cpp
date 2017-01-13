@@ -222,6 +222,18 @@ vector<pair<char,int> > BamAlignment::getCigarOperation() const {
    transform(CigarData.begin(), CigarData.end(), tmp.begin(), mem_fn(&CigarOp::topair));
    return tmp;
 }
+void BamAlignment::setCigarOperation(const std::vector<pair<char,int> > &cd) {
+   CigarData.resize(cd.size());
+   for (size_t i=0; i < CigarData.size(); ++i) {
+      CigarData[i].fromPair(cd[i]);
+   }
+}
+void BamAlignment::setQuality(const vector<int> &qual) {
+   if (!Qualities.empty()) Qualities.clear();
+   for (size_t i=0; i<qual.size(); ++i) {
+      Qualities.append(1, char(qual[i]+33));
+   }
+}
 
 /*! \fn bool BamAlignment::BuildCharData(void)
     \brief Populates alignment string fields (read name, bases, qualities, tag data).
@@ -294,7 +306,6 @@ bool BamAlignment::BuildCharData(void) {
     // if QueryBases has data, build AlignedBases using CIGAR data
     // otherwise, AlignedBases will remain empty (this case IS allowed)
     if ( !QueryBases.empty() && QueryBases != "*" ) {
-
         // resize AlignedBases
         AlignedBases.reserve(SupportData.QuerySequenceLength);
 
