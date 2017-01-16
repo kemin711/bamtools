@@ -60,6 +60,8 @@ class API_EXPORT BamWriter {
        * 
        * @param[in] alignment BamAlignment record to save
        * @see  BamReader::GetNextAlignment(), BamReader::GetNextAlignmentCore()
+       *
+       * Note: This method delegates to BamWriterPrivate::SaveAlignment
       */
         bool SaveAlignment(const BamAlignment& alignment);
         // sets the output compression mode

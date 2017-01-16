@@ -46,6 +46,20 @@ class BamWriterPrivate {
         bool Open(const std::string& filename,
                   const std::string& samHeaderText,
                   const BamTools::RefVector& referenceSequences);
+        /**
+         * Used by BamWriter
+         * Implementation of the BamWriter::SaveAlignment() interface
+         * saves the alignment to the alignment archive
+         *
+         * @param al BamAlignment object
+         *
+         * The Open method opens up an output stream
+         *
+         * For a full alignment object, this method
+         * calls WriteAlignment(al)
+         *
+         * @see WriteAlignment
+         */
         bool SaveAlignment(const BamAlignment& al);
         void SetWriteCompressed(bool ok);
 
@@ -54,6 +68,11 @@ class BamWriterPrivate {
         uint32_t CalculateMinimumBin(const int begin, int end) const;
         void CreatePackedCigar(const std::vector<BamTools::CigarOp>& cigarOperations, std::string& packedCigar);
         void EncodeQuerySequence(const std::string& query, std::string& encodedQuery);
+        /**
+         * Method used by SaveAlignment()
+         * This is a lengthy function.
+         * Use GgzfStream::write() method
+         */
         void WriteAlignment(const BamAlignment& al);
         void WriteCoreAlignment(const BamAlignment& al);
         void WriteMagicNumber(void);
@@ -63,6 +82,9 @@ class BamWriterPrivate {
     // data members
     private:
         BgzfStream m_stream;
+        /**
+         * Machine type
+         */
         bool m_isBigEndian;
         std::string m_errorString;
 };

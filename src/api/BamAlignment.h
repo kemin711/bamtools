@@ -265,10 +265,12 @@ class API_EXPORT BamAlignment {
         const std::string& getAlignedQueryBases() const { return AlignedBases; }
         /** 
          * @return the FASTQ qualities (ASCII characters, not numeric values)
+         * Values are ASCII 33-93
          */
         std::string getQuality() const { return Qualities; }
         /**
-         * @return the fastq quality as integer value
+         * @return the fastq quality as integer value from 0 to 63
+         * This is the Phred score after ASCII - 33
          */
         vector<int> getQualityScore() const;
         /**
@@ -308,7 +310,7 @@ class API_EXPORT BamAlignment {
         /** set quality from string data */
         void setQuality(const std::string &qual) { Qualities = qual; }
         /** integer version
-         * @param qual is a vector of interger qualities
+         * @param qual is a vector of Phred scores from 0-63
          */
         void setQuality(const std::vector<int> &qual);
         void setRefID(int32_t refid) { RefID = refid; }

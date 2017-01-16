@@ -178,21 +178,16 @@ bool BamWriterPrivate::Open(const string& filename,
 
 // saves the alignment to the alignment archive
 bool BamWriterPrivate::SaveAlignment(const BamAlignment& al) {
-
     try {
-
         // if BamAlignment contains only the core data and a raw char data buffer
         // (as a result of BamReader::GetNextAlignmentCore())
         if ( al.SupportData.HasCoreOnly )
             WriteCoreAlignment(al);
-
         // otherwise, BamAlignment should contain character in the standard fields: Name, QueryBases, etc
         // (resulting from BamReader::GetNextAlignment() *OR* being generated directly by client code)
         else WriteAlignment(al);
-
         // if we get here, everything OK
         return true;
-
     } catch ( BamException& e ) {
         m_errorString = e.what();
         return false;
@@ -206,22 +201,18 @@ void BamWriterPrivate::SetWriteCompressed(bool ok) {
 }
 
 void BamWriterPrivate::WriteAlignment(const BamAlignment& al) {
-
     // calculate char lengths
     const unsigned int nameLength         = al.Name.size() + 1;
     const unsigned int numCigarOperations = al.CigarData.size();
     const unsigned int queryLength        = ( (al.QueryBases == "*") ? 0 : al.QueryBases.size() );
     const unsigned int tagDataLength      = al.TagData.size();
-
     // no way to tell if alignment's bin is already defined (there is no default, invalid value)
     // so we'll go ahead calculate its bin ID before storing
     const uint32_t alignmentBin = CalculateMinimumBin(al.Position, al.GetEndPosition());
-
     // create our packed cigar string
     string packedCigar;
     CreatePackedCigar(al.CigarData, packedCigar);
     const unsigned int packedCigarLength = packedCigar.size();
-
     // encode the query
     unsigned int encodedQueryLength = 0;
     string encodedQuery;
@@ -229,13 +220,11 @@ void BamWriterPrivate::WriteAlignment(const BamAlignment& al) {
         EncodeQuerySequence(al.QueryBases, encodedQuery);
         encodedQueryLength = encodedQuery.size();
     }
-
     // write the block size
-    const unsigned int dataBlockSize = nameLength +
-                                       packedCigarLength +
-                                       encodedQueryLength +
-                                       queryLength +         // here referring to quality length
-                                       tagDataLength;
+    const unsigned int dataBlockSize = nameLength + packedCigarLength +
+         encodedQueryLength +
+         queryLength +         // here referring to quality length
+         tagDataLength;
     unsigned int blockSize = Constants::BAM_CORE_SIZE + dataBlockSize;
     if ( m_isBigEndian ) BamTools::SwapEndian_32(blockSize);
     m_stream.Write((char*)&blockSize, Constants::BAM_SIZEOF_INT);
@@ -250,19 +239,15 @@ void BamWriterPrivate::WriteAlignment(const BamAlignment& al) {
     buffer[5] = al.MateRefID;
     buffer[6] = al.MatePosition;
     buffer[7] = al.InsertSize;
-
     // swap BAM core endian-ness, if necessary
     if ( m_isBigEndian ) {
         for ( int i = 0; i < 8; ++i )
             BamTools::SwapEndian_32(buffer[i]);
     }
-
     // write the BAM core
     m_stream.Write((char*)&buffer, Constants::BAM_CORE_SIZE);
-
     // write the query name
     m_stream.Write(al.Name.c_str(), nameLength);
-
     // write the packed cigar
     if ( m_isBigEndian ) {
         char* cigarData = new char[packedCigarLength]();
@@ -278,11 +263,9 @@ void BamWriterPrivate::WriteAlignment(const BamAlignment& al) {
         m_stream.Write(packedCigar.data(), packedCigarLength);
 
     if ( queryLength > 0 ) {
-
         // write the encoded query sequence
         m_stream.Write(encodedQuery.data(), encodedQueryLength);
-
-        // write the base qualities
+        // write the base qualities as phred score (+33)
         char* pBaseQualities = new char[queryLength]();
         if ( al.Qualities.empty() || ( al.Qualities.size() == 1 && al.Qualities[0] == '*' ) || al.Qualities[0] == (char)0xFF )
             memset(pBaseQualities, 0xFF, queryLength); // if missing or '*', fill with invalid qual
@@ -291,6 +274,8 @@ void BamWriterPrivate::WriteAlignment(const BamAlignment& al) {
                 pBaseQualities[i] = al.Qualities.at(i) - 33; // FASTQ ASCII -> phred score conversion
         }
         m_stream.Write(pBaseQualities, queryLength);
+        //std::cout << __FILE__ << ":" << __LINE__ << ":" << __func__
+        //   << " pBaseQualities: " << pBaseQualities << endl;
         delete[] pBaseQualities;
     }
 

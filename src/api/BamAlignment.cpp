@@ -222,17 +222,25 @@ vector<pair<char,int> > BamAlignment::getCigarOperation() const {
    transform(CigarData.begin(), CigarData.end(), tmp.begin(), mem_fn(&CigarOp::topair));
    return tmp;
 }
+
 void BamAlignment::setCigarOperation(const std::vector<pair<char,int> > &cd) {
    CigarData.resize(cd.size());
    for (size_t i=0; i < CigarData.size(); ++i) {
       CigarData[i].fromPair(cd[i]);
    }
 }
+
 void BamAlignment::setQuality(const vector<int> &qual) {
    if (!Qualities.empty()) Qualities.clear();
+   cout << "Quality values:\n";
    for (size_t i=0; i<qual.size(); ++i) {
+      cout << qual[i] << " ";
       Qualities.append(1, char(qual[i]+33));
    }
+   cout << endl;
+   // for debug
+   cout << "quality string after setQuality() call\n"
+      << Qualities << endl;
 }
 
 /*! \fn bool BamAlignment::BuildCharData(void)
@@ -248,14 +256,12 @@ void BamAlignment::setQuality(const vector<int> &qual) {
     \return \c true if character data populated successfully (or was already available to begin with)
 */
 bool BamAlignment::BuildCharData(void) {
-
     // skip if char data already parsed
     if ( !SupportData.HasCoreOnly )
-        return true;
+        return true; // already parsed, no repeat work
 
     // check system endianness
     bool IsBigEndian = BamTools::SystemIsBigEndian();
-
     // calculate character lengths/offsets
     const unsigned int dataLength     = SupportData.BlockLength - Constants::BAM_CORE_SIZE;
     const unsigned int seqDataOffset  = SupportData.QueryNameLength + (SupportData.NumCigarOperations*4);
@@ -281,21 +287,18 @@ bool BamAlignment::BuildCharData(void) {
             QueryBases.append(1, singleBase);
         }
     }
-
-    // save qualities
-
+    // save qualities, quality stored in the data structure have 33 added
     Qualities.clear();
     if ( hasQualData ) {
         const char* qualData = SupportData.AllCharData.data() + qualDataOffset;
-
         // if marked as unstored (sequence of 0xFF) - don't do conversion, just fill with 0xFFs
         if ( qualData[0] == (char)0xFF )
             Qualities.resize(SupportData.QuerySequenceLength, (char)0xFF);
-
         // otherwise convert from numeric QV to 'FASTQ-style' ASCII character
         else {
             Qualities.reserve(SupportData.QuerySequenceLength);
             for ( size_t i = 0; i < SupportData.QuerySequenceLength; ++i )
+                //Qualities.append(1, qualData[i]); // no change to ASCII value
                 Qualities.append(1, qualData[i]+33);
         }
     }
@@ -1197,10 +1200,11 @@ bool BamAlignment::SkipToNextTag(const char storageType,
     return true;
 }
 
+// BamAlignment stores the ASCII values, Phred+33
 vector<int> BamAlignment::getQualityScore() const {
    vector<int> qual(Qualities.size());
    for (string::size_type i=0; i<Qualities.size(); ++i) {
-      qual[i] = Qualities[i] + 33;
+      qual[i] = Qualities[i] - 33;
    }
    return qual;
 }
