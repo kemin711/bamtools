@@ -106,6 +106,10 @@ class API_EXPORT BamAlignment {
          */
         bool IsSecondMate(void) const;        
         bool isSecondMate(void) const { return AlignmentFlag & 0x80; }
+        int getMate() const { if (isFirstMate()) return 1; 
+           else if (isSecondMate()) return 2;
+           else return 0;
+        }
         bool IsMapped(void) const;            // returns true if alignment is mapped
         bool IsMateMapped(void) const;        // returns true if alignment's mate is mapped
         bool IsMateReverseStrand(void) const; // returns true if alignment's mate mapped to reverse strand
@@ -322,6 +326,9 @@ class API_EXPORT BamAlignment {
         void setCigarData(const std::vector<CigarOp> &cd) { CigarData = cd; } 
         /** set cigarop from a vector a pair */
         void setCigarOperation(const std::vector<pair<char,int> > &cd); 
+        /**
+         * @param materefid Mate reference id, set to -1 if mate unmapped
+         */
         void setMateRefID(int32_t materefid)  {  MateRefID = materefid; } 
         void setMatePosition(int32_t matepos) { MatePosition = matepos; } 
         void setInsertSize(int32_t insize) { InsertSize = insize; }  
