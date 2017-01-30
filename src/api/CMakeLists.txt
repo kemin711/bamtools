@@ -6,7 +6,7 @@
 # ==========================
 
 # list include paths
-include_directories( ${BamTools_SOURCE_DIR}/src "/usr/include" )
+include_directories( ${BamTools_SOURCE_DIR}/src SYSTEM "/usr/include" )
 
 # add compiler definitions 
 add_definitions( -DBAMTOOLS_API_LIBRARY ) # (for proper exporting of library symbols)
