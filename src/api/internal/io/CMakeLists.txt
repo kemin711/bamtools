@@ -5,6 +5,8 @@
 # src/api/internal/io
 # ==========================
 
+include_directories( /usr/includ )
+
 set( InternalIODir "${InternalDir}/io" )
 
 #--------------------------
