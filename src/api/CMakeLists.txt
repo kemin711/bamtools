@@ -6,7 +6,7 @@
 # ==========================
 
 # list include paths
-include_directories( SYSTEM /usr/include )
+include_directories( SYSTEM /usr/local/include )
 include_directories( ${BamTools_SOURCE_DIR}/src )
 
 # add compiler definitions 
