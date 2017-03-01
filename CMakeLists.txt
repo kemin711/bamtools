@@ -38,7 +38,7 @@ set( BamTools_VERSION_BUILD 2 )
 set( EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin" )
 set( LIBRARY_OUTPUT_PATH    "${CMAKE_SOURCE_DIR}/lib" )
 
-set(CMAKE_BUILD_TYPE "Debug")
+#set(CMAKE_BUILD_TYPE "Debug")
 # to use the release mode
 # cmake . -DCMAKE_BUILD_TYPE=Release
 
@@ -51,6 +51,11 @@ set( CMAKE_CXX_FLAGS_DEBUG "-g -std=c++11 -Wall ${CMAKE_CXX_FLAGS_DEBUG}" )
 add_definitions( -D_FILE_OFFSET_BITS=64 )
 message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
 message("CMAKE_CXX_FLAGS_RELEASE is ${CMAKE_CXX_FLAGS_RELEASE}")
+
+find_package(ZLIB)
+if (ZLIB_FOUND)
+	include_directories(${ZLIB_INDLUDE_DIRS})
+endif (ZLIB_FOUND)
 
 # -----------------------------------------------
 # handle platform-/environment-specific defines
