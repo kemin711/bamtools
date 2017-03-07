@@ -50,9 +50,9 @@ class API_EXPORT BamAlignment {
         BamAlignment(BamAlignment&& other);
         ~BamAlignment(void);
         /**
-         * Test version for looking at the critical information about the alignment.
-         * Should output a human readable tab-dlimited forms with most of the essential
-         * information about an alignment.
+         * Test version for looking at the critical information about the
+         * alignment.  Should output a human readable tab-dlimited forms with
+         * most of the essential information about an alignment.
          */
         friend std::ostream& operator<<(std::ostream& ous, const BamAlignment& ba);
         /**

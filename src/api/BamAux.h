@@ -85,7 +85,10 @@ struct API_EXPORT RefData {
     { }
 };
 
-//! convenience typedef for vector of RefData entries
+/**
+ * Convenience typedef for vector of RefData entries.
+ * Alias for vector of RefData.
+ */
 typedef std::vector<RefData> RefVector;
 
 // ----------------------------------------------------------------
