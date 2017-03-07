@@ -55,7 +55,7 @@ API_EXPORT inline bool operator==(const SamSequence& lhs, const SamSequence& rhs
     if ( lhs.Length != rhs.Length ) return false;
     if ( lhs.HasChecksum() && rhs.HasChecksum() )
         return (lhs.Checksum == rhs.Checksum);
-    else return true;
+    else return true; // TODO: this is likely to be wrong
 }
 
 } // namespace BamTools
