@@ -23,6 +23,9 @@ namespace Internal {
     class BamMultiReaderPrivate;
 } // namespace Internal
 
+/** Convenience class for reading multiple BAM files.
+ * Each alignment remembers its file name.
+ */
 class API_EXPORT BamMultiReader {
 
     // enums
@@ -35,6 +38,9 @@ class API_EXPORT BamMultiReader {
 
     // constructor / destructor
     public:
+        /**
+         * Default constructor.
+         */
         BamMultiReader(void);
         ~BamMultiReader(void);
 
@@ -57,7 +63,9 @@ class API_EXPORT BamMultiReader {
         bool HasOpenReaders(void) const;
         // performs random-access jump within current BAM files
         bool Jump(int refID, int position = 0);
-        // opens BAM files
+        /** opens BAM files.
+         * @param filenames a list of file names stored in a vector.
+         */
         bool Open(const std::vector<std::string>& filenames);
         // opens a single BAM file, adding to any other current BAM files
         bool OpenFile(const std::string& filename);
@@ -119,6 +127,11 @@ class API_EXPORT BamMultiReader {
 
     // private implementation
     private:
+        /** private implementation.
+         * The sorrounding class use the private class
+         * as a delegator.  This is a design pattern commonly
+         * used in Java.  It looks not very good in C++.
+         */
         Internal::BamMultiReaderPrivate* d;
 };
 

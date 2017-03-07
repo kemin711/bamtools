@@ -125,7 +125,7 @@ BamAlignment::BamAlignment(BamAlignment&& other)
       MapQuality(other.MapQuality), AlignmentFlag(other.AlignmentFlag), 
       CigarData(std::move(other.CigarData)), 
       MateRefID(other.MateRefID), MatePosition(other.MatePosition), 
-      InsertSize(other.InsertSize), Filename(other.Filename), 
+      InsertSize(other.InsertSize),  Filename(other.Filename), 
       SupportData(std::move(other.SupportData))
 { }
 
@@ -232,15 +232,15 @@ void BamAlignment::setCigarOperation(const std::vector<pair<char,int> > &cd) {
 
 void BamAlignment::setQuality(const vector<int> &qual) {
    if (!Qualities.empty()) Qualities.clear();
-   cout << "Quality values:\n";
+   //cout << "Quality values:\n";
    for (size_t i=0; i<qual.size(); ++i) {
-      cout << qual[i] << " ";
+      //cout << qual[i] << " ";
       Qualities.append(1, char(qual[i]+33));
    }
-   cout << endl;
+   //cout << endl;
    // for debug
-   cout << "quality string after setQuality() call\n"
-      << Qualities << endl;
+   //cout << "quality string after setQuality() call\n"
+   //   << Qualities << endl;
 }
 
 /*! \fn bool BamAlignment::BuildCharData(void)
