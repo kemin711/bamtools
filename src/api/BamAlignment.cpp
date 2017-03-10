@@ -213,6 +213,11 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    }
    ous << sep;
    ous << ba.getQueryBases() << sep;
+   if (ba.HasTag("BC")) {
+      string tagval;
+      ba.GetTag("BC", tagval);
+      ous << "BC: " << tagval << sep;
+   }
    return ous;
 }
 }
@@ -227,6 +232,31 @@ void BamAlignment::setCigarOperation(const std::vector<pair<char,int> > &cd) {
    CigarData.resize(cd.size());
    for (size_t i=0; i < CigarData.size(); ++i) {
       CigarData[i].fromPair(cd[i]);
+   }
+}
+
+// only do one correction!
+void BamAlignment::fixStaggerGap() {
+   if (CigarData.size() < 5) return;
+   for (size_t i=0; i+4 < CigarData.size(); ++i) {
+      if ((CigarData[i].Type  == 'M' && 
+          CigarData[i+1].Type == 'D' && CigarData[i+1].Length == CigarData[i+3].Length &&
+          CigarData[i+2].Type == 'M' && CigarData[i+2].Length == 1 &&
+          CigarData[i+3].Type == 'I' &&
+          CigarData[i+4].Type == 'M' ) ||
+         (CigarData[i].Type   == 'M' && 
+          CigarData[i+1].Type == 'I' && CigarData[i+1].Length == CigarData[i+3].Length &&
+          CigarData[i+2].Type == 'M' && CigarData[i+2].Length == 1 &&
+          CigarData[i+3].Type == 'D' &&
+          CigarData[i+4].Type == 'M' ))
+      {
+         CigarData[i].Length += (1 + CigarData[i+1].Length + CigarData[i+4].Length);
+         CigarData.erase(CigarData.begin()+i+1, CigarData.begin()+i+5);
+         // here is a devil in duplicating data: we have to remember to change 
+         // the duplicated information, design flaw
+         SupportData.NumCigarOperations = CigarData.size();
+         return;
+      }
    }
 }
 

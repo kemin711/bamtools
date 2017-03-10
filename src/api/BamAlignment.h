@@ -298,6 +298,10 @@ class API_EXPORT BamAlignment {
          * @return a const reference to the CIGAR operations for this alignment
          */
         const std::vector<CigarOp>& getCigar() const { return CigarData; } 
+        /**
+         * Provide a more user-friendly interface
+         * for working with other applications.
+         */
         vector<pair<char,int> > getCigarOperation() const;
         /**
          * Some alignment's cigar entry is *
@@ -305,6 +309,11 @@ class API_EXPORT BamAlignment {
          * @return true if no cigar
          */
         bool lackCigar() const { return CigarData.empty(); }
+        /**
+         * To fix certain aligner's tendency to put two gap
+         * when a small region of the sequence has more mismatches
+         */
+        void fixStaggerGap();
 
         /// setter methods
         void setQueryName(const std::string &qname) { Name = qname; }
@@ -353,7 +362,11 @@ class API_EXPORT BamAlignment {
          * use the provided methods to query/modify.
          */
         uint32_t    AlignmentFlag;      // alignment bit-flag (use provided methods to query/modify)
-        std::vector<CigarOp> CigarData; // CIGAR operations for this alignment
+       /**  
+        * CIGAR operations for this alignment.
+        * CigarOp has Type,Length public field
+        */
+        std::vector<CigarOp> CigarData; 
         int32_t     MateRefID;          // ID number for reference sequence where alignment's mate was aligned
         int32_t     MatePosition;       // position (0-based) where alignment's mate starts
         int32_t     InsertSize;         // mate-pair insert size
