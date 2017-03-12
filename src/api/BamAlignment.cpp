@@ -203,11 +203,13 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
       << "properPair: " << ba.IsProperPair() << sep
       << "passedQC: " << !ba.IsFailedQC() << sep
       << "refid: " << ba.getReferenceId() << sep;
-      if (ba.IsPaired()) {
-         ous << "materefid: " << ba.getMateReferenceId() << sep
-            << ba.getMatePosition() << sep;
-      }
-   ous << ba.getAlignedQueryBases() << sep;
+   if (ba.IsPaired()) {
+      ous << "materefid: " << ba.getMateReferenceId() << sep
+         << ba.getMatePosition() << sep;
+   }
+   ous << "insertSize: " << ba.getInsertSize() << sep
+      << "mapQuality: " << ba.getMapQuality() << sep
+      << ba.getAlignedQueryBases() << sep;
    for (size_t i=0; i<ba.CigarData.size(); ++i) {
       ous << ba.CigarData[i];
    }
@@ -250,11 +252,16 @@ void BamAlignment::fixStaggerGap() {
           CigarData[i+3].Type == 'D' &&
           CigarData[i+4].Type == 'M' ))
       {
-         CigarData[i].Length += (1 + CigarData[i+1].Length + CigarData[i+4].Length);
+         int gaplen = CigarData[i+1].Length
+         CigarData[i].Length += (1 + gaplen + CigarData[i+4].Length);
          CigarData.erase(CigarData.begin()+i+1, CigarData.begin()+i+5);
          // here is a devil in duplicating data: we have to remember to change 
          // the duplicated information, design flaw
          SupportData.NumCigarOperations = CigarData.size();
+         int edit;
+         GetTag("NM", edit);
+         edit -= gaplen;
+         EditTag("NM", "i", edit);
          return;
       }
    }
@@ -897,9 +904,6 @@ bool BamAlignment::IsFailedQC(void) const {
     return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_QC_FAILED) != 0 );
 }
 
-/*! \fn bool BamAlignment::IsFirstMate(void) const
-    \return \c true if alignment is first mate on paired-end read
-*/
 bool BamAlignment::IsFirstMate(void) const {
     return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_READ_1) != 0 );
 }
@@ -946,9 +950,6 @@ bool BamAlignment::IsProperPair(void) const {
     return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_PROPER_PAIR) != 0 );
 }
 
-/*! \fn bool BamAlignment::IsReverseStrand(void) const
-    \return \c true if alignment mapped to reverse strand
-*/
 bool BamAlignment::IsReverseStrand(void) const {
     return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_REVERSE_STRAND) != 0 );
 }
