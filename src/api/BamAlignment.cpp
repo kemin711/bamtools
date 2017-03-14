@@ -192,11 +192,23 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    ous << ba.getQueryName() << sep << ba.getQueryLength() << sep
       << ba.getPosition() << sep
       << "primary: " << ba.IsPrimaryAlignment() << sep
-      << "reverseStrand: " << ba.IsReverseStrand() << sep
-      << "mateReverseStrand: " << ba.IsMateReverseStrand() << sep
-      << "duplicate: " << ba.IsDuplicate() << sep
-      << "firstMate: " << ba.IsFirstMate() << sep
-      << "secondMate: " << ba.IsSecondMate() << sep
+      //<< "reverseStrand: " << ba.IsReverseStrand() << sep
+      << "strand: ";
+   if (ba.IsReverseStrand()) ous << '-'; 
+   else ous << '+';
+   ous << sep;
+      //<< "mateReverseStrand: " << ba.IsMateReverseStrand() << sep
+   if (ba.isPaired()) {
+      if (ba.IsMateReverseStrand()) ous << '-';
+      else ous << '+';
+      ous << sep;
+   }
+   ous << "duplicate: " << ba.IsDuplicate() << sep
+      << "mate: ";
+   if (ba.IsFirstMate()) ous << 1;
+   else ous << 2;
+   ous << sep
+      //<< "secondMate: " << ba.IsSecondMate() << sep
       //<< "mapped: " << ba.IsMapped() << sep 
       //<< "mateMapped: " << ba.IsMateMapped() << sep
       << "paired: " << ba.IsPaired() << sep
@@ -204,7 +216,7 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
       << "passedQC: " << !ba.IsFailedQC() << sep
       << "refid: " << ba.getReferenceId() << sep;
    if (ba.IsPaired()) {
-      ous << "materefid: " << ba.getMateReferenceId() << sep
+      ous << "mateRefid: " << ba.getMateReferenceId() << sep
          << ba.getMatePosition() << sep;
    }
    ous << "insertSize: " << ba.getInsertSize() << sep
@@ -230,6 +242,16 @@ vector<pair<char,int> > BamAlignment::getCigarOperation() const {
    return tmp;
 }
 
+string BamAlignment::getFirstSoftclip() const {
+   if (!startWithSoftclip()) return "";
+   return getQuerySequence().substr(0, getCigar().front().Length);
+}
+
+string BamAlignment::getLastSoftclip() const {
+   if (!endWithSoftclip()) return "";
+   return getQueryBases().substr(getQueryLength() - getCigar().back().Length);
+}
+
 void BamAlignment::setCigarOperation(const std::vector<pair<char,int> > &cd) {
    CigarData.resize(cd.size());
    for (size_t i=0; i < CigarData.size(); ++i) {
@@ -252,7 +274,7 @@ void BamAlignment::fixStaggerGap() {
           CigarData[i+3].Type == 'D' &&
           CigarData[i+4].Type == 'M' ))
       {
-         int gaplen = CigarData[i+1].Length
+         int gaplen = CigarData[i+1].Length;
          CigarData[i].Length += (1 + gaplen + CigarData[i+4].Length);
          CigarData.erase(CigarData.begin()+i+1, CigarData.begin()+i+5);
          // here is a devil in duplicating data: we have to remember to change 

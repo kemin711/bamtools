@@ -127,10 +127,19 @@ class API_EXPORT BamAlignment {
          *  @return true if alignment mapped to reverse strand of refseq.
          */
         bool IsReverseStrand(void) const;     
+        /**
+         * @return true if alignment mapped to reverse strand of refseq.
+         */
         bool isReverseStrand(void) const {
-           return (AlignmentFlag & REVERSE_STRAND) != 0; 
+           return AlignmentFlag & REVERSE_STRAND; 
         }
-        bool IsMateReverseStrand(void) const; // returns true if alignment's mate mapped to reverse strand
+        bool isForwardStrand() const {
+           return !(AlignmentFlag & REVERSE_STRAND); 
+        }
+        /** 
+         * @return true if alignment's mate mapped to reverse strand
+         */
+        bool IsMateReverseStrand(void) const; 
         bool IsPaired(void) const;            // returns true if alignment part of paired-end read
         bool IsPrimaryAlignment(void) const;  // returns true if reported position is primary alignment
         /**
@@ -430,19 +439,19 @@ class API_EXPORT BamAlignment {
         /** 
          *  Calculates alignment end position, based on its starting position and CIGAR data.
          * 
-         *  @warning The position returned now represents a zero-based, HALF-OPEN interval.
-         *  In previous versions of BamTools (0.x & 1.x) all intervals were treated
-         *  as zero-based, CLOSED.
-         *
-         *  @param[in] usePadded      Allow inserted bases to affect the reported position. Default is
-         *                               false, so that reported position stays synced with reference
-         *                               coordinates.
-         *  @param[in] closedInterval Setting this to true will return a 0-based end coordinate. Default is
-         *                               false, so that his value represents a standard, half-open interval.
-         * 
+         *  @warning The position returned now represents a zero-based,
+         *      HALF-OPEN interval.  In previous versions of BamTools (0.x & 1.x)
+         *      all intervals were treated as zero-based, CLOSED.
+         *  @param[in] usePadded      Allow inserted bases to affect the
+         *      reported position. Default is false, so that reported position
+         *      stays synced with reference coordinates.
+         *  @param[in] closedInterval Setting this to true will return a
+         *      0-based end coordinate. Default is false, so that his value
+         *      represents a standard, half-open interval.
          *  @return alignment end position
          */
         int GetEndPosition(bool usePadded = false, bool closedInterval = false) const;
+
         /**
          * return the [start, end] range of the mapping 
          * of reads on the reference.
@@ -474,6 +483,12 @@ class API_EXPORT BamAlignment {
          */
         const std::string& getQueryBases() const { return QueryBases; }
         /**
+         * Return the query sequence same as getQueryBases.
+         * If there is Hard-clip, the only the alignmed part will be 
+         * returned.
+         */
+        const std::string& getQuerySequence() const { return QueryBases; }
+        /**
          * 'aligned' sequence (QueryBases plus deletion, padding, clipping chars)
          */
         const std::string& getAlignedQueryBases() const { return AlignedBases; }
@@ -496,10 +511,15 @@ class API_EXPORT BamAlignment {
         int32_t getReferenceId() const { return RefID; }
         /**
          * get the fist mapping position in 0-based index on the reference
-         * sequence
-         * Not sure what happens with soft clips at the beginning.
+         * sequence.
+         * Soft clips at the beginning does not count, the 
+         * position is that of the reference.
          */
         int32_t getPosition() const { return Position; }
+        /**
+         * @return end of the mapping index (0-based) on reference.
+         */
+        int getEndPosition() const { return GetEndPosition(false, true); }
         /**
          * @return mapping quality.
          */
@@ -528,7 +548,26 @@ class API_EXPORT BamAlignment {
          */
         void fixStaggerGap();
 
+        bool startWithSoftclip() const {
+            return getCigar().front().Type == 'S';
+        }
+        bool endWithSoftclip() const {
+            return getCigar().back().Type == 'S';
+        }
+        /**
+         * @return the query sequence for the first soft clip.
+         *    If there is no soft clip then an empty string is returned.
+         */
+        string getFirstSoftclip() const;
+        /**
+         * @return the last soft clip in query sequence.
+         */
+        string getLastSoftclip() const;
+
         /// setter methods
+        /**
+         * change the name of the query
+         */
         void setQueryName(const std::string &qname) { Name = qname; }
         void setQuerySequenceLength(int32_t qlen) {  Length = qlen; }
         void setQueryBases(const std::string &qseq) { QueryBases = qseq; }
@@ -566,7 +605,10 @@ class API_EXPORT BamAlignment {
         std::string Qualities;          // FASTQ qualities (ASCII characters, not numeric values)
         std::string TagData;            // tag data (use provided methods to query/modify)
         int32_t     RefID;              // ID number for reference sequence
-        int32_t     Position;           // position (0-based) where alignment starts
+        /**
+         * (0-based) where alignment starts on reference.
+         */
+        int32_t     Position;
         uint16_t    Bin;                // BAM (standard) index bin number for this alignment
         uint16_t    MapQuality;         // mapping quality score
         /**
