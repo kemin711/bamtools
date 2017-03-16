@@ -198,7 +198,7 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    else ous << '+';
    ous << sep;
       //<< "mateReverseStrand: " << ba.IsMateReverseStrand() << sep
-   if (ba.isPaired()) {
+   if (ba.IsPaired()) {
       if (ba.IsMateReverseStrand()) ous << '-';
       else ous << '+';
       ous << sep;
