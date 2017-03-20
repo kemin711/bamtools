@@ -318,11 +318,14 @@ class API_EXPORT BamAlignment {
          *    sequence is AC; the last 6 bases are matches.  The MD field ought
          *    to match the CIGAR string.
          * MQ:i: Mapping quality of the mate/next segment.
-         * NH:i: Number of reported alignments that contains the query in the current record.
-         * NM:i: Edit distance to the reference, including ambiguous bases but excluding clipping.
-         * PQ:i: Phred likelihood of the template, conditional on both the mapping being correct.
-         * Q2:Z: Phred quality of the mate/next segment sequence in the R2 tag.  Same encoding as
-         *     QUAL.
+         * NH:i: Number of reported alignments that contains the query in the 
+         *    current record.
+         * NM:i: Edit distance to the reference, including ambiguous bases but 
+         *    excluding clipping.
+         * PQ:i: Phred likelihood of the template, conditional on both the mapping 
+         *    being correct.
+         * Q2:Z: Phred quality of the mate/next segment sequence in the R2 tag.
+         *    Same encoding as QUAL.
          * R2:Z: Sequence of the mate/next segment in the template.
          * SA:Z: ( rname , pos , strand , CIGAR , mapQ , NM ;)+ Other
          *     canonical alignments in a chimeric alignment, for- matted as a
@@ -361,7 +364,8 @@ class API_EXPORT BamAlignment {
          * ----------------------------
          * OC:Z:cigar Original CIGAR, usually before realignment.
          * OP:i:pos Original mapping position, usually before realignment.
-         * OQ:Z:qualities Original base quality, usually before recalibration.  Same encoding as QUAL
+         * OQ:Z:qualities Original base quality, usually before recalibration. 
+         *    Same encoding as QUAL
          * ----------------------------
          * 1.5    Annotation and Padding
          * ----------------------------
@@ -556,6 +560,12 @@ class API_EXPORT BamAlignment {
         bool endWithSoftclip() const {
             return getCigar().back().Type == 'S';
         }
+        /**
+         * Calculate identity over the aligned part excluding
+         * insert/delete and soft/hard clips.
+         * @return ungapped identity.
+         */
+        float getNGIdentity() const;
         /**
          * @return the query sequence for the first soft clip.
          *    If there is no soft clip then an empty string is returned.

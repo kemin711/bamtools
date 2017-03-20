@@ -54,7 +54,8 @@ struct API_EXPORT CigarOp {
     CigarOp(const char type, const uint32_t& length)
         : Type(type) , Length(length) { }
     friend ostream& operator<<(ostream& ous, const CigarOp& co) {
-       ous << co.Type << co.Length; return ous; 
+       //ous << co.Type << co.Length; return ous; 
+       ous << co.Length << co.Type; return ous; 
     }
     /**
      * Convert this to a more universal type

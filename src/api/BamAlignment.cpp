@@ -11,6 +11,7 @@
 #include "api/BamConstants.h"
 #include <functional>
 #include <algorithm>
+#include <iterator>
 
 using namespace BamTools;
 using namespace std;
@@ -227,6 +228,10 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    }
    ous << sep;
    ous << ba.getQueryBases() << sep;
+   vector<int> qs = ba.getQualityScore();
+   ous << sep;
+   copy(qs.begin(), qs.end(), ostream_iterator<int>(ous, "|"));
+   ous << sep;
    if (ba.HasTag("BC")) {
       string tagval;
       ba.GetTag("BC", tagval);
@@ -287,6 +292,27 @@ void BamAlignment::fixStaggerGap() {
          return;
       }
    }
+}
+
+float BamAlignment::getNGIdentity() const {
+   int num_mismatch = 0;
+   if (HasTag("NM")) {
+      GetTag("NM", num_mismatch);
+   }
+   else {
+      throw runtime_error("No NM tag in bam file");
+   }
+   int alnlen=0;
+   int indel=0;
+   for (auto& cd : CigarData) {
+      if (cd.Type == 'M') {
+         alnlen += cd.Length;
+      }
+      else if (cd.Type == 'D' || cd.Type == 'I') {
+         indel += cd.Length;
+      }
+   }
+   return (1-(num_mismatch-indel)/(float)alnlen);
 }
 
 void BamAlignment::setQuality(const vector<int> &qual) {
