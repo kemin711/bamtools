@@ -645,6 +645,11 @@ class API_EXPORT BamAlignment {
          * special case.
          */
         BamAlignment subsequence(int b, int e) const;
+        /**
+         * Use the reference (genomic) coordinate to pick subsequence
+         * of the query alignment.
+         */
+        BamAlignment subsequenceByRef(int b, int e) const;
 
     // public data fields, these fileds should all become private in the future
     public:

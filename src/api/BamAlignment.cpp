@@ -1304,14 +1304,14 @@ BamAlignment BamAlignment::subsequence(int b, int e) const {
    BamAlignment tmp(*this);
    tmp.setQueryLength(len);
    tmp.QueryBases = tmp.QueryBases.substr(b, len);
-   tmp.Qualities = tmp.Qualiies.substr(b,len);
+   tmp.Qualities = tmp.Qualities.substr(b,len);
    tmp.AlignedBases.clear();
    // Position
    // AlignmentFlag needs to be modified
    // InsertSize, CigarData
-   int gi=Position, i=0, ci=0;
+   int gi=Position, i=0;
    char cigarState='M';
-   int cigarIdx=0;
+   unsigned int cigarIdx=0, ci=0;
 
    while (i < b) {
       if (cigarIdx < CigarData[ci].Length) { // in one cigar segment
@@ -1346,7 +1346,7 @@ BamAlignment BamAlignment::subsequence(int b, int e) const {
             exit(1);
          }
          cigarIdx = 0;
-         citarState = newState;
+         cigarState = newState;
       }
    }
    int cigarIdx_b = cigarIdx;
@@ -1393,7 +1393,7 @@ BamAlignment BamAlignment::subsequence(int b, int e) const {
             exit(1);
          }
          cigarIdx = 0;
-         citarState = newState;
+         cigarState = newState;
       }
    }
    // last cigar segment
@@ -1402,18 +1402,14 @@ BamAlignment BamAlignment::subsequence(int b, int e) const {
    return tmp;
 } 
 
-
 // [b,e] are reference coordinate
 BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
    assert(b>=Position);
-
-   int len = e - b +1;
-   // Position
    // AlignmentFlag needs to be modified
    // InsertSize, CigarData
-   int i=Position, j=0, ci=0; // j index on query
+   int i=Position, j=0; //i on reference, j index on query
    char cigarState = 'M';
-   int cigarIdx=0;
+   unsigned int cigarIdx=0, ci=0;
    int subqseqBegin = 0;
 
    vector<pair<char,int> > newcigarOp;
@@ -1463,7 +1459,7 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
             exit(1);
          }
          cigarIdx = 0;
-         citarState = newState;
+         cigarState = newState;
       }
    }
    int cigarIdx_b = cigarIdx;
@@ -1476,7 +1472,7 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
    while (i < e) {
       if (cigarIdx < CigarData[ci].Length) { // in one cigar segment
          if (cigarState == 'M') {
-            ++i; ++gi; ++cigarIdx;
+            ++i; ++j; ++cigarIdx;
          } // i at b
          else if (cigarState == 'D') {
             ++i; ++cigarIdx;
@@ -1508,16 +1504,22 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
             exit(1);
          }
          cigarIdx = 0;
-         citarState = newState;
+         cigarState = newState;
       }
    }
    // last cigar segment
    newcigarOp.push_back(make_pair(cigarState, cigarIdx - cigarIdx_b));
+   // if got softclip, we need to add it
+   if (cigarIdx == CigarData[ci].Length && ci+1 < CigarData.size()
+         && CigarData[ci+1].Type == 'S') 
+   {
+      newcigarOp.push_back(make_pair(CigarData[ci+1].Type, CigarData[ci+1].Length));
+   }
 
    BamAlignment tmp(*this);
    tmp.Position = b; // new Position on genomic DNA
    tmp.QueryBases = tmp.QueryBases.substr(subqseqBegin, j-subqseqBegin);
-   tmp.Qualities = tmp.Qualiies.substr(subqseqBegin, j-subqseqBegin);
+   tmp.Qualities = tmp.Qualities.substr(subqseqBegin, j-subqseqBegin);
    tmp.setQueryLength(tmp.QueryBases.length());
    tmp.AlignedBases.clear();
    tmp.setCigarOperation(newcigarOp);
