@@ -192,6 +192,13 @@ bool BamWriterPrivate::SaveAlignment(const BamAlignment& al) {
         m_errorString = e.what();
         return false;
     }
+    catch (exception& err) {
+       cerr << err.what() << endl;
+       cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
+          << " Failed\n";
+       throw;
+       //exit(1);
+    }
 }
 
 void BamWriterPrivate::SetWriteCompressed(bool ok) {

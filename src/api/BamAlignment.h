@@ -117,6 +117,10 @@ class API_EXPORT BamAlignment {
          */
         bool isSecondMate(void) const { return AlignmentFlag & READ_2; }
         bool isSecondRead(void) const { return AlignmentFlag & READ_2; }
+        /**
+         * @return 1 for first mate, 2 for second mate, 
+         *     and 0 for unknown mate.
+         */
         int getMate() const { if (isFirstMate()) return 1; 
            else if (isSecondMate()) return 2;
            else return 0;
@@ -151,16 +155,29 @@ class API_EXPORT BamAlignment {
 
     // manipulate alignment flags
     public:        
-        void SetIsDuplicate(bool ok);         // sets value of "PCR duplicate" flag
+        /** sets value of "PCR duplicate" flag
+         */
+        void SetIsDuplicate(bool ok);         
         void SetIsFailedQC(bool ok);          // sets value of "failed quality control" flag
         void SetIsFirstMate(bool ok);         // sets value of "alignment is first mate" flag
         void SetIsMapped(bool ok);            // sets value of "alignment is mapped" flag
         void SetIsMateMapped(bool ok);        // sets value of "alignment's mate is mapped" flag
-        void SetIsMateReverseStrand(bool ok); // sets value of "alignment's mate mapped to reverse strand" flag
-        void SetIsPaired(bool ok);            // sets value of "alignment part of paired-end read" flag
+        /** 
+         * sets value of "alignment mapped to reverse strand" flag
+         */
+        void SetIsReverseStrand(bool ok);     
+        /**  
+         * sets value of "alignment's mate mapped to reverse strand" flag
+         */
+        void SetIsMateReverseStrand(bool ok); 
+        /** sets value of "alignment part of paired-end read" flag
+         */
+        void SetIsPaired(bool ok);            
         void SetIsPrimaryAlignment(bool ok);  // sets value of "position is primary alignment" flag
-        void SetIsProperPair(bool ok);        // sets value of "alignment is part of read that satisfied paired-end resolution" flag
-        void SetIsReverseStrand(bool ok);     // sets value of "alignment mapped to reverse strand" flag
+        /** sets value of "alignment is part of read that satisfied paired-end 
+         *  resolution" flag
+         */
+        void SetIsProperPair(bool ok);        
         void SetIsSecondMate(bool ok);        // sets value of "alignment is second mate on read" flag
 
         // convenient constants
@@ -179,21 +196,19 @@ class API_EXPORT BamAlignment {
 
     // tag data access methods
     public:
-
       /** 
        * \brief Adds a field to the BAM tags.
-
-       * Does NOT modify an existing tag - use \link BamAlignment::EditTag() \endlink instead.
-
+       * Does NOT modify an existing tag - use \link BamAlignment::EditTag() 
+       *    \endlink instead.
        * @param[in] tag   2-character tag name
        * @param[in] type  1-character tag type
        * @param[in] value data to store
        * @return \c true if the \b new tag was added successfully
-       * @see \samSpecURL for more details on reserved tag names, supported tag types, etc.
+       * @see \samSpecURL for more details on reserved tag names, 
+       *     supported tag types, etc.
       */
         template<typename T> bool AddTag(const std::string& tag, const std::string& type, const T& value);
         template<typename T> bool AddTag(const std::string& tag, const std::vector<T>& values);
-
         // edit (or append) tag
         /** 
          *  \brief Edits a BAM tag field.
@@ -212,7 +227,6 @@ class API_EXPORT BamAlignment {
         */
         template<typename T> bool EditTag(const std::string& tag, const std::string& type, const T& value);
         template<typename T> bool EditTag(const std::string& tag, const std::vector<T>& values);
-
         // retrieves tag data
         /** 
          *  Retrieves the value associated with a BAM tag.
@@ -225,12 +239,14 @@ class API_EXPORT BamAlignment {
          *
          *  Type  | Regexp matching VALUE  |  Description
          *  ------------------------------------------------------
-         *  A       [!-~]                                  Printable character
-         *  i       [-+]?[0-9]+                            Signed integer
-         *  f       [-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)? Single-precision floating number
-         *  Z       [ !-~]*                                Printable string, including space
-         *  H       ([0-9A-F][0-9A-F])*                    Byte array in the Hex format
-         *  B       [cCsSiIf](,[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)+ Integer or numeric array
+         *  A [!-~]                          Printable character
+         *  i [-+]?[0-9]+                    Signed integer
+         *  f [-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)? Single-precision 
+         *                                   floating number
+         *  Z [ !-~]*                        Printable string, including space
+         *  H ([0-9A-F][0-9A-F])*            Byte array in the Hex format
+         *  B [cCsSiIf](,[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)+ Integer or 
+         *                                   numeric array
          *  ==============================================================
          *
          *  Standard tags
@@ -489,7 +505,7 @@ class API_EXPORT BamAlignment {
          */
         const std::string& getQueryBases() const { return QueryBases; }
         /**
-         * Return the query sequence same as getQueryBases.
+         * @return the query sequence same as getQueryBases.
          * If there is Hard-clip, the only the alignmed part will be 
          * returned.
          */
@@ -530,6 +546,9 @@ class API_EXPORT BamAlignment {
          * @return mapping quality.
          */
         int16_t getMapQuality() const { return MapQuality; }
+        /**
+         * @return the reference if of the mate
+         */
         int32_t getMateReferenceId() const { return MateRefID; }
         int32_t getMatePosition() const { return MatePosition; }
         int32_t getInsertSize() const { return InsertSize; }
@@ -582,6 +601,7 @@ class API_EXPORT BamAlignment {
          */
         void setQueryName(const std::string &qname) { Name = qname; }
         void setQuerySequenceLength(int32_t qlen) {  Length = qlen; }
+        void setQueryLength(int32_t qlen) {  Length = qlen; }
         void setQueryBases(const std::string &qseq) { QueryBases = qseq; }
         void setAlignedBases(const std::string &alnedseq) { AlignedBases = alnedseq; }
         /** set quality from string data */
@@ -604,7 +624,27 @@ class API_EXPORT BamAlignment {
          */
         void setMateRefID(int32_t materefid)  {  MateRefID = materefid; } 
         void setMatePosition(int32_t matepos) { MatePosition = matepos; } 
+        /**
+         * Sets the insert size which is the 
+         * length of the template.
+         * Field 9: TLEN in bam/sam format.  signed observed Template
+         *          LENgth.
+         *     Observed template length equals the number of bases
+         *     from the leftmost mapped base to the rightmost mapped base.
+         *     It is set as zero for singl-segment template or when the
+         *     information is unavailable.
+         */
         void setInsertSize(int32_t insize) { InsertSize = insize; }  
+
+        // mutation functions
+        /**
+         * Pick the subsequence based on the 0-based index
+         * of query sequence. If the [b,e] fall in a 
+         * Softclip region then the returned alignment may not
+         * make sense. This function does not check for this
+         * special case.
+         */
+        BamAlignment subsequence(int b, int e) const;
 
     // public data fields, these fileds should all become private in the future
     public:

@@ -232,10 +232,20 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    ous << sep;
    copy(qs.begin(), qs.end(), ostream_iterator<int>(ous, "|"));
    ous << sep;
-   if (ba.HasTag("BC")) {
-      string tagval;
-      ba.GetTag("BC", tagval);
-      ous << "BC: " << tagval << sep;
+   vector<std::string> tagNames = ba.GetTagNames();
+   for (auto& t : tagNames) {
+      char tagtype;
+      ba.GetTagType(t, tagtype);
+      if (tagtype == 'i') {
+         int intval = -999;
+         ba.GetTag(t, intval);
+         ous << t << ": " << intval << "; ";
+      }
+      else {
+         string tagval;
+         ba.GetTag(t, tagval);
+         ous << t << ": " << tagval << "; ";
+      }
    }
    return ous;
 }
@@ -1287,4 +1297,231 @@ vector<int> BamAlignment::getQualityScore() const {
    }
    return qual;
 }
+
+// [b, e] on the query sequence
+BamAlignment BamAlignment::subsequence(int b, int e) const {
+   int len = e - b +1;
+   BamAlignment tmp(*this);
+   tmp.setQueryLength(len);
+   tmp.QueryBases = tmp.QueryBases.substr(b, len);
+   tmp.Qualities = tmp.Qualiies.substr(b,len);
+   tmp.AlignedBases.clear();
+   // Position
+   // AlignmentFlag needs to be modified
+   // InsertSize, CigarData
+   int gi=Position, i=0, ci=0;
+   char cigarState='M';
+   int cigarIdx=0;
+
+   while (i < b) {
+      if (cigarIdx < CigarData[ci].Length) { // in one cigar segment
+         if (cigarState == 'M' && cigarIdx < CigarData[ci].Length) {
+            ++i; ++gi; ++cigarIdx;
+         } // i at b
+         else if (cigarState == 'D') {
+            ++gi; ++cigarIdx;
+         }
+         else if (cigarState == 'I' || cigarState == 'S') {
+            ++i; ++cigarIdx;
+         }
+         else {
+            cerr << "wrong cigarop: " << cigarState 
+               << __FILE__ << ":" << __LINE__ << endl;
+            exit(1);
+         }
+      }
+      else { // next cigar segment
+         ++ci;
+         if (ci >= CigarData.size()) {
+            cerr << __FILE__ << ":" << __LINE__ 
+               << " walked off the cigar string\n";
+            exit(1);
+         }
+         char newState = CigarData[ci].Type;
+         if ((cigarState == 'I' && newState == 'D')
+               || (cigarState == 'D' && newState == 'I')) {
+            cerr << "I/D transition in cigarop not permitted\n";
+            cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
+               << endl;
+            exit(1);
+         }
+         cigarIdx = 0;
+         citarState = newState;
+      }
+   }
+   int cigarIdx_b = cigarIdx;
+   tmp.Position = gi; // new Position on genomic DNA
+   vector<pair<char,int> > newcigarOp;
+   // first cigar segment from usually a match_segment
+   // if insert state then softclip
+   if (cigarState == 'I' || cigarState == 'D') {
+      cerr << __func__ << " Cannot stop inside an indel state!\n";
+      exit(1);
+   }
+   while (i < e) {
+      if (cigarIdx < CigarData[ci].Length) { // in one cigar segment
+         if (cigarState == 'M' && cigarIdx < CigarData[ci].Length) {
+            ++i; ++gi; ++cigarIdx;
+         } // i at b
+         else if (cigarState == 'D') {
+            ++gi; ++cigarIdx;
+         }
+         else if (cigarState == 'I' || cigarState == 'S') {
+            ++i; ++cigarIdx;
+         }
+         else {
+            cerr << "wrong cigarop: " << cigarState 
+               << __FILE__ << ":" << __LINE__ << endl;
+            exit(1);
+         }
+      }
+      else { // next cigar segment
+         ++ci;
+         if (ci >= CigarData.size()) {
+            cerr << __FILE__ << ":" << __LINE__ 
+               << " walked off the cigar string\n";
+            exit(1);
+         }
+         newcigarOp.push_back(make_pair(cigarState, cigarIdx - cigarIdx_b));
+         cigarIdx_b=0; // in most cases
+         char newState = CigarData[ci].Type;
+         if ((cigarState == 'I' && newState == 'D')
+               || (cigarState == 'D' && newState == 'I')) {
+            cerr << "I/D transition in cigarop not permitted\n";
+            cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
+               << endl;
+            exit(1);
+         }
+         cigarIdx = 0;
+         citarState = newState;
+      }
+   }
+   // last cigar segment
+   newcigarOp.push_back(make_pair(cigarState, cigarIdx - cigarIdx_b));
+   tmp.setCigarOperation(newcigarOp);
+   return tmp;
+} 
+
+
+// [b,e] are reference coordinate
+BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
+   assert(b>=Position);
+
+   int len = e - b +1;
+   // Position
+   // AlignmentFlag needs to be modified
+   // InsertSize, CigarData
+   int i=Position, j=0, ci=0; // j index on query
+   char cigarState = 'M';
+   int cigarIdx=0;
+   int subqseqBegin = 0;
+
+   vector<pair<char,int> > newcigarOp;
+   if (CigarData[ci].Type == 'S') {
+      if (b == Position) {
+         newcigarOp.push_back(make_pair(CigarData[ci].Type, 
+                                         CigarData[ci].Length));
+      }
+      else {
+         subqseqBegin = CigarData[ci].Length;
+      }
+      j += CigarData[ci].Length;
+      cigarIdx += CigarData[ci].Length;
+      ++ci;
+   }
+
+   while (i < b) {
+      if (cigarIdx < CigarData[ci].Length) { // in one cigar segment
+         if (cigarState == 'M') {
+            ++i; ++j; ++cigarIdx;
+         } // i at b
+         else if (cigarState == 'D') {
+            ++i; ++cigarIdx;
+         }
+         else if (cigarState == 'I') {
+            ++j; ++cigarIdx;
+         }
+         else {
+            cerr << "wrong cigarop: " << cigarState 
+               << __FILE__ << ":" << __LINE__ << endl;
+            exit(1);
+         }
+      }
+      else { // next cigar segment
+         ++ci;
+         if (ci >= CigarData.size()) {
+            cerr << __FILE__ << ":" << __LINE__ 
+               << " walked off the cigar string\n";
+            exit(1);
+         }
+         char newState = CigarData[ci].Type;
+         if ((cigarState == 'I' && newState == 'D')
+               || (cigarState == 'D' && newState == 'I')) {
+            cerr << "I/D transition in cigarop not permitted\n";
+            cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
+               << endl;
+            exit(1);
+         }
+         cigarIdx = 0;
+         citarState = newState;
+      }
+   }
+   int cigarIdx_b = cigarIdx;
+   // first cigar segment from usually a match_segment
+   // if insert state then softclip
+   if (cigarState == 'I' || cigarState == 'D') {
+      cerr << __func__ << " Cannot stop inside an indel state!\n";
+      exit(1);
+   }
+   while (i < e) {
+      if (cigarIdx < CigarData[ci].Length) { // in one cigar segment
+         if (cigarState == 'M') {
+            ++i; ++gi; ++cigarIdx;
+         } // i at b
+         else if (cigarState == 'D') {
+            ++i; ++cigarIdx;
+         }
+         else if (cigarState == 'I') {
+            ++j; ++cigarIdx;
+         }
+         else {
+            cerr << "wrong cigarop: " << cigarState 
+               << __FILE__ << ":" << __LINE__ << endl;
+            exit(1);
+         }
+      }
+      else { // next cigar segment
+         ++ci;
+         if (ci >= CigarData.size()) {
+            cerr << __FILE__ << ":" << __LINE__ 
+               << " walked off the cigar string\n";
+            exit(1);
+         }
+         newcigarOp.push_back(make_pair(cigarState, cigarIdx - cigarIdx_b));
+         cigarIdx_b=0; // in most cases
+         char newState = CigarData[ci].Type;
+         if ((cigarState == 'I' && newState == 'D')
+               || (cigarState == 'D' && newState == 'I')) {
+            cerr << "I/D transition in cigarop not permitted\n";
+            cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
+               << endl;
+            exit(1);
+         }
+         cigarIdx = 0;
+         citarState = newState;
+      }
+   }
+   // last cigar segment
+   newcigarOp.push_back(make_pair(cigarState, cigarIdx - cigarIdx_b));
+
+   BamAlignment tmp(*this);
+   tmp.Position = b; // new Position on genomic DNA
+   tmp.QueryBases = tmp.QueryBases.substr(subqseqBegin, j-subqseqBegin);
+   tmp.Qualities = tmp.Qualiies.substr(subqseqBegin, j-subqseqBegin);
+   tmp.setQueryLength(tmp.QueryBases.length());
+   tmp.AlignedBases.clear();
+   tmp.setCigarOperation(newcigarOp);
+   return tmp;
+} 
+
 
