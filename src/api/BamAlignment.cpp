@@ -33,12 +33,6 @@ using namespace std;
     \note Setting this field to "*" indicates that the sequence is not to be stored on output.
     In this case, the contents of the Qualities field should be invalidated as well (cleared or marked as "*").
 */
-/*! \var BamAlignment::AlignedBases
-    \brief 'aligned' sequence (includes any indels, padding, clipping)
-
-    This field will be completely empty after reading from BamReader/BamMultiReader when
-    QueryBases is empty.
-*/
 /*! \var BamAlignment::Qualities
     \brief FASTQ qualities (ASCII characters, not numeric values)
 
@@ -1409,8 +1403,10 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
    // InsertSize, CigarData
    int i=Position, j=0; //i on reference, j index on query
    char cigarState = 'M';
-   unsigned int cigarIdx=0, ci=0;
+   unsigned int cigarIdx=0, ci=0; // cigarIdx is index within each cigar segment
    int subqseqBegin = 0;
+   cout << "Taking subsequence of BamAlignment:\n"
+      << *this << endl << " [" << b << "," << e << "]\n";
 
    vector<pair<char,int> > newcigarOp;
    if (CigarData[ci].Type == 'S') {
@@ -1422,11 +1418,13 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
          subqseqBegin = CigarData[ci].Length;
       }
       j += CigarData[ci].Length;
-      cigarIdx += CigarData[ci].Length;
+      cigarIdx = 0;
       ++ci;
    }
 
    while (i < b) {
+      cout << "ci: " << ci << " cigarIdx: " << cigarIdx << " i: " << i 
+         << " j: " << j << " cigarState: " << cigarState << endl;
       if (cigarIdx < CigarData[ci].Length) { // in one cigar segment
          if (cigarState == 'M') {
             ++i; ++j; ++cigarIdx;
@@ -1469,7 +1467,10 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
       cerr << __func__ << " Cannot stop inside an indel state!\n";
       exit(1);
    }
+   cout << "Now i should be at b\n";
    while (i < e) {
+      cout << "ci: " << ci << " cigarIdx: " << cigarIdx << " i: " << i 
+            << " j: " << j << " cigarState: " << cigarState << endl;
       if (cigarIdx < CigarData[ci].Length) { // in one cigar segment
          if (cigarState == 'M') {
             ++i; ++j; ++cigarIdx;
@@ -1486,11 +1487,12 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
             exit(1);
          }
       }
-      else { // next cigar segment
+      else { // next cigar segment, end of last segment
          ++ci;
          if (ci >= CigarData.size()) {
             cerr << __FILE__ << ":" << __LINE__ 
-               << " walked off the cigar string\n";
+               << " walked off the cigar string: ci=" << ci 
+               << endl;
             exit(1);
          }
          newcigarOp.push_back(make_pair(cigarState, cigarIdx - cigarIdx_b));

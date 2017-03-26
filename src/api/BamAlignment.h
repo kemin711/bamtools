@@ -128,6 +128,9 @@ class API_EXPORT BamAlignment {
         bool IsMapped(void) const;            // returns true if alignment is mapped
         bool IsMateMapped(void) const;        // returns true if alignment's mate is mapped
         /** 
+         *  If the read is mapped to the reference then there is
+         *  only two choices +/-.  - is the reverse strand.
+         *
          *  @return true if alignment mapped to reverse strand of refseq.
          */
         bool IsReverseStrand(void) const;     
@@ -227,6 +230,7 @@ class API_EXPORT BamAlignment {
         */
         template<typename T> bool EditTag(const std::string& tag, const std::string& type, const T& value);
         template<typename T> bool EditTag(const std::string& tag, const std::vector<T>& values);
+
         // retrieves tag data
         /** 
          *  Retrieves the value associated with a BAM tag.
@@ -657,8 +661,13 @@ class API_EXPORT BamAlignment {
         std::string Name;    
         int32_t     Length;             // length of query sequence
         std::string QueryBases;         // 'original' sequence (contained in BAM file)
-        /** not sure this is useful */
-        std::string AlignedBases;       // 'aligned' sequence (QueryBases plus deletion, padding, clipping chars)
+        /** 
+         * not sure this is useful 
+         * 'aligned' sequence (QueryBases plus deletion, padding, clipping chars)
+         * This field will be completely empty after reading from BamReader/BamMultiReader when
+         *     QueryBases is empty.
+         */
+        std::string AlignedBases;       
         std::string Qualities;          // FASTQ qualities (ASCII characters, not numeric values)
         std::string TagData;            // tag data (use provided methods to query/modify)
         int32_t     RefID;              // ID number for reference sequence
@@ -972,7 +981,6 @@ inline bool BamAlignment::EditTag(const std::string& tag, const std::vector<T>& 
 
 template<typename T>
 inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
-
     // skip if alignment is core-only
     if ( SupportData.HasCoreOnly ) {
         // TODO: set error string?
