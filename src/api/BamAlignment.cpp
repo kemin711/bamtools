@@ -1292,6 +1292,22 @@ vector<int> BamAlignment::getQualityScore() const {
    return qual;
 }
 
+std::pair<int,int> BamAlignment::getPairedRange() const {
+   if (!mateOnSameReference()) {
+      return getRange();
+   }
+   int b, e;
+   if (IsReverseStrand()) {
+      b=getMatePosition();
+      e=GetEndPosition(false,true);
+   }
+   else { // + strand
+      b=getPosition();
+      e=b+getInsertSize()-1;
+   }
+   return make_pair(b,e);
+}
+      
 // [b, e] on the query sequence
 BamAlignment BamAlignment::subsequence(int b, int e) const {
    int len = e - b +1;

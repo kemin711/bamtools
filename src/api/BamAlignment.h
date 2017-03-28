@@ -480,9 +480,20 @@ class API_EXPORT BamAlignment {
 
         /**
          * return the [start, end] range of the mapping 
-         * of reads on the reference.
+         * of reads on the reference in 0-based index.
          */
-        std::pair<int,int> getRange() const { return std::pair<int,int>(getPosition(), GetEndPosition(false, true)); }
+        std::pair<int,int> getRange() const { 
+           return std::pair<int,int>(getPosition(), GetEndPosition(false, true)); 
+        }
+        /**
+         * Get the range if it is paired on the same reference
+         *    b1      e1     b2      e2
+         * 1) ==this==> ---- <==mate==  return [b1, b2] we don't know e2
+         *    b2      e2     b1      e1
+         * 2) ==mate==> ---- <==this==   return [b2, e1] we know the whole range
+         * Otherwise just the range of this alignment.
+         */
+        std::pair<int,int> getPairedRange() const;
 
         // returns a description of the last error that occurred
         std::string GetErrorString(void) const;
@@ -555,6 +566,15 @@ class API_EXPORT BamAlignment {
          */
         int32_t getMateReferenceId() const { return MateRefID; }
         int32_t getMatePosition() const { return MatePosition; }
+        /**
+         * @return true if mate is mapped to the same reference.
+         *   If no mate or mate is not mapped will return false.
+         */
+        bool mateOnSameReference() const { return MateRefID == RefID; }
+        /**
+         * @return length of the template positive for
+         *    plus strand mate and negative for minus strand mate.
+         */
         int32_t getInsertSize() const { return InsertSize; }
         /**
          * @return a const reference to the CIGAR operations for this alignment
@@ -631,12 +651,6 @@ class API_EXPORT BamAlignment {
         /**
          * Sets the insert size which is the 
          * length of the template.
-         * Field 9: TLEN in bam/sam format.  signed observed Template
-         *          LENgth.
-         *     Observed template length equals the number of bases
-         *     from the leftmost mapped base to the rightmost mapped base.
-         *     It is set as zero for singl-segment template or when the
-         *     information is unavailable.
          */
         void setInsertSize(int32_t insize) { InsertSize = insize; }  
 
@@ -690,7 +704,15 @@ class API_EXPORT BamAlignment {
         std::vector<CigarOp> CigarData; 
         int32_t     MateRefID;          // ID number for reference sequence where alignment's mate was aligned
         int32_t     MatePosition;       // position (0-based) where alignment's mate starts
-        int32_t     InsertSize;         // mate-pair insert size
+        /**
+         * Field 9: TLEN in bam/sam format.  signed observed Template
+         *          LENgth.
+         *     Observed template length equals the number of bases
+         *     from the leftmost mapped base to the rightmost mapped base.
+         *     It is set as zero for singl-segment template or when the
+         *     information is unavailable.
+         */
+        int32_t     InsertSize;        
         // alignment should not store its file name
         // information repetation, remove in future version
         // TODO: remove in next release
