@@ -226,12 +226,17 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    ous << sep;
    copy(qs.begin(), qs.end(), ostream_iterator<int>(ous, "|"));
    ous << sep;
+   /* problem regardless of which int type to use
+    * int32_t or int, cause strange character to 
+    * be printed to the terminal
    vector<std::string> tagNames = ba.GetTagNames();
+   // automatic probe is causing some problems
+   // removing it.
    for (auto& t : tagNames) {
       char tagtype;
       ba.GetTagType(t, tagtype);
       if (tagtype == 'i') {
-         int intval = -999;
+         int32_t intval; // must use this type, int is wrong
          ba.GetTag(t, intval);
          ous << t << ": " << intval << "; ";
       }
@@ -241,6 +246,19 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
          ous << t << ": " << tagval << "; ";
       }
    }
+   */
+   // the following is fine
+   string val;
+   if (ba.HasTag("BC")) {
+      ba.GetTag("BC", val);
+      ous << "BC: " << val << sep;
+   }
+   int32_t ival;
+   if (ba.HasTag("NM")) {
+      ba.GetTag("NM", ival);
+      ous << "NM: " << ival << sep;
+   }
+
    return ous;
 }
 }
