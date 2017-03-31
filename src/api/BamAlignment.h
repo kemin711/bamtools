@@ -610,6 +610,10 @@ class API_EXPORT BamAlignment {
          */
         float getNGIdentity() const;
         /**
+         * NM/alnlen
+         */
+        float getIdentity() const;
+        /**
          * @return the query sequence for the first soft clip.
          *    If there is no soft clip then an empty string is returned.
          */
@@ -702,8 +706,10 @@ class API_EXPORT BamAlignment {
         * CigarOp has Type,Length public field
         */
         std::vector<CigarOp> CigarData; 
-        int32_t     MateRefID;          // ID number for reference sequence where alignment's mate was aligned
-        int32_t     MatePosition;       // position (0-based) where alignment's mate starts
+        /** ID number for reference sequence where alignment's mate was aligned */
+        int32_t     MateRefID;          
+        /** position (0-based) where alignment's mate starts */
+        int32_t     MatePosition;       
         /**
          * Field 9: TLEN in bam/sam format.  signed observed Template
          *          LENgth.

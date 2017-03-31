@@ -253,7 +253,7 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
       ba.GetTag("BC", val);
       ous << "BC: " << val << sep;
    }
-   int32_t ival;
+   int ival;
    if (ba.HasTag("NM")) {
       ba.GetTag("NM", ival);
       ous << "NM: " << ival << sep;
@@ -335,6 +335,26 @@ float BamAlignment::getNGIdentity() const {
       }
    }
    return (1-(num_mismatch-indel)/(float)alnlen);
+}
+float BamAlignment::getIdentity() const {
+   int num_mismatch = 0;
+   if (HasTag("NM")) {
+      GetTag("NM", num_mismatch);
+   }
+   else {
+      throw runtime_error("No NM tag in bam file");
+   }
+   int alnlen=0;
+   for (auto& cd : CigarData) {
+      if (cd.Type == 'M' || cd.Type == 'D' || cd.Type == 'I') {
+         alnlen += cd.Length;
+      }
+      else {
+         cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
+            << " Cigarop: " << cd.Type << " not added to alignment length\n";
+      }
+   }
+   return (1-(num_mismatch)/(float)alnlen);
 }
 
 void BamAlignment::setQuality(const vector<int> &qual) {
