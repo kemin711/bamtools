@@ -349,6 +349,9 @@ float BamAlignment::getIdentity() const {
       if (cd.Type == 'M' || cd.Type == 'D' || cd.Type == 'I') {
          alnlen += cd.Length;
       }
+      else if (cd.Type == 'S' || cd.Type == 'H') {
+         // ignored
+      }
       else {
          cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
             << " Cigarop: " << cd.Type << " not added to alignment length\n";
