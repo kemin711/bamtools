@@ -268,6 +268,14 @@ vector<pair<char,int> > BamAlignment::getCigarOperation() const {
    transform(CigarData.begin(), CigarData.end(), tmp.begin(), mem_fn(&CigarOp::topair));
    return tmp;
 }
+string BamAlignment::getCigarString() const {
+   string tmp;
+   for (auto& cd : CigarData) {
+      tmp += (to_string(cd.Length) + cd.Type);
+   }
+   return tmp;
+}
+
 
 string BamAlignment::getFirstSoftclip() const {
    if (!startWithSoftclip()) return "";
@@ -599,46 +607,22 @@ bool BamAlignment::BuildCharData(void) {
     return true;
 }
 
-/*! \fn bool BamAlignment::FindTag(const std::string& tag, char*& pTagData, const unsigned int& tagDataLength, unsigned int& numBytesParsed) const
-    \internal
-
-    Searches for requested tag in BAM tag data.
-
-    \param[in]     tag            requested 2-character tag name
-    \param[in,out] pTagData       pointer to current position in BamAlignment::TagData
-    \param[in]     tagDataLength  length of BamAlignment::TagData
-    \param[in,out] numBytesParsed number of bytes parsed so far
-
-    \return \c true if found
-
-    \post If \a tag is found, \a pTagData will point to the byte where the tag data begins.
-          \a numBytesParsed will correspond to the position in the full TagData string.
-
-*/
-bool BamAlignment::FindTag(const std::string& tag,
-                           char*& pTagData,
-                           const unsigned int& tagDataLength,
-                           unsigned int& numBytesParsed) const
+bool BamAlignment::FindTag(const std::string& tag, char*& pTagData,
+      const unsigned int& tagDataLength, unsigned int& numBytesParsed) const
 {
-
     while ( numBytesParsed < tagDataLength ) {
-
         const char* pTagType        = pTagData;
         const char* pTagStorageType = pTagData + 2;
         pTagData       += 3;
         numBytesParsed += 3;
-
         // check the current tag, return true on match
         if ( strncmp(pTagType, tag.c_str(), 2) == 0 )
             return true;
-
         // get the storage class and find the next tag
         if ( *pTagStorageType == '\0' ) return false;
         if ( !SkipToNextTag(*pTagStorageType, pTagData, numBytesParsed) ) return false;
         if ( *pTagData == '\0' ) return false;
     }
-
-    // checked all tags, none match
     return false;
 }
 
@@ -1091,7 +1075,7 @@ void BamAlignment::RemoveTag(const std::string& tag) {
     unsigned int numBytesParsed = 0;
 
     // skip if tag not found
-    if  ( !FindTag(tag, pTagData, originalTagDataLength, numBytesParsed) )
+    if  (!FindTag(tag, pTagData, originalTagDataLength, numBytesParsed))
         return;
 
     // otherwise, remove it
@@ -1453,36 +1437,18 @@ BamAlignment BamAlignment::subsequence(int b, int e) const {
    return tmp;
 } 
 
-// [b,e] are reference coordinate
-BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
-   assert(b>=Position);
-   // AlignmentFlag needs to be modified
-   // InsertSize, CigarData
-   int i=Position, j=0; //i on reference, j index on query
-   char cigarState = 'M';
-   unsigned int cigarIdx=0, ci=0; // cigarIdx is index within each cigar segment
-   int subqseqBegin = 0;
-   cout << "Taking subsequence of BamAlignment:\n"
-      << *this << endl << " [" << b << "," << e << "]\n";
-
-   vector<pair<char,int> > newcigarOp;
-   if (CigarData[ci].Type == 'S') {
-      if (b == Position) {
-         newcigarOp.push_back(make_pair(CigarData[ci].Type, 
-                                         CigarData[ci].Length));
-      }
-      else {
-         subqseqBegin = CigarData[ci].Length;
-      }
-      j += CigarData[ci].Length;
-      cigarIdx = 0;
-      ++ci;
-   }
-
+// if b is after position then we need to advance both
+// i and j to the starting point
+void BamAlignment::advanceIndex(int &i, int &j, int &b, 
+      unsigned int &cigarIdx, unsigned int &ci, char &cigarState) const
+{
+   // move i to position b if i is not at b
+   // j to the start of the query index
    while (i < b) {
-      cout << "ci: " << ci << " cigarIdx: " << cigarIdx << " i: " << i 
-         << " j: " << j << " cigarState: " << cigarState << endl;
+      //cout << "ci: " << ci << " cigarIdx: " << cigarIdx << " i: " << i 
+      //   << " j: " << j << " cigarState: " << cigarState << endl;
       if (cigarIdx < CigarData[ci].Length) { // in one cigar segment
+         //cout << cigarIdx << " < " << CigarData[ci].Length << endl;
          if (cigarState == 'M') {
             ++i; ++j; ++cigarIdx;
          } // i at b
@@ -1499,6 +1465,7 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
          }
       }
       else { // next cigar segment
+         //cout << cigarIdx << " == " << CigarData[ci].Length << endl;
          ++ci;
          if (ci >= CigarData.size()) {
             cerr << __FILE__ << ":" << __LINE__ 
@@ -1517,17 +1484,110 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
          cigarState = newState;
       }
    }
-   int cigarIdx_b = cigarIdx;
+   // ended at a new cigar segment
+   if (cigarIdx == CigarData[ci].Length) { // need one more transition
+      ++ci;
+      cigarIdx = 0;
+      char newState = CigarData[ci].Type;
+      if ((cigarState == 'I' && newState == 'D')
+            || (cigarState == 'D' && newState == 'I')) {
+         cerr << "I/D transition in cigarop not permitted\n";
+         cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
+            << endl;
+         exit(1);
+      }
+      cigarState = newState;
+   }
+   if (cigarState == 'I') { // skip I state to M
+      //cout << "landed in an query insert state\n"
+      //   << "i: " << i << " j: " << j << endl;
+      while (cigarIdx < CigarData[ci].Length) {
+         ++cigarIdx;
+         ++j;
+      }
+      ++ci;
+      char newState = CigarData[ci].Type;
+      if (newState != 'M') {
+         cerr << "M must follow I state!\n";
+         exit(1);
+      }
+      cigarState=newState;
+      cigarIdx = 0;
+      //cout << "i: " << i << " j: " << j << endl;
+   }
    // first cigar segment from usually a match_segment
    // if insert state then softclip
-   if (cigarState == 'I' || cigarState == 'D') {
-      cerr << __func__ << " Cannot stop inside an indel state!\n";
-      exit(1);
+   if (cigarState == 'D') { // it is possible that the consensus is D
+      // but one of the read has a base, we will skip the D and 
+      // make the subsequence shorter
+      cerr << *this << endl;
+      cerr << __func__ << " WARN: stop inside a D state!\n";
+      cerr << "Subsequence is shortened because consensus favors deletion\n";
+      //throw BamAlignmentException(string(__FILE__) + to_string(__LINE__)
+      //      + string(__func__) + " begin index start inside D");
+      while (cigarIdx < CigarData[ci].Length) {
+         ++cigarIdx; ++i; ++b;
+      }
+      ++ci;
+      cigarIdx = 0;
+      char newState = CigarData[ci].Type;
+      if (newState == 'I') {
+         cerr << "D/I transition in cigarop not permitted\n";
+         cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
+            << endl;
+         throw BamAlignmentException(string(__FILE__) + to_string(__LINE__) 
+               + string(__func__) + " ERROR: D/I transistion");
+         //exit(1);
+      }
+      cigarState = newState;
    }
-   cout << "Now i should be at b\n";
+}
+
+// [b,e] are reference coordinate
+BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
+   assert(b>=Position);
+   // AlignmentFlag needs to be modified
+   // InsertSize, CigarData
+   int i=Position, j=0; //i on reference, j index on query
+   char cigarState = 'M';
+   unsigned int cigarIdx=0, ci=0; // cigarIdx is index within each cigar segment
+   int subqseqBegin = 0; // begin index in query bases
+   //cout << "Taking subsequence of BamAlignment by ref index:\n"
+   //   << " [" << b << "," << e << "]: " 
+   //   << e-b+1 << " i: " << i << "\n";
+   //cout << "parent sequence\n" << *this << endl;
+
+   // skip initial softclip if start after the soft clip
+   vector<pair<char,int> > newcigarOp;
+   if (CigarData[ci].Type == 'S') { // S => next state
+      if (b == Position) {
+         newcigarOp.push_back(
+               make_pair(CigarData[ci].Type, CigarData[ci].Length));
+      }
+      else {
+         subqseqBegin = CigarData[ci].Length;
+      }
+      j += CigarData[ci].Length;
+      cigarIdx = 0;
+      ++ci;
+   }
+   if (i<b) {
+      //cout << " i(" << i << ") less than b(" << b << ") advaicing i,j to\n";
+      advanceIndex(i, j, b, cigarIdx, ci, cigarState);
+      subqseqBegin=j;
+      //cout << "i,j" << i << "," << j << " cigarIdx: " << cigarIdx 
+      //   << " b " << b << endl;
+   }
+   //else {
+   //   cout << "Not need to advance: i,j" << i << "," << j << " cigarIdx: " << cigarIdx 
+   //      << " b " << b << endl;
+   //}
+   int cigarIdx_b = cigarIdx;
+   // bring i to e
+   //cout << "Now i: " << i << " should be at b: " << b << "\n";
    while (i < e) {
-      cout << "ci: " << ci << " cigarIdx: " << cigarIdx << " i: " << i 
-            << " j: " << j << " cigarState: " << cigarState << endl;
+      //cout << "ci: " << ci << " cigarIdx: " << cigarIdx << " i: " << i 
+      //      << " j: " << j << " cigarState: " << cigarState << endl;
       if (cigarIdx < CigarData[ci].Length) { // in one cigar segment
          if (cigarState == 'M') {
             ++i; ++j; ++cigarIdx;
@@ -1545,6 +1605,7 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
          }
       }
       else { // next cigar segment, end of last segment
+         //cout << "Next cigar segment\n";
          ++ci;
          if (ci >= CigarData.size()) {
             cerr << __FILE__ << ":" << __LINE__ 
@@ -1566,23 +1627,98 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
          cigarState = newState;
       }
    }
+   //cout << "cigarIdx_b " << cigarIdx_b << endl;
    // last cigar segment
-   newcigarOp.push_back(make_pair(cigarState, cigarIdx - cigarIdx_b));
+   newcigarOp.push_back(make_pair(cigarState, cigarIdx - cigarIdx_b + 1));
    // if got softclip, we need to add it
    if (cigarIdx == CigarData[ci].Length && ci+1 < CigarData.size()
          && CigarData[ci+1].Type == 'S') 
    {
       newcigarOp.push_back(make_pair(CigarData[ci+1].Type, CigarData[ci+1].Length));
+      // query index needs to be push further
+      j += CigarData[ci+1].Length;
    }
+   //cout << "At end: i,j" << i << "," << j << " cigarIdx: " << cigarIdx 
+   //   << " b " << b << " subqseqBegin: " << subqseqBegin << endl;
 
    BamAlignment tmp(*this);
    tmp.Position = b; // new Position on genomic DNA
-   tmp.QueryBases = tmp.QueryBases.substr(subqseqBegin, j-subqseqBegin);
-   tmp.Qualities = tmp.Qualities.substr(subqseqBegin, j-subqseqBegin);
+   tmp.QueryBases = tmp.QueryBases.substr(subqseqBegin, j-subqseqBegin+1);
+   tmp.Qualities = tmp.Qualities.substr(subqseqBegin, j-subqseqBegin+1);
    tmp.setQueryLength(tmp.QueryBases.length());
    tmp.AlignedBases.clear();
    tmp.setCigarOperation(newcigarOp);
+   //cout << "parent query bases:\n"
+   //   << getQueryBases() << "\nnew query bases\n"
+   //   << tmp.getQueryBases() << endl
+   //   << "new cigarstring: " << tmp.getCigarString() << endl;
    return tmp;
 } 
 
+void BamAlignment::updateNMTag(const string& refseq) {
+   int b = getPosition();
+   int e = GetEndPosition(); // one passed the end [b,e)
+   string subseq = refseq.substr(b, e-b);
+   int edit=0;
+   size_t ci=0, ri=0, qi=0, cigarIdx;
+   AlignedBases.clear();
+   //cout << "reference sequence:\n"
+   //   << subseq << "\nquery bases\n"
+   //   << getQueryBases() << endl;
+
+   while (ci < CigarData.size()) {
+      //cout << "ri: " << ri << " qi: " << qi << endl;
+      if (CigarData[ci].Type == 'S' || CigarData[ci].Type == 'H') {
+         qi += CigarData[ci].Length;
+      }
+      else if (CigarData[ci].Type == 'M') {
+         AlignedBases += QueryBases.substr(qi, CigarData[ci].Length);
+         cigarIdx=0;
+         while (cigarIdx < CigarData[ci].Length) {
+            if (toupper(subseq[ri]) != QueryBases[qi]) {
+               //cout << "diff ref: " << subseq[ri] << " | " << QueryBases[qi] << endl;
+               ++edit;
+            }
+            // assume bam file use upper cases for all bases!
+            ++cigarIdx; ++ri; ++qi;
+         }
+      }
+      else if (CigarData[ci].Type == 'I') {
+         AlignedBases += QueryBases.substr(qi, CigarData[ci].Length);
+         //cout << "query insert: " << QueryBases.substr(qi, CigarData[ci].Length) << endl;
+         edit += CigarData[ci].Length;
+         qi += CigarData[ci].Length;
+      }
+      else if (CigarData[ci].Type == 'D') {
+         AlignedBases += string(CigarData[ci].Length, '-');
+         //cout << "query deletion: " << CigarData[ci].Length << endl;
+         edit += CigarData[ci].Length;
+         ri += CigarData[ci].Length;
+      }
+      else {
+         throw runtime_error("CigarOP " + string(1, CigarData[ci].Type) 
+               + " not considered inside " + string(__func__));
+      }
+      ++ci;
+   }
+   //cout << "recalculated edit distance: " << edit << endl;
+   if (HasTag("NM")) {
+      int tmp;
+      if (!GetTag("NM", tmp)) {
+         cerr << "Failed to get NM tag!\n";
+         exit(1);
+      }
+      //cout << "Old edit distance: " << tmp << endl;
+      if (abs(tmp - edit) > 50) {
+         cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
+            << " old " << tmp << " and  new " << edit << " edit distance too big check logic\n"
+            << *this << endl;
+         exit(1);
+      }
+      EditTag("NM", "i", edit);
+   }
+   else {
+      AddTag("NM", "i", edit);
+   }
+}
 

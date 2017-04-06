@@ -26,17 +26,21 @@
 namespace BamTools {
 namespace Internal {
 
+/**
+ * This class should be public usable in the BamTools namespace
+ * so that callers can deal with this exception.
+ */
 class BamException : public std::exception {
-
     public:
         inline BamException(const std::string& where, const std::string& message)
             : std::exception()
             , m_errorString(where + SEPARATOR + message)
         { }
 
-        inline ~BamException(void) throw() { }
+        inline ~BamException(void) noexcept { }
 
-        inline const char* what(void) const throw() {
+        //inline const char* what(void) const throw() {
+        inline const char* what(void) const noexcept {
             return m_errorString.c_str();
         }
 

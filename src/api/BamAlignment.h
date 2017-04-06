@@ -30,6 +30,20 @@ namespace Internal {
 } // namespace Internal
 //! \endcond
 
+class BamAlignmentException : public exception {
+   public:
+      BamAlignmentException(const string& msg) {
+         message=msg;
+      }
+
+      virtual const char* what() noexcept {
+         return message.c_str();
+      }
+
+   private:
+      string message;
+
+};
 // BamAlignment data structure
 class API_EXPORT BamAlignment {
    // API_EXPORT are constructed used for Window DDL
@@ -284,7 +298,7 @@ class API_EXPORT BamAlignment {
          *  MF ?  Reserved for backwards compatibility reasons
          *  MQ i Mapping quality of the mate/next segment
          *  NH i Number of reported alignments that contains the query in the current record
-         *  NM i Edit distance to the reference. This is use by BWA
+         *  NM i Edit distance to the reference. This is use by BWA. MissMatch+Indel.
          *  OC Z Original CIGAR
          *  OP i Original mapping position
          *  OQ Z Original base quality
@@ -442,20 +456,17 @@ class API_EXPORT BamAlignment {
         */
         template<typename T> bool GetTag(const std::string& tag, T& destination) const;
         template<typename T> bool GetTag(const std::string& tag, std::vector<T>& destination) const;
-
         // retrieves all current tag names
         std::vector<std::string> GetTagNames(void) const;
-
         // retrieves the SAM/BAM type-code for requested tag name
         bool GetTagType(const std::string& tag, char& type) const;
-
         // retrieves the SAM/BAM type-code for the data elements in an array tag
         bool GetArrayTagType(const std::string& tag, char& type) const;
-
         // returns true if alignment has a record for this tag name
         bool HasTag(const std::string& tag) const;
-
-        // removes a tag
+        /** 
+         * removes a tag
+         */
         void RemoveTag(const std::string& tag);
 
     // additional methods
@@ -544,6 +555,8 @@ class API_EXPORT BamAlignment {
          * use this id and RefVector to get reference name.
          * The RefVector is only available in BamReader's
          * header section.
+         * RefVector <= vector<RefData>, RefData { RefName, RefLength }
+         * unnecessary typedef, more confusing than help.
          */
         int32_t getReferenceId() const { return RefID; }
         /**
@@ -578,6 +591,7 @@ class API_EXPORT BamAlignment {
         int32_t getInsertSize() const { return InsertSize; }
         /**
          * @return a const reference to the CIGAR operations for this alignment
+         * CigarData is a typedef of vector<CigarOp>
          */
         const std::vector<CigarOp>& getCigar() const { return CigarData; } 
         /**
@@ -585,6 +599,7 @@ class API_EXPORT BamAlignment {
          * for working with other applications.
          */
         vector<pair<char,int> > getCigarOperation() const;
+        string getCigarString() const;
         /**
          * Some alignment's cigar entry is *
          * this is the same as no cigar. This function test this situation
@@ -672,6 +687,16 @@ class API_EXPORT BamAlignment {
          * of the query alignment.
          */
         BamAlignment subsequenceByRef(int b, int e) const;
+        /**
+         * Recalculate the value for tag NM
+         * This is needed after taking a subsequence or 
+         * NM tag is missing from the object.
+         * @param refseq the reference sequence whole string
+         *  not just the subsequence for this object.
+         */
+        void updateNMTag(const string& refseq);
+    private:
+      void advanceIndex(int &i, int &j, int &b, unsigned int &cigarIdx, unsigned int &ci, char &cigarState) const;
 
     // public data fields, these fileds should all become private in the future
     public:
@@ -681,26 +706,38 @@ class API_EXPORT BamAlignment {
         std::string QueryBases;         // 'original' sequence (contained in BAM file)
         /** 
          * not sure this is useful 
-         * 'aligned' sequence (QueryBases plus deletion, padding, clipping chars)
-         * This field will be completely empty after reading from BamReader/BamMultiReader when
-         *     QueryBases is empty.
+         * 'aligned' sequence (QueryBases plus deletion, padding, clipping
+         * chars) This field will be completely empty after reading from
+         * BamReader/BamMultiReader when QueryBases is empty.
          */
         std::string AlignedBases;       
-        std::string Qualities;          // FASTQ qualities (ASCII characters, not numeric values)
-        std::string TagData;            // tag data (use provided methods to query/modify)
+        /** 
+         * FASTQ qualities (ASCII characters, not numeric values)
+         */
+        std::string Qualities;          
+        /** 
+         * tag data (use provided methods to query/modify)
+         * String encoding of everything. Should consider using
+         * a proper data structure. 
+         * TODO: rewrite this part.
+         */
+        std::string TagData;            
         int32_t     RefID;              // ID number for reference sequence
         /**
          * (0-based) where alignment starts on reference.
          */
         int32_t     Position;
-        uint16_t    Bin;                // BAM (standard) index bin number for this alignment
+        /** 
+         * BAM (standard) index bin number for this alignment
+         */
+        uint16_t    Bin;                
         uint16_t    MapQuality;         // mapping quality score
         /**
          * This is sam/bam file field #2 containing 12 bit information
          * alignment bit-flag. 
          * use the provided methods to query/modify.
          */
-        uint32_t    AlignmentFlag;      // alignment bit-flag (use provided methods to query/modify)
+        uint32_t    AlignmentFlag;
        /**  
         * CIGAR operations for this alignment.
         * CigarOp has Type,Length public field
@@ -722,15 +759,24 @@ class API_EXPORT BamAlignment {
         // alignment should not store its file name
         // information repetation, remove in future version
         // TODO: remove in next release
+        // this is used in multiple file input operations
         std::string Filename;           // name of BAM file which this alignment comes from
 
     //! \internal
     // internal utility methods
     private:
-        bool FindTag(const std::string& tag,
-                     char*& pTagData,
-                     const unsigned int& tagDataLength,
-                     unsigned int& numBytesParsed) const;
+        /** 
+         *  Searches for requested tag in BAM tag data.
+         *  @param  tag            requested 2-character tag name
+         *  @param  pTagData       pointer to current position in BamAlignment::TagData
+         *  @param  tagDataLength  length of BamAlignment::TagData
+         *  @param  numBytesParsed number of bytes parsed so far
+         *  @return true if found
+         *  If tag is found, pTagData will point to the byte where the tag data begins.
+         *        numBytesParsed will correspond to the position in the full TagData string.
+        */
+        bool FindTag(const std::string& tag, char*& pTagData, 
+              const unsigned int& tagDataLength, unsigned int& numBytesParsed) const;
         bool IsValidSize(const std::string& tag, const std::string& type) const;
         void SetErrorString(const std::string& where, const std::string& what) const;
         bool SkipToNextTag(const char storageType,
@@ -742,7 +788,11 @@ class API_EXPORT BamAlignment {
 
         // nested class TODO: simplify in future versions
         struct BamAlignmentSupportData {
-            // data members
+            /** 
+             * cigarop, tags are stored here
+             * Method to populate this field:
+             *    BamReaderPrivate::LoadNextAlignment(BamAlignment& alignment) 
+             */
             std::string AllCharData;
             uint32_t    BlockLength;  // not sure what this is
             uint32_t    NumCigarOperations; // should be calculated on the fly
@@ -804,51 +854,45 @@ class API_EXPORT BamAlignment {
 // ---------------------------------------------------------
 // BamAlignment tag access methods
 
+// should use a data structure other than playing with fire here
+// The optimization is useless.  TODO: replace with a proper 
+// data structure
 template<typename T>
 inline bool BamAlignment::AddTag(const std::string& tag, const std::string& type, const T& value) {
-
     // if char data not populated, do that first
     if ( SupportData.HasCoreOnly )
         BuildCharData();
-
     // check tag/type size
     if ( !IsValidSize(tag, type) ) {
         // TODO: set error string?
         return false;
     }
-
     // check that storage type code is OK for T
     if ( !TagTypeHelper<T>::CanConvertTo(type.at(0)) ) {
         // TODO: set error string?
         return false;
     }
-
     // localize the tag data
     char* pTagData = (char*)TagData.data();
     const unsigned int tagDataLength = TagData.size();
     unsigned int numBytesParsed = 0;
-
     // if tag already exists, return false
     // use EditTag explicitly instead
     if ( FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
         // TODO: set error string?
         return false;
     }
-
     // otherwise, convert value to string
     union { T value; char valueBuffer[sizeof(T)]; } un;
     un.value = value;
-
     // copy original tag data to temp buffer
     const std::string newTag = tag + type;
     const size_t newTagDataLength = tagDataLength + newTag.size() + sizeof(T); // leave room for new T
     RaiiBuffer originalTagData(newTagDataLength);
     memcpy(originalTagData.Buffer, TagData.c_str(), tagDataLength + 1);    // '+1' for TagData null-term
-
     // append newTag
     strcat(originalTagData.Buffer + tagDataLength, newTag.data());
     memcpy(originalTagData.Buffer + tagDataLength + newTag.size(), un.valueBuffer, sizeof(T));
-
     // store temp buffer back in TagData
     const char* newTagData = (const char*)originalTagData.Buffer;
     TagData.assign(newTagData, newTagDataLength);
@@ -915,15 +959,12 @@ inline bool BamAlignment::AddTag<std::string>(const std::string& tag,
 */
 template<typename T>
 inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& values) {
-
     // if char data not populated, do that first
     if ( SupportData.HasCoreOnly )
         BuildCharData();
-
     // check for valid tag name length
     if ( tag.size() != Constants::BAM_TAG_TAGSIZE )
         return false;
-
     // localize the tag data
     char* pTagData = (char*)TagData.data();
     const unsigned int tagDataLength = TagData.size();
@@ -935,7 +976,6 @@ inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& v
         // TODO: set error string?
         return false;
     }
-
     // build new tag's base information
     char newTagBase[Constants::BAM_TAG_ARRAYBASE_SIZE];
     memcpy( newTagBase, tag.c_str(), Constants::BAM_TAG_TAGSIZE );
@@ -945,24 +985,19 @@ inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& v
     // add number of array elements to newTagBase
     const int32_t numElements  = values.size();
     memcpy(newTagBase + 4, &numElements, sizeof(int32_t));
-
     // copy current TagData string to temp buffer, leaving room for new tag's contents
-    const size_t newTagDataLength = tagDataLength +
-                                    Constants::BAM_TAG_ARRAYBASE_SIZE +
-                                    numElements*sizeof(T);
+    const size_t newTagDataLength = 
+       tagDataLength + Constants::BAM_TAG_ARRAYBASE_SIZE + numElements*sizeof(T);
     RaiiBuffer originalTagData(newTagDataLength);
     memcpy(originalTagData.Buffer, TagData.c_str(), tagDataLength+1); // '+1' for TagData's null-term
-
     // write newTagBase (removes old null term)
     strcat(originalTagData.Buffer + tagDataLength, (const char*)newTagBase);
-
     // add vector elements to tag
     int elementsBeginOffset = tagDataLength + Constants::BAM_TAG_ARRAYBASE_SIZE;
     for ( int i = 0 ; i < numElements; ++i ) {
         const T& value = values.at(i);
         memcpy(originalTagData.Buffer + elementsBeginOffset + i*sizeof(T), &value, sizeof(T));
     }
-
     // store temp buffer back in TagData
     const char* newTagData = (const char*)originalTagData.Buffer;
     TagData.assign(newTagData, newTagDataLength);
@@ -1006,7 +1041,6 @@ inline bool BamAlignment::EditTag(const std::string& tag, const std::vector<T>& 
     return AddTag(tag, values);
 }
 
-
 template<typename T>
 inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
     // skip if alignment is core-only
@@ -1020,11 +1054,11 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
         return false;
     }
     // localize the tag data
-    char* pTagData = (char*)TagData.data();
+    char* pTagData = (char*)TagData.data(); // string's low leve representation
     const unsigned int tagDataLength = TagData.size();
     unsigned int numBytesParsed = 0;
     // return failure if tag not found
-    if ( !FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
+    if (!FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
         // TODO: set error string?
         return false;
     }
@@ -1034,10 +1068,10 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
         // TODO: set error string ?
         return false;
     }
-
     // determine data length
-    int destinationLength = 0;
-    switch ( type ) {
+    //int destinationLength = 0;
+    size_t destinationLength = 0;
+    switch ( type ) { // TODO: replace case with object design
         // 1 byte data
         case (Constants::BAM_TAG_TYPE_ASCII) :
         case (Constants::BAM_TAG_TYPE_INT8)  :
@@ -1071,13 +1105,12 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
     // store data in destination
     destination = 0;
     memcpy(&destination, pTagData, destinationLength);
-    // return success
     return true;
 }
 
 template<>
 inline bool BamAlignment::GetTag<std::string>(const std::string& tag,
-                                              std::string& destination) const
+         std::string& destination) const
 {
     // skip if alignment is core-only
     if ( SupportData.HasCoreOnly ) {

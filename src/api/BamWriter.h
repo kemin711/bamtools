@@ -29,9 +29,7 @@ class API_EXPORT BamWriter {
 
     // enums
     public:
-        enum CompressionMode { Compressed = 0
-                             , Uncompressed
-                             };
+        enum CompressionMode { Compressed = 0, Uncompressed };
 
     // ctor & dtor
     public:
@@ -60,9 +58,10 @@ class API_EXPORT BamWriter {
        * 
        * @param[in] alignment BamAlignment record to save
        * @see  BamReader::GetNextAlignment(), BamReader::GetNextAlignmentCore()
+       * @return true of success false if fail.
        *
        * Note: This method delegates to BamWriterPrivate::SaveAlignment
-      */
+       */
         bool SaveAlignment(const BamAlignment& alignment);
         // sets the output compression mode
         void SetCompressionMode(const BamWriter::CompressionMode& compressionMode);

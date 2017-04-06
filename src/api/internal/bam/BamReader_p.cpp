@@ -226,7 +226,6 @@ void BamReaderPrivate::LoadHeaderData(void) {
 
 // populates BamAlignment with alignment data under file pointer, returns success/fail
 bool BamReaderPrivate::LoadNextAlignment(BamAlignment& alignment) {
-
     // read in the 'block length' value, make sure it's not zero
     char buffer[sizeof(uint32_t)];
     fill_n(buffer, sizeof(uint32_t), 0);
@@ -235,24 +234,20 @@ bool BamReaderPrivate::LoadNextAlignment(BamAlignment& alignment) {
     if ( m_isBigEndian ) BamTools::SwapEndian_32(alignment.SupportData.BlockLength);
     if ( alignment.SupportData.BlockLength == 0 )
         return false;
-
     // read in core alignment data, make sure the right size of data was read
     char x[Constants::BAM_CORE_SIZE];
     if ( m_stream.Read(x, Constants::BAM_CORE_SIZE) != Constants::BAM_CORE_SIZE )
         return false;
-
     // swap core endian-ness if necessary
     if ( m_isBigEndian ) {
         for ( unsigned int i = 0; i < Constants::BAM_CORE_SIZE; i+=sizeof(uint32_t) )
             BamTools::SwapEndian_32p(&x[i]);
     }
-
     // set BamAlignment 'core' and 'support' data
     alignment.RefID    = BamTools::UnpackSignedInt(&x[0]);
     alignment.Position = BamTools::UnpackSignedInt(&x[4]);
-
     unsigned int tempValue = BamTools::UnpackUnsignedInt(&x[8]);
-    alignment.Bin        = tempValue >> 16;
+    alignment.Bin        = tempValue >> 16; // 8 contains MapQ + Qnamelen
     alignment.MapQuality = tempValue >> 8 & 0xff;
     alignment.SupportData.QueryNameLength = tempValue & 0xff;
 
@@ -271,16 +266,12 @@ bool BamReaderPrivate::LoadNextAlignment(BamAlignment& alignment) {
     // read in character data - make sure proper data size was read
     bool readCharDataOK = false;
     const unsigned int dataLength = alignment.SupportData.BlockLength - Constants::BAM_CORE_SIZE;
-    RaiiBuffer allCharData(dataLength);
-
+    RaiiBuffer allCharData(dataLength); // after the core data
     if ( m_stream.Read(allCharData.Buffer, dataLength) == dataLength ) {
-
         // store 'allCharData' in supportData structure
         alignment.SupportData.AllCharData.assign((const char*)allCharData.Buffer, dataLength);
-
         // set success flag
         readCharDataOK = true;
-
         // save CIGAR ops
         // need to calculate this here so that  BamAlignment::GetEndPosition() performs correctly,
         // even when GetNextAlignmentCore() is called
@@ -289,56 +280,46 @@ bool BamReaderPrivate::LoadNextAlignment(BamAlignment& alignment) {
         CigarOp op;
         alignment.CigarData.clear();
         alignment.CigarData.reserve(alignment.SupportData.NumCigarOperations);
-        for ( unsigned int i = 0; i < alignment.SupportData.NumCigarOperations; ++i ) {
-
+        for (unsigned int i = 0; i < alignment.SupportData.NumCigarOperations; ++i) {
             // swap endian-ness if necessary
             if ( m_isBigEndian ) BamTools::SwapEndian_32(cigarData[i]);
-
             // build CigarOp structure
             op.Length = (cigarData[i] >> Constants::BAM_CIGAR_SHIFT);
             op.Type   = Constants::BAM_CIGAR_LOOKUP[ (cigarData[i] & Constants::BAM_CIGAR_MASK) ];
-
             // save CigarOp
             alignment.CigarData.push_back(op);
         }
     }
-
     // return success/failure
     return readCharDataOK;
 }
 
 // loads reference data from BAM file
 bool BamReaderPrivate::LoadReferenceData(void) {
-
     // get number of reference sequences
     char buffer[sizeof(uint32_t)];
     m_stream.Read(buffer, sizeof(uint32_t));
     uint32_t numberRefSeqs = BamTools::UnpackUnsignedInt(buffer);
     if ( m_isBigEndian ) BamTools::SwapEndian_32(numberRefSeqs);
     m_references.reserve((int)numberRefSeqs);
-
     // iterate over all references in header
     for ( unsigned int i = 0; i != numberRefSeqs; ++i ) {
-
         // get length of reference name
         m_stream.Read(buffer, sizeof(uint32_t));
         uint32_t refNameLength = BamTools::UnpackUnsignedInt(buffer);
         if ( m_isBigEndian ) BamTools::SwapEndian_32(refNameLength);
         RaiiBuffer refName(refNameLength);
-
         // get reference name and reference sequence length
         m_stream.Read(refName.Buffer, refNameLength);
         m_stream.Read(buffer, sizeof(int32_t));
         int32_t refLength = BamTools::UnpackSignedInt(buffer);
         if ( m_isBigEndian ) BamTools::SwapEndian_32(refLength);
-
         // store data for reference
         RefData aReference;
         aReference.RefName   = (string)((const char*)refName.Buffer);
         aReference.RefLength = refLength;
         m_references.push_back(aReference);
     }
-
     // return success
     return true;
 }

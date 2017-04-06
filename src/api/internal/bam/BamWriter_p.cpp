@@ -285,63 +285,49 @@ void BamWriterPrivate::WriteAlignment(const BamAlignment& al) {
         //   << " pBaseQualities: " << pBaseQualities << endl;
         delete[] pBaseQualities;
     }
-
     // write the tag data
-    if ( m_isBigEndian ) {
-
+    if (m_isBigEndian) {
         char* tagData = new char[tagDataLength]();
         memcpy(tagData, al.TagData.data(), tagDataLength);
-
         size_t i = 0;
-        while ( i < tagDataLength ) {
-
+        while ( i < tagDataLength ) { // this loop swaps numeric type if is BigEndian
             i += Constants::BAM_TAG_TAGSIZE;  // skip tag chars (e.g. "RG", "NM", etc.)
             const char type = tagData[i];     // get tag type at position i
             ++i;
-
             switch ( type ) {
-
                 case(Constants::BAM_TAG_TYPE_ASCII) :
                 case(Constants::BAM_TAG_TYPE_INT8)  :
                 case(Constants::BAM_TAG_TYPE_UINT8) :
                     ++i;
                     break;
-
                 case(Constants::BAM_TAG_TYPE_INT16)  :
                 case(Constants::BAM_TAG_TYPE_UINT16) :
                     BamTools::SwapEndian_16p(&tagData[i]);
                     i += sizeof(uint16_t);
                     break;
-
                 case(Constants::BAM_TAG_TYPE_FLOAT)  :
                 case(Constants::BAM_TAG_TYPE_INT32)  :
                 case(Constants::BAM_TAG_TYPE_UINT32) :
                     BamTools::SwapEndian_32p(&tagData[i]);
                     i += sizeof(uint32_t);
                     break;
-
                 case(Constants::BAM_TAG_TYPE_HEX) :
                 case(Constants::BAM_TAG_TYPE_STRING) :
                     // no endian swapping necessary for hex-string/string data
-                    while ( tagData[i] )
-                        ++i;
+                    while (tagData[i]) ++i;
                     // increment one more for null terminator
                     ++i;
                     break;
-
                 case(Constants::BAM_TAG_TYPE_ARRAY) :
-
                 {
                     // read array type
                     const char arrayType = tagData[i];
                     ++i;
-
                     // swap endian-ness of number of elements in place, then retrieve for loop
                     BamTools::SwapEndian_32p(&tagData[i]);
                     int32_t numElements;
                     memcpy(&numElements, &tagData[i], sizeof(uint32_t));
                     i += sizeof(uint32_t);
-
                     // swap endian-ness of array elements
                     for ( int j = 0; j < numElements; ++j ) {
                         switch (arrayType) {
@@ -370,14 +356,12 @@ void BamWriterPrivate::WriteAlignment(const BamAlignment& al) {
 
                     break;
                 }
-
                 default :
                     delete[] tagData;
                     const string message = string("invalid tag type: ") + type;
                     throw BamException("BamWriter::SaveAlignment", message);
             }
         }
-
         m_stream.Write(tagData, tagDataLength);
         delete[] tagData; // TODO: cleanup on Write exception thrown?
     }
