@@ -1006,6 +1006,23 @@ bool BamAlignment::IsMateReverseStrand(void) const {
     return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_MATE_REVERSE_STRAND) != 0 );
 }
 
+double BamAlignment::getFractionStrand() const {
+   if (HasTag("XO")) {
+      int32_t overlap;
+      GetTag("XO", overlap);
+      if (overlap == getReferenceWidth()) {
+         return 0;
+      }
+      else {
+         return (double)overlap/getReferenceWidth();
+      }
+   }
+   else {
+      if (isReverseStrand()) return -1;
+      else return 1;
+   }
+}
+
 /*! \fn bool BamAlignment::IsPaired(void) const
     \return \c true if alignment part of paired-end read
 */

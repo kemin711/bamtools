@@ -161,6 +161,15 @@ class API_EXPORT BamAlignment {
          * @return true if alignment's mate mapped to reverse strand
          */
         bool IsMateReverseStrand(void) const; 
+        /**
+         * Get a value to represent the strand.
+         * For simple alignment of single sequence it is either
+         * +1 or -1.  For Merged sequence which is reprented as
+         * having the XO tag this value could be [0, 1)
+         * a fractional number between 0 and 1.
+         * If the overlap is 100% of the read length, then it is zero.
+         */
+        double getFractionStrand() const;
         bool IsPaired(void) const;            // returns true if alignment part of paired-end read
         bool IsPrimaryAlignment(void) const;  // returns true if reported position is primary alignment
         /**
@@ -485,7 +494,7 @@ class API_EXPORT BamAlignment {
          *  @param[in] closedInterval Setting this to true will return a
          *      0-based end coordinate. Default is false, so that his value
          *      represents a standard, half-open interval.
-         *  @return alignment end position
+         *  @return alignment end position on the reference.
          */
         int GetEndPosition(bool usePadded = false, bool closedInterval = false) const;
 
@@ -495,6 +504,9 @@ class API_EXPORT BamAlignment {
          */
         std::pair<int,int> getRange() const { 
            return std::pair<int,int>(getPosition(), GetEndPosition(false, true)); 
+        }
+        int getReferenceWidth() const {
+           return GetEndPosition(false,false) - getPosition();
         }
         /**
          * Get the range if it is paired on the same reference
