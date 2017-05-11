@@ -22,10 +22,24 @@ namespace Internal {
     class BamReaderPrivate;
 } // namespace Internal
 
+/**
+ * Got design problems for this class.
+ * TODO: Should get rid of this class in new design.
+ *       Use more C++ design patterns.
+ */
 class API_EXPORT BamReader {
 
     // constructor / destructor
     public:
+        /**
+        * Default constructor.
+        * There is no other constructors declared but could be
+        * implemented by the compiler implicitly.
+        * This method creates a new pointer.
+        * So copy constructor and assignment operators
+        * should all be disabled otherwise will get a double
+        * delete probem.
+        */
         BamReader(void);
         ~BamReader(void);
 
@@ -59,41 +73,38 @@ class API_EXPORT BamReader {
         // ----------------------
         // access alignment data
         // ----------------------
-
-        // retrieves next available alignment
-        /**
-         *  Retrieves next available alignment.
+        /** Retrieves next available alignment.
          *
-         *  Attempts to read the next alignment record from BAM file, and checks to see
-         *  if it overlaps the current region. If no region is currently set, then the
-         *  next alignment available is always considered valid.
+         *  Attempts to read the next alignment record from BAM file, and
+         *  checks to see if it overlaps the current region. If no region is
+         *  currently set, then the next alignment available is always
+         *  considered valid.
          *
-         *  If a region has been set, via Jump() or SetRegion(), an alignment is only
-         *  considered valid if it overlaps the region. If the actual 'next' alignment record
-         *  in the BAM file does not overlap this region, then this function will read sequentially
-         *  through the file until the next alignment that overlaps this region is found.
-         *  Once the region has been exhausted (i.e. the next alignment loaded is beyond the region),
-         *  the function aborts and returns \c false. In this case, there is no point to continue
-         *  reading, assuming properly sorted alignments.
+         *  If a region has been set, via Jump() or SetRegion(), an alignment
+         *  is only considered valid if it overlaps the region. If the actual
+         *  'next' alignment record in the BAM file does not overlap this
+         *  region, then this function will read sequentially through the file
+         *  until the next alignment that overlaps this region is found.  Once
+         *  the region has been exhausted (i.e. the next alignment loaded is
+         *  beyond the region), the function aborts and returns \c false. In
+         *  this case, there is no point to continue reading, assuming properly
+         *  sorted alignments.
          *
-         *  This function fully populates all of the alignment's available data fields,
-         *  including the string data fields (read name, bases, qualities, tags, filename).
-         *  If only positional data (refID, position, CIGAR ops, alignment flags, etc.)
-         *  are required, consider using GetNextAlignmentCore() for a significant
-         *  performance boost.
+         *  This function fully populates all of the alignment's available data
+         *  fields, including the string data fields (read name, bases,
+         *  qualities, tags, filename).  If only positional data (refID,
+         *  position, CIGAR ops, alignment flags, etc.) are required, consider
+         *  using GetNextAlignmentCore() for a significant performance boost.
          *
          *  @param[out] alignment destination for alignment record data
          *  @returns \c true if a valid alignment was found
          */
-
         bool GetNextAlignment(BamAlignment& alignment);
         // retrieves next available alignmnet (without populating the alignment's string data fields)
         bool GetNextAlignmentCore(BamAlignment& alignment);
-
         // ----------------------
         // access header data
         // ----------------------
-
         // returns a read-only reference to SAM header data
         const SamHeader& GetConstSamHeader(void) const;
         // returns an editable copy of SAM header data

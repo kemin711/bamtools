@@ -23,9 +23,6 @@ using namespace std;
     \brief Provides read access to BAM files.
 */
 
-/*! \fn BamReader::BamReader(void)
-    \brief constructor
-*/
 BamReader::BamReader(void)
     : d(new BamReaderPrivate(this))
 { }
