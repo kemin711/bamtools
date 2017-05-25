@@ -1,0 +1,18 @@
+BWA documentation
+------------------------
+Tag	Meaning
+NM	Edit distance
+MD	Mismatching positions/bases
+AS	Alignment score
+BC	Barcode sequence
+X0	Number of best hits
+X1	Number of suboptimal hits found by BWA
+XN	Number of ambiguous bases in the referenece
+XM	Number of mismatches in the alignment
+XO	Number of gap opens
+XG	Number of gap extentions
+XT	Type: Unique/Repeat/N/Mate-sw
+XA	Alternative hits; format: (chr,pos,CIGAR,NM;)*
+XS	Suboptimal alignment score
+XF	Support from forward/reverse alignment
+XE	Number of supporting seeds

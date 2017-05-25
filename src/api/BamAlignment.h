@@ -483,13 +483,14 @@ class API_EXPORT BamAlignment {
         // populates alignment string fields
         bool BuildCharData(void);
         /** 
-         *  Calculates alignment end position, based on its starting position and CIGAR data.
+         *  Calculates alignment end position, based on its starting 
+         *  position and CIGAR data.
          * 
          *  @warning The position returned now represents a zero-based,
-         *      HALF-OPEN interval.  In previous versions of BamTools (0.x & 1.x)
-         *      all intervals were treated as zero-based, CLOSED.
-         *  @param[in] usePadded      Allow inserted bases to affect the
-         *      reported position. Default is false, so that reported position
+         *      HALF-OPEN interval.  In previous versions of BamTools 
+         *      (0.x & 1.x) all intervals were treated as zero-based, CLOSED.
+         *  @param[in] usePadded Allow inserted bases to affect the reported
+         *      position. Default is false, so that reported position
          *      stays synced with reference coordinates.
          *  @param[in] closedInterval Setting this to true will return a
          *      0-based end coordinate. Default is false, so that his value
@@ -497,6 +498,12 @@ class API_EXPORT BamAlignment {
          *  @return alignment end position on the reference.
          */
         int GetEndPosition(bool usePadded = false, bool closedInterval = false) const;
+        /**
+         * @return end of the mapping index (0-based) on reference.
+         *    This is the last mapped base index on reference. 
+         *    Closed end of the interval.
+         */
+        int getEndPosition() const { return GetEndPosition(false, true); }
 
         /**
          * return the [start, end] range of the mapping 
@@ -578,10 +585,6 @@ class API_EXPORT BamAlignment {
          * position is that of the reference.
          */
         int32_t getPosition() const { return Position; }
-        /**
-         * @return end of the mapping index (0-based) on reference.
-         */
-        int getEndPosition() const { return GetEndPosition(false, true); }
         /**
          * @return mapping quality.
          */
