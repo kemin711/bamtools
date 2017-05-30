@@ -505,6 +505,9 @@ class API_EXPORT BamAlignment {
         std::pair<int,int> getRange() const { 
            return std::pair<int,int>(getPosition(), GetEndPosition(false, true)); 
         }
+        /**
+         * The distance coverted by the alignment on the reference.
+         */
         int getReferenceWidth() const {
            return GetEndPosition(false,false) - getPosition();
         }
