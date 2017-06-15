@@ -170,7 +170,9 @@ class API_EXPORT BamAlignment {
          * If the overlap is 100% of the read length, then it is zero.
          */
         double getFractionStrand() const;
-        bool IsPaired(void) const;            // returns true if alignment part of paired-end read
+        /** @returns true if alignment part of paired-end read
+         */
+        bool IsPaired(void) const;            
         bool IsPrimaryAlignment(void) const;  // returns true if reported position is primary alignment
         /**
          * @return true if is secondary alignment
