@@ -728,7 +728,7 @@ ConvertTool::ConvertTool(void)
     Options::AddValueOption("-in",     "BAM filename", "the input BAM file(s)", "", m_settings->HasInput,   m_settings->InputFiles,     IO_Opts, Options::StandardIn());
     Options::AddValueOption("-list",   "filename", "the input BAM file list, one line per file", "", m_settings->HasInputFilelist,  m_settings->InputFilelist, IO_Opts);
     Options::AddValueOption("-out",    "BAM filename", "the output BAM file",   "", m_settings->HasOutput,  m_settings->OutputFilename, IO_Opts, Options::StandardOut());
-    Options::AddValueOption("-format", "FORMAT", "the output file format - see README for recognized formats", "", m_settings->HasFormat, m_settings->Format, IO_Opts);
+    Options::AddValueOption("-format", "FORMAT", "the output file format - bed, fasta, fastq, json, sam, pileup, yaml see Documents for recognized formats", "", m_settings->HasFormat, m_settings->Format, IO_Opts);
     Options::AddValueOption("-region", "REGION", "genomic region. Index file is recommended for better performance, and is used automatically if it exists. See \'bamtools help index\' for more details on creating one", "", m_settings->HasRegion, m_settings->Region, IO_Opts);
     
     OptionGroup* PileupOpts = Options::CreateOptionGroup("Pileup Options");
