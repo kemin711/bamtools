@@ -1334,6 +1334,12 @@ vector<int> BamAlignment::getQualityScore() const {
    return qual;
 }
 
+// there is a potential for overflow for long sequences
+int BamAlignment::getAverageQualityScore() const {
+   vector<int> q = getQualityScore();
+   return accumulate(q.begin(), q.end(), 0)/float(q.size());
+}
+
 std::pair<int,int> BamAlignment::getPairedRange() const {
    if (!mateOnSameReference()) {
       return getRange();

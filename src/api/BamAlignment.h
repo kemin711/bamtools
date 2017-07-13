@@ -229,7 +229,7 @@ class API_EXPORT BamAlignment {
        * Does NOT modify an existing tag - use \link BamAlignment::EditTag() 
        *    \endlink instead.
        * @param[in] tag   2-character tag name
-       * @param[in] type  1-character tag type
+       * @param[in] type  1-character tag type such as Z, i
        * @param[in] value data to store
        * @return \c true if the \b new tag was added successfully
        * @see \samSpecURL for more details on reserved tag names, 
@@ -574,6 +574,7 @@ class API_EXPORT BamAlignment {
          * This is the Phred score after ASCII - 33
          */
         vector<int> getQualityScore() const;
+        int getAverageQualityScore() const;
         /**
          * @return ID number for reference sequence
          * use this id and RefVector to get reference name.
