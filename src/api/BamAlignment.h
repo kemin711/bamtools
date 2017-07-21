@@ -288,8 +288,6 @@ class API_EXPORT BamAlignment {
          *  CM i Edit distance between the color sequence and the color reference (see also NM) 
          *  CO Z Free-text comments
          *  CP i Leftmost coordinate of the next hit
-         *  CQ Z Color read base qualities
-         *  CS Z Color read sequence
          *  CT Z Complete read annotation tag, used for consensus annotation dummy features.
          *  E2 Z The 2nd most likely base calls
          *  FI i The index of segment in the template
