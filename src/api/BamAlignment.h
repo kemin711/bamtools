@@ -141,6 +141,12 @@ class API_EXPORT BamAlignment {
            else return 0;
         }
         bool IsMapped(void) const;            // returns true if alignment is mapped
+        /** 
+         * @return true if alignment is not mapped
+         */
+        bool isUnmapped(void) const {
+           return AlignmentFlag & UNMAPPED;
+        }
         bool IsMateMapped(void) const;        // returns true if alignment's mate is mapped
         /** 
          *  If the read is mapped to the reference then there is
@@ -208,6 +214,9 @@ class API_EXPORT BamAlignment {
          */
         bool isProperPair(void) const {
             return AlignmentFlag & PROPER_PAIR;
+        }
+        bool isNotProperPair(void) const {
+            return !(AlignmentFlag & PROPER_PAIR);
         }
 
     // manipulate alignment flags
