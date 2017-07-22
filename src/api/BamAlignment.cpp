@@ -1041,7 +1041,8 @@ bool BamAlignment::IsPrimaryAlignment(void) const  {
     \return \c true if alignment is part of read that satisfied paired-end resolution
 */
 bool BamAlignment::IsProperPair(void) const {
-    return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_PROPER_PAIR) != 0 );
+    //return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_PROPER_PAIR) != 0 );
+    return ( (AlignmentFlag & PROPER_PAIR) != 0 );
 }
 
 bool BamAlignment::IsReverseStrand(void) const {
@@ -1202,8 +1203,10 @@ void BamAlignment::SetIsPrimaryAlignment(bool ok) {
     \brief Sets "alignment is part of read that satisfied paired-end resolution" flag to \a ok.
 */
 void BamAlignment::SetIsProperPair(bool ok) {
-    if (ok) AlignmentFlag |=  Constants::BAM_ALIGNMENT_PROPER_PAIR;
-    else    AlignmentFlag &= ~Constants::BAM_ALIGNMENT_PROPER_PAIR;
+    //if (ok) AlignmentFlag |=  Constants::BAM_ALIGNMENT_PROPER_PAIR;
+    //else    AlignmentFlag &= ~Constants::BAM_ALIGNMENT_PROPER_PAIR;
+    if (ok) AlignmentFlag |=  Constants::PROPER_PAIR;
+    else    AlignmentFlag &= ~Constants::PROPER_PAIR;
 }
 
 /*! \fn void BamAlignment::SetIsReverseStrand(bool ok)

@@ -79,7 +79,7 @@ class API_EXPORT BamAlignment {
         BamAlignment& operator=(BamAlignment&& other);
 
     // queries against alignment flags
-    // // BAM alignment flags
+    // // BAM alignment flags Designe problem, replaced with in class static constant
     // const int BAM_ALIGNMENT_PAIRED              = 0x0001;
     // const int BAM_ALIGNMENT_PROPER_PAIR         = 0x0002;
     // const int BAM_ALIGNMENT_UNMAPPED            = 0x0004;
@@ -130,6 +130,7 @@ class API_EXPORT BamAlignment {
          * @return true if it is the second read (mate)
          */
         bool isSecondMate(void) const { return AlignmentFlag & READ_2; }
+        // in C++ true is 1 false is 0
         bool isSecondRead(void) const { return AlignmentFlag & READ_2; }
         /**
          * @return 1 for first mate, 2 for second mate, 
@@ -173,13 +174,41 @@ class API_EXPORT BamAlignment {
         /** @returns true if alignment part of paired-end read
          */
         bool IsPaired(void) const;            
-        bool IsPrimaryAlignment(void) const;  // returns true if reported position is primary alignment
+        /** 
+         * @return true if reported position is primary alignment
+         */
+        bool IsPrimaryAlignment(void) const;  
+        /**
+         * Test SECONDARY flag is not set.
+         */
+         bool isPrimaryAlignment(void) const  {
+            return !(AlignmentFlag & SECONDARY);
+         }
         /**
          * @return true if is secondary alignment
+         *    This indicates that the query was mapped
+         *    multiple times in the genome. The choice of
+         *    primary/secondary is usually arbitrary!
          */
-        bool isSecondaryAlignment() const { return AlignmentFlag & 0x100; }
-        bool isSupplementaryAlignment() const { return AlignmentFlag & 0x800; }
-        bool IsProperPair(void) const;        // returns true if alignment is part of read that satisfied paired-end resolution
+        bool isSecondaryAlignment() const { 
+           return AlignmentFlag & SECONDARY; }
+        /**
+         * Alignment is part of a chimera. The choice
+         * of representative/supplementary is arbitrary.
+         */
+        bool isSupplementaryAlignment() const { 
+           return AlignmentFlag & SUPPLEMENTARY; 
+        }
+        /** 
+         * @return true if alignment is part of read that satisfied paired-end resolution
+         */
+        bool IsProperPair(void) const;        
+        /**
+         * Test against flag. This is usually set by an aligner.
+         */
+        bool isProperPair(void) const {
+            return AlignmentFlag & PROPER_PAIR;
+        }
 
     // manipulate alignment flags
     public:        
