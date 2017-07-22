@@ -1205,8 +1205,8 @@ void BamAlignment::SetIsPrimaryAlignment(bool ok) {
 void BamAlignment::SetIsProperPair(bool ok) {
     //if (ok) AlignmentFlag |=  Constants::BAM_ALIGNMENT_PROPER_PAIR;
     //else    AlignmentFlag &= ~Constants::BAM_ALIGNMENT_PROPER_PAIR;
-    if (ok) AlignmentFlag |=  Constants::PROPER_PAIR;
-    else    AlignmentFlag &= ~Constants::PROPER_PAIR;
+    if (ok) AlignmentFlag |=  PROPER_PAIR;
+    else    AlignmentFlag &= ~PROPER_PAIR;
 }
 
 /*! \fn void BamAlignment::SetIsReverseStrand(bool ok)
