@@ -65,6 +65,10 @@ struct API_EXPORT CigarOp {
      */
     pair<char, int> topair() const { return pair<char,int>(Type, Length); }
     void fromPair(const pair<char,int> &p) { Type=p.first; Length = p.second; }
+    uint32_t getLength() const { return Length; }
+    char getType() const { return Type; }
+    void setLength(uint32_t l) { Length = l; }
+    void setType(char t) { Type = t; }
 };
 
 // ----------------------------------------------------------------

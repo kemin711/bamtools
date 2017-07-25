@@ -19,6 +19,7 @@
 #include <vector>
 #include <iostream>
 #include <utility>
+#include <typeinfo>
 
 namespace BamTools {
 
@@ -140,11 +141,21 @@ class API_EXPORT BamAlignment {
            else if (isSecondMate()) return 2;
            else return 0;
         }
-        bool IsMapped(void) const;            // returns true if alignment is mapped
+        /**
+         * @return true if query is mapped to references
+         * @see isMapped is an alias conforming to convension.
+         */
+        bool IsMapped(void) const;            
+        /** 
+         * @return true if alignment is mapped
+         */
+        bool isMapped(void) const {
+           return !(AlignmentFlag & UNMAPPED);            
+        }
         /** 
          * @return true if alignment is not mapped
          */
-        bool isUnmapped(void) const {
+        bool isUnmapped() const {
            return AlignmentFlag & UNMAPPED;
         }
         bool IsMateMapped(void) const;        // returns true if alignment's mate is mapped
@@ -205,12 +216,24 @@ class API_EXPORT BamAlignment {
         bool isSupplementaryAlignment() const { 
            return AlignmentFlag & SUPPLEMENTARY; 
         }
+        /**
+         * Alias for isSupplementaryAlignment
+         */
+        bool isSupplementary() const { 
+           return AlignmentFlag & SUPPLEMENTARY; 
+        }
         /** 
          * @return true if alignment is part of read that satisfied paired-end resolution
          */
         bool IsProperPair(void) const;        
         /**
-         * Test against flag. This is usually set by an aligner.
+         * Test against PROPER_PAIR flag. This is usually set by an aligner.
+         * For a negation test the result will include:
+         *    1. Singleton
+         *    2. pairs located to multi-references
+         *    3. Inert size way out of range compared to the
+         *       mean std (3 or 4 std away from mean?) This is
+         *       all determined by the aligner.
          */
         bool isProperPair(void) const {
             return AlignmentFlag & PROPER_PAIR;
@@ -669,12 +692,23 @@ class API_EXPORT BamAlignment {
          */
         void fixStaggerGap();
 
+        /**
+         * @return true if start with softclip
+         */
         bool startWithSoftclip() const {
-            return getCigar().front().Type == 'S';
+            return !CigarData.empty() && getCigar().front().Type == 'S';
         }
         bool endWithSoftclip() const {
-            return getCigar().back().Type == 'S';
+            return !CigarData.empty() && getCigar().back().Type == 'S';
         }
+
+        /**
+         * Alignment has soft clip on either start
+         * or end. Not checking middle, which may not make sense.
+         * @return true of has soft clip otherwise, including no cigar,
+         *    then return false.
+         */
+        bool hasSoftclip() const;
         /**
          * Calculate identity over the aligned part excluding
          * insert/delete and soft/hard clips.
@@ -682,7 +716,9 @@ class API_EXPORT BamAlignment {
          */
         float getNGIdentity() const;
         /**
-         * NM/alnlen
+         * @return NM/alnlen as a fraction number that
+         *   represents the local alignment identity.
+         *   Soft clipped regions are not counted.
          */
         float getIdentity() const;
         /**
@@ -694,6 +730,16 @@ class API_EXPORT BamAlignment {
          * @return the last soft clip in query sequence.
          */
         string getLastSoftclip() const;
+        /**
+         * Remove the first soft clip so that the alignment
+         * appears to be better. The query sequence will also 
+         * be changed.
+         */
+        void chopFirstSoftclip();
+        /**
+         * Remove the last soft clip
+         */
+        void chopLastSoftclip();
 
         /// setter methods
         /**
@@ -716,8 +762,15 @@ class API_EXPORT BamAlignment {
         void setStart(int32_t alnstart) { Position = alnstart; }
         void setBin(uint16_t indexbin) { Bin = indexbin; }
         void setMapQuality(uint16_t mqual) { MapQuality = mqual; }
+        /**
+         * update CigarData with a new value.
+         */
         void setCigarData(const std::vector<CigarOp> &cd) { CigarData = cd; } 
-        /** set cigarop from a vector a pair */
+        /** 
+         * set CigarData from a vector a pair {char, int}
+         *  for easy communication with external world.
+         *  @param cd CigarData in more universal std data type
+         * */
         void setCigarOperation(const std::vector<pair<char,int> > &cd); 
         /**
          * @param materefid Mate reference id, set to -1 if mate unmapped
@@ -759,8 +812,16 @@ class API_EXPORT BamAlignment {
     public:
         /** read or query name */
         std::string Name;    
-        int32_t     Length;             // length of query sequence
-        std::string QueryBases;         // 'original' sequence (contained in BAM file)
+        /** 
+         * length of query sequence
+         * Design flaw: This field is redundant with
+         *   SupporData::QuerySequenceLength. Both fields
+         *   needs to be updated!
+         */
+        int32_t     Length;             
+        /** 'original' sequence (contained in BAM file)
+         */
+        std::string QueryBases;         
         /** 
          * not sure this is useful 
          * 'aligned' sequence (QueryBases plus deletion, padding, clipping
@@ -770,6 +831,7 @@ class API_EXPORT BamAlignment {
         std::string AlignedBases;       
         /** 
          * FASTQ qualities (ASCII characters, not numeric values)
+         * String representation from char 33 to 93
          */
         std::string Qualities;          
         /** 
@@ -1112,6 +1174,8 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
     }
     // localize the tag data
     char* pTagData = (char*)TagData.data(); // string's low leve representation
+    //cout << __FILE__ << ":" << __LINE__ << ": pTagData: "
+    //   << pTagData << endl;
     const unsigned int tagDataLength = TagData.size();
     unsigned int numBytesParsed = 0;
     // return failure if tag not found
@@ -1119,10 +1183,26 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
         // TODO: set error string?
         return false;
     }
+    //cout << __FILE__ << ":" << __LINE__ << ": after FindTag operation. pTagData-1: "
+    //   << pTagData-1 << endl;
     // fetch data type
-    const char type = *(pTagData - 1);
-    if ( !TagTypeHelper<T>::CanConvertFrom(type) ) {
+    //const char type = *(pTagData - 1);
+    char type = *(pTagData - 1);
+    if (type == 'C' && (tag == "NM" || tag == "AS" || tag == "XS")) { // patch a bug
+       //type = Constants::BAM_TAG_TYPE_INT32;
+      //cout << __FILE__ << ":" << __LINE__ << ": pTagData: "
+      //   << pTagData << endl;
+      //cerr << "NM int val at pTagData: " << (int)(*pTagData) << " at 2 bytes later: "
+      //   << (int)(*(pTagData+2)) << endl;
+       // this is a short term patc for the bug
+      destination=(int)(*pTagData);
+      return true;
+    }
+    else if ( !TagTypeHelper<T>::CanConvertFrom(type) ) {
         // TODO: set error string ?
+       cerr << __FILE__ << ":" << __LINE__ << ":"
+          << "Failed to convert to " << typeid(destination).name() 
+          << " from " << type << endl;
         return false;
     }
     // determine data length
@@ -1162,6 +1242,7 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
     // store data in destination
     destination = 0;
     memcpy(&destination, pTagData, destinationLength);
+    //cerr << "Just after memcpy destination value: " << destination << endl;
     return true;
 }
 

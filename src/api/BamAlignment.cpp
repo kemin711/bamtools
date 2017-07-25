@@ -253,10 +253,34 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
       ba.GetTag("BC", val);
       ous << "BC: " << val << sep;
    }
-   int ival;
+   int ival=0;
+   //int32_t ival=0;
    if (ba.HasTag("NM")) {
-      ba.GetTag("NM", ival);
-      ous << "NM: " << ival << sep;
+      if (ba.GetTag("NM", ival)) {
+         ous << "NM: " << ival << sep;
+      }
+      else {
+         ous << "NM: FAIL" << sep;
+      }
+   }
+   else {
+      cerr << "there is not NM tag!\n";
+   }
+   if (ba.HasTag("AS")) {
+      if (ba.GetTag("AS", ival)) {
+         ous << "AS: " << ival << sep;
+      }
+      else {
+         ous << "AS: FAIL" << sep;
+      }
+   }
+   if (ba.HasTag("XS")) {
+      if (ba.GetTag("XS", ival)) {
+         ous << "XS: " << ival << sep;
+      }
+      else {
+         ous << "XS: FAIL" << sep;
+      }
    }
 
    return ous;
@@ -510,7 +534,9 @@ bool BamAlignment::BuildCharData(void) {
         if ( IsBigEndian ) {
             size_t i = 0;
             while ( i < tagDataLength ) {
-
+               //if (tagData[i] == 'N' && tagData[i+1] == 'M') {
+               //   cerr << __func__ << ": NM type: " << tagData[i+2] << endl;
+               //}
                 i += Constants::BAM_TAG_TAGSIZE;  // skip tag chars (e.g. "RG", "NM", etc.)
                 const char type = tagData[i];     // get tag type at position i
                 ++i;                              // move i past tag type
@@ -1681,6 +1707,31 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
    return tmp;
 } 
 
+// due to redundancy, extra work is needed
+// bad design
+void BamAlignment::chopFirstSoftclip() {
+   // remove the first cigar operation
+   assert(CigarDdata.front().Type == 'S');
+   int tmplen = CigarData.front().getLength();
+   QueryBases=QueryBases.substr(tmplen);
+   Length -= tmplen;
+   Qualities=Qualities.substr(tmplen);
+   SupportData.QuerySequenceLength = Length;
+   SupportData.NumCigarOperations = CigarData.size()-1;
+   CigarData.erase(CigarData.begin());
+}
+
+void BamAlignment::chopLastSoftclip() {
+   assert(CigarDdata.back().getType() == 'S');
+   int tmplen = CigarData.back().getLength();
+   Length -= tmplen;
+   QueryBases.resize(Length);
+   Qualities.resize(Length);
+   SupportData.QuerySequenceLength = Length;
+   SupportData.NumCigarOperations = CigarData.size()-1;
+   CigarData.resize(CigarData.size()-1);
+}
+
 void BamAlignment::updateNMTag(const string& refseq) {
    int b = getPosition();
    int e = GetEndPosition(); // one passed the end [b,e)
@@ -1748,3 +1799,7 @@ void BamAlignment::updateNMTag(const string& refseq) {
    }
 }
 
+bool BamAlignment::hasSoftclip() const {
+   if (CigarData.empty()) return false;
+   return CigarData.front().Type == 'S' || CigarData.back().Type == 'S';
+}
