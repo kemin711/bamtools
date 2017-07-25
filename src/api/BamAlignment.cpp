@@ -1803,3 +1803,24 @@ bool BamAlignment::hasSoftclip() const {
    if (CigarData.empty()) return false;
    return CigarData.front().Type == 'S' || CigarData.back().Type == 'S';
 }
+
+int BamAlignment::getASValue() const {
+   if (!HasTag("AS")) return -1;
+   int val=-1;
+   if (!GetTag("AS", val)) {
+      cerr << "Failed to get AS tag vaule returning -1\n";
+      return -1;
+   }
+   return val;
+}
+
+int BamAlignment::getNMValue() const {
+   if (!HasTag("NM")) return -1;
+   int val=-1;
+   if (!GetTag("NM", val)) {
+      cerr << "Failed to get NM value returning -1\n";
+      return -1;
+   }
+   return val;
+}
+

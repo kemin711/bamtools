@@ -807,6 +807,15 @@ class API_EXPORT BamAlignment {
         void updateNMTag(const string& refseq);
     private:
       void advanceIndex(int &i, int &j, int &b, unsigned int &cigarIdx, unsigned int &ci, char &cigarState) const;
+      /**
+       * friendly wrapper for better code.
+       * @return -1 if no tag
+       */
+      int getASValue() const;
+      /**
+       * @return -1 if not found NM tag
+       */
+      int getNMValue() const;
 
     // public data fields, these fileds should all become private in the future
     public:
