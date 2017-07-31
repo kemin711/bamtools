@@ -120,6 +120,7 @@ class API_EXPORT BamAlignment {
          * @return true if is the First Read in a paired end read.
          * Alias for IsFirstMate.
          * Use this version for carmel casing.
+         * @see isFirstRead
          */
         bool isFirstMate(void) const { return (AlignmentFlag & READ_1) != 0; }
         bool isFirstRead(void) const { return (AlignmentFlag & READ_1) != 0; }
@@ -804,18 +805,19 @@ class API_EXPORT BamAlignment {
          * @param refseq the reference sequence whole string
          *  not just the subsequence for this object.
          */
-        void updateNMTag(const string& refseq);
+         void updateNMTag(const string& refseq);
+         /**
+         * friendly wrapper for better code.
+         * @return -1 if no tag
+         */
+         int getASValue() const;
+         /**
+         * @return -1 if not found NM tag
+         */
+         int getNMValue() const;
+
     private:
       void advanceIndex(int &i, int &j, int &b, unsigned int &cigarIdx, unsigned int &ci, char &cigarState) const;
-      /**
-       * friendly wrapper for better code.
-       * @return -1 if no tag
-       */
-      int getASValue() const;
-      /**
-       * @return -1 if not found NM tag
-       */
-      int getNMValue() const;
 
     // public data fields, these fileds should all become private in the future
     public:

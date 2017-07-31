@@ -78,7 +78,6 @@ struct API_EXPORT CigarOp {
     \brief Represents a reference sequence entry
 */
 struct API_EXPORT RefData {
-   
     std::string RefName;    //!< name of reference sequence
     int32_t     RefLength;  //!< length of reference sequence
     
@@ -88,6 +87,15 @@ struct API_EXPORT RefData {
         : RefName(name)
         , RefLength(length)
     { }
+    pair<string, int32_t> asPair() const {
+       return make_pair(RefName, RefLength);
+    }
+    const string& getRefname() const {
+       return RefName;
+    }
+    int32_t getReflength() const {
+       return RefLength;
+    }
 };
 
 /**

@@ -28,7 +28,6 @@ namespace Internal {
  *       Use more C++ design patterns.
  */
 class API_EXPORT BamReader {
-
     // constructor / destructor
     public:
         /**
@@ -118,8 +117,29 @@ class API_EXPORT BamReader {
 
         // returns the number of reference sequences
         int GetReferenceCount(void) const;
-        // returns all reference sequence entries
+        /**
+         * @see RefData RefData is a simple typedef in BamAux.h
+         *    typedef std::vector<RefData> RefVector;
+         *    RefData: has two files 
+         *     { RefName (string), RefLength(int32_t) }
+         *    
+         * @returns all reference meta data
+         */
         const RefVector& GetReferenceData(void) const;
+        /**
+         * @return the reference meta data: ref_name, ref_length
+         *   without actual sequence information. This is
+         *   extracted from the header section of the Bam file.
+         *
+         *  the refid in the bamfile can directly index into
+         *  the vector returned. refid of zero is the mitochrondria,
+         *  ref 1 is the first human chromosome.
+         *  ref 24 is the Y chromosome.
+         *
+         *  This method will be useful for interacting with the
+         *  stdandard library of C++.
+         */
+        vector<pair<string,int> > getReferenceMetaData() const;
         // returns the ID of the reference with this name
         int GetReferenceID(const std::string& refName) const;
 

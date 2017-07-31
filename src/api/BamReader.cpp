@@ -187,12 +187,17 @@ int BamReader::GetReferenceCount(void) const {
     return d->GetReferenceCount();
 }
 
-/*! \fn const RefVector& BamReader::GetReferenceData(void) const
-    \brief Returns all reference sequence entries.
-    \sa RefData
-*/
 const RefVector& BamReader::GetReferenceData(void) const {
     return d->GetReferenceData();
+}
+
+vector<pair<string,int> > BamReader::getReferenceMetaData() const {
+   RefVector tmp = GetReferenceData();
+   vector<pair<string, int> > res(tmp.size());
+   for (size_t i=0; i<tmp.size(); ++i) {
+      res[i]=make_pair(tmp[i].getRefname(), tmp[i].getReflength());
+   }
+   return res;
 }
 
 /*! \fn int BamReader::GetReferenceID(const std::string& refName) const
