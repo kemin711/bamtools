@@ -299,6 +299,13 @@ string BamAlignment::getCigarString() const {
    }
    return tmp;
 }
+int BamAlignment::getMatchedReferenceLength() const {
+   int sum = 0;
+   for (auto& c : CigarData) {
+      if (c.getType() == 'M') sum += c.getLength();
+   }
+   return sum;
+}
 
 
 string BamAlignment::getFirstSoftclip() const {
@@ -306,9 +313,18 @@ string BamAlignment::getFirstSoftclip() const {
    return getQuerySequence().substr(0, getCigar().front().Length);
 }
 
+int BamAlignment::getFirstSoftclipLength() const {
+   if (!startWithSoftclip()) return 0;
+   return getCigar().front().Length;
+}
+
 string BamAlignment::getLastSoftclip() const {
    if (!endWithSoftclip()) return "";
    return getQueryBases().substr(getQueryLength() - getCigar().back().Length);
+}
+int BamAlignment::getLastSoftclipLength() const {
+   if (!endWithSoftclip()) return 0;
+   return getCigar().back().Length;
 }
 
 void BamAlignment::setCigarOperation(const std::vector<pair<char,int> > &cd) {

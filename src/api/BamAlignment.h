@@ -176,6 +176,15 @@ class API_EXPORT BamAlignment {
         bool isForwardStrand() const {
            return !(AlignmentFlag & REVERSE_STRAND); 
         }
+        /**
+         * @return -1 reverse strand, +1 for forward strand, and
+         *      0 for both strand or strand unknown.
+         */
+        int getStrand() const {
+           if (isReverseStrand()) return -1;
+           if (isForwardStrand()) return 1;
+           return 0;
+        }
         /** 
          * @return true if alignment's mate mapped to reverse strand
          */
@@ -611,6 +620,12 @@ class API_EXPORT BamAlignment {
          */
         int32_t getQueryLength() const { return Length; }
         /**
+         * @return the length of the matched part of the
+         *    the reference.  This is the sum of cigar
+         *    string M and D
+         */
+        int getMatchedReferenceLength() const;
+        /**
          * 'original' sequence (contained in BAM file)
          */
         const std::string& getQueryBases() const { return QueryBases; }
@@ -623,7 +638,12 @@ class API_EXPORT BamAlignment {
         /**
          * 'aligned' sequence (QueryBases plus deletion, padding, clipping chars)
          */
-        const std::string& getAlignedQueryBases() const { return AlignedBases; }
+        const std::string& getAlignedQueryBases() const { 
+           //if (AlignedBases.empty()) {
+           //   cerr << "empty aligned bases!\n";
+           //}
+           return AlignedBases; 
+        }
         /** 
          * @return the FASTQ qualities (ASCII characters, not numeric values)
          * Values are ASCII 33-93
@@ -727,10 +747,12 @@ class API_EXPORT BamAlignment {
          *    If there is no soft clip then an empty string is returned.
          */
         string getFirstSoftclip() const;
+        int getFirstSoftclipLength() const;
         /**
          * @return the last soft clip in query sequence.
          */
         string getLastSoftclip() const;
+        int getLastSoftclipLength() const;
         /**
          * Remove the first soft clip so that the alignment
          * appears to be better. The query sequence will also 
