@@ -622,9 +622,16 @@ class API_EXPORT BamAlignment {
         /**
          * @return the length of the matched part of the
          *    the reference.  This is the sum of cigar
-         *    string M and D
+         *    string M 
+         *  @see getReferenceWidth
          */
         int getMatchedReferenceLength() const;
+        /**
+         * @return true if More match than softclip
+         */
+        bool matchDominate() const {
+           return getMatchedReferenceLength() > getSoftclipLength();
+        }
         /**
          * 'original' sequence (contained in BAM file)
          */
@@ -747,12 +754,19 @@ class API_EXPORT BamAlignment {
          *    If there is no soft clip then an empty string is returned.
          */
         string getFirstSoftclip() const;
+        /**
+         * @return the length of the first softclip
+         */
         int getFirstSoftclipLength() const;
         /**
          * @return the last soft clip in query sequence.
          */
         string getLastSoftclip() const;
         int getLastSoftclipLength() const;
+        /**
+         * @return sum of softclip length if both are present.
+         */
+        int getSoftclipLength() const;
         /**
          * Remove the first soft clip so that the alignment
          * appears to be better. The query sequence will also 
