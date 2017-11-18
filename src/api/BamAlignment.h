@@ -695,6 +695,8 @@ class API_EXPORT BamAlignment {
         /**
          * @return length of the template positive for
          *    plus strand mate and negative for minus strand mate.
+         *
+         *  BamWriter use the InsertSize directly for output.
          */
         int32_t getInsertSize() const { return InsertSize; }
         /**
