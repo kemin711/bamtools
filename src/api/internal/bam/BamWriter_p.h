@@ -65,13 +65,25 @@ class BamWriterPrivate {
 
     // 'internal' methods
     public:
+        /**
+         * Don't know what does this do?
+         */
         uint32_t CalculateMinimumBin(const int begin, int end) const;
+        /**
+         * Convert the vector version of the CigarOperaton into
+         * a string representation.
+         */
         void CreatePackedCigar(const std::vector<BamTools::CigarOp>& cigarOperations, std::string& packedCigar);
+        /**
+         * Not sure what this does, save space?
+         */
         void EncodeQuerySequence(const std::string& query, std::string& encodedQuery);
         /**
          * Method used by SaveAlignment()
          * This is a lengthy function.
-         * Use GgzfStream::write() method
+         * Use GgzfStream::write() method.
+         * I am trying to figure out how it writing the insert size
+         * as zero even when I set it to a non-zero!
          */
         void WriteAlignment(const BamAlignment& al);
         void WriteCoreAlignment(const BamAlignment& al);
@@ -81,6 +93,9 @@ class BamWriterPrivate {
 
     // data members
     private:
+        /**
+         * Need to read the details of this class
+         */
         BgzfStream m_stream;
         /**
          * Machine type

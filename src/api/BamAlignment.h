@@ -922,6 +922,10 @@ class API_EXPORT BamAlignment {
          *     from the leftmost mapped base to the rightmost mapped base.
          *     It is set as zero for singl-segment template or when the
          *     information is unavailable.
+         *
+         * Note: even when I set this member to > 0, when the 
+         * read is marked as unpaired, the BamWriter will still
+         * output the filed as ZERO. Have not figured why.
          */
         int32_t     InsertSize;        
         // alignment should not store its file name

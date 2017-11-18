@@ -64,9 +64,6 @@ using namespace std;
 /*! \var BamAlignment::MatePosition
     \brief position (0-based) where alignment's mate starts
 */
-/*! \var BamAlignment::InsertSize
-    \brief mate-pair insert size
-*/
 /*! \var BamAlignment::Filename
     \brief name of BAM file which this alignment comes from
 */

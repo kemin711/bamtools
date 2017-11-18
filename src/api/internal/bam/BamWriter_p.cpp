@@ -42,7 +42,6 @@ uint32_t BamWriterPrivate::CalculateMinimumBin(const int begin, int end) const {
 
 // closes the alignment archive
 void BamWriterPrivate::Close(void) {
-
     // skip if file not open
     if ( !IsOpen() ) return;
 
@@ -56,19 +55,15 @@ void BamWriterPrivate::Close(void) {
 
 // creates a cigar string from the supplied alignment
 void BamWriterPrivate::CreatePackedCigar(const vector<CigarOp>& cigarOperations, string& packedCigar) {
-
     // initialize
     const size_t numCigarOperations = cigarOperations.size();
     packedCigar.resize(numCigarOperations * Constants::BAM_SIZEOF_INT);
-
     // pack the cigar data into the string
     unsigned int* pPackedCigar = (unsigned int*)packedCigar.data();
-
     // iterate over cigar operations
     vector<CigarOp>::const_iterator coIter = cigarOperations.begin();
     vector<CigarOp>::const_iterator coEnd  = cigarOperations.end();
     for ( ; coIter != coEnd; ++coIter ) {
-
         // store op in packedCigar
         uint8_t cigarOp;
         switch ( coIter->Type ) {
@@ -93,14 +88,12 @@ void BamWriterPrivate::CreatePackedCigar(const vector<CigarOp>& cigarOperations,
 
 // encodes the supplied query sequence into 4-bit notation
 void BamWriterPrivate::EncodeQuerySequence(const string& query, string& encodedQuery) {
-
     // prepare the encoded query string
     const size_t queryLength = query.size();
     const size_t encodedQueryLength = static_cast<size_t>((queryLength+1)/2);
     encodedQuery.resize(encodedQueryLength);
     char* pEncodedQuery = (char*)encodedQuery.data();
     const char* pQuery = (const char*)query.data();
-
     // walk through original query sequence, encoding its bases
     unsigned char nucleotideCode;
     bool useHighWord = true;
@@ -126,7 +119,6 @@ void BamWriterPrivate::EncodeQuerySequence(const string& query, string& encodedQ
                 const string message = string("invalid base: ") + *pQuery;
                 throw BamException("BamWriter::EncodeQuerySequence", message);
         }
-
         // pack the nucleotide code
         if ( useHighWord ) {
             *pEncodedQuery = nucleotideCode << 4;
@@ -136,7 +128,6 @@ void BamWriterPrivate::EncodeQuerySequence(const string& query, string& encodedQ
             ++pEncodedQuery;
             useHighWord = true;
         }
-
         // increment the query position
         ++pQuery;
     }
@@ -153,8 +144,7 @@ bool BamWriterPrivate::IsOpen(void) const {
 }
 
 // opens the alignment archive
-bool BamWriterPrivate::Open(const string& filename,
-                            const string& samHeaderText,
+bool BamWriterPrivate::Open(const string& filename, const string& samHeaderText,
                             const RefVector& referenceSequences)
 {
     try {
