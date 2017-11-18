@@ -148,15 +148,12 @@ bool BamWriterPrivate::Open(const string& filename, const string& samHeaderText,
                             const RefVector& referenceSequences)
 {
     try {
-
         // open the BGZF file for writing
         m_stream.Open(filename, IBamIODevice::WriteOnly);
-
         // write BAM file 'metadata' components
         WriteMagicNumber();
         WriteSamHeaderText(samHeaderText);
         WriteReferences(referenceSequences);
-
         // return success
         return true;
 
