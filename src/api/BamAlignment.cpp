@@ -1847,3 +1847,11 @@ int BamAlignment::getNMValue() const {
    return val;
 }
 
+int BamAlignment::getTemplateLength() const {
+   int tlen = getInsertSize();
+   if (tlen == 0 && HasTag("XO")) {
+      tlen = getReferenceWidth();
+   }
+   return abs(tlen);
+}
+
