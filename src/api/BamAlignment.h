@@ -699,6 +699,7 @@ class API_EXPORT BamAlignment {
          *  BamWriter use the InsertSize directly for output.
          */
         int32_t getInsertSize() const { return InsertSize; }
+        int getTemplateLength() const;
         /**
          * @return a const reference to the CIGAR operations for this alignment
          * CigarData is a typedef of vector<CigarOp>
