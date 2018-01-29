@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 // Provides data structures & utility methods that are used throughout the API.
 // ***************************************************************************
+// This is a header-only file, no implementation
 
 #ifndef BAMAUX_H
 #define BAMAUX_H
@@ -107,39 +108,41 @@ typedef std::vector<RefData> RefVector;
 // ----------------------------------------------------------------
 // BamRegion
 
-/*! \struct BamTools::BamRegion
-    \brief Represents a sequential genomic region
-
-    Allowed to span multiple (sequential) references.
-
-    \warning BamRegion now represents a zero-based, HALF-OPEN interval.
-    In previous versions of BamTools (0.x & 1.x) all intervals were treated
-    as zero-based, CLOSED.
+/** 
+ *  Represents a sequential genomic region
+ *
+ *  Allowed to span multiple (sequential) references.
+ *
+ *  Warning: BamRegion now represents a zero-based, HALF-OPEN interval.
+ *  In previous versions of BamTools (0.x & 1.x) all intervals were treated
+ *  as zero-based, CLOSED.
+ *
+ *  Region can span multiple references if the references are
+ *  sorted in some order.
 */
 struct API_EXPORT BamRegion {
-  
     int LeftRefID;      //!< reference ID for region's left boundary
     int LeftPosition;   //!< position for region's left boundary
     int RightRefID;     //!< reference ID for region's right boundary
     int RightPosition;  //!< position for region's right boundary
     
     //! constructor
-    BamRegion(const int& leftID   = -1, 
-              const int& leftPos  = -1,
-              const int& rightID  = -1,
-              const int& rightPos = -1)
-        : LeftRefID(leftID)
-        , LeftPosition(leftPos)
-        , RightRefID(rightID)
-        , RightPosition(rightPos)
+    BamRegion(const int& leftID   = -1, const int& leftPos  = -1,
+              const int& rightID  = -1, const int& rightPos = -1)
+        : LeftRefID(leftID), LeftPosition(leftPos)
+        , RightRefID(rightID), RightPosition(rightPos)
+    { }
+    /**
+     * Constructor for only one reference
+     */
+    BamRegion(int refid, int leftp, int rightp) 
+       : LeftRefID(refid), LeftPosition(leftp), RightRefID(refid), RightPosition(rightp)
     { }
     
     //! copy constructor
     BamRegion(const BamRegion& other)
-        : LeftRefID(other.LeftRefID)
-        , LeftPosition(other.LeftPosition)
-        , RightRefID(other.RightRefID)
-        , RightPosition(other.RightPosition)
+        : LeftRefID(other.LeftRefID), LeftPosition(other.LeftPosition)
+        , RightRefID(other.RightRefID), RightPosition(other.RightPosition)
     { }
     
     //! Clears region boundaries
@@ -161,6 +164,9 @@ struct API_EXPORT BamRegion {
     //! Returns true if region has a right boundary
     bool isRightBoundSpecified(void) const {
         return ( RightRefID >= 0 && RightPosition >= 1 );
+    }
+    bool isSingleReference() const {
+       return LeftRefID == RightRefID && LeftRefID != -1;
     }
 };
 

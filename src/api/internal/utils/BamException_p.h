@@ -32,9 +32,13 @@ namespace Internal {
  */
 class BamException : public std::exception {
     public:
+       /**
+        * You normally don't need where information for
+        * exceptions because the exception handling routines
+        * knows where the problem happened.
+        */
         inline BamException(const std::string& where, const std::string& message)
-            : std::exception()
-            , m_errorString(where + SEPARATOR + message)
+            : std::exception(), m_errorString(where + SEPARATOR + message)
         { }
 
         inline ~BamException(void) noexcept { }

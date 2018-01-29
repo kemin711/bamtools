@@ -23,18 +23,18 @@ namespace Internal {
     class BamMultiReaderPrivate;
 } // namespace Internal
 
-/** Convenience class for reading multiple BAM files.
+/** 
+ * Convenience class for reading multiple BAM files.
  * Each alignment remembers its file name.
+ * If member files sorted, the reading from them will
+ * also be in sorted order.
  */
 class API_EXPORT BamMultiReader {
 
     // enums
     public:
         // possible merge order strategies
-        enum MergeOrder { RoundRobinMerge = 0
-                        , MergeByCoordinate
-                        , MergeByName
-                        };
+        enum MergeOrder { RoundRobinMerge=0, MergeByCoordinate, MergeByName };
 
     // constructor / destructor
     public:
@@ -85,7 +85,22 @@ class API_EXPORT BamMultiReader {
         // access alignment data
         // ----------------------
 
-        // retrieves next available alignment
+        /** 
+         *  Retrieves next available alignment.
+         *
+         *  Equivalent to BamReader::GetNextAlignment() with respect to what is a valid
+         *  overlapping alignment and what data gets populated.
+         *
+         *  This method takes care of determining which alignment actually is 'next'
+         *  across multiple files, depending on their sort order.
+         *
+         *  @param[out] alignment destination for alignment record data
+         *  @returns \c true if a valid alignment was found
+         *  @see GetNextAlignmentCore(), SetExplicitMergeOrder(), SetRegion(), BamReader::GetNextAlignment()
+         *
+         *  This method can be used to perform merge sort
+         *  in essence.
+        */
         bool GetNextAlignment(BamAlignment& alignment);
         // retrieves next available alignment (without populating the alignment's string data fields)
         bool GetNextAlignmentCore(BamAlignment& alignment);

@@ -274,11 +274,6 @@ bool BamToolsIndex::Create(void) {
     return true;
 }
 
-// returns format's file extension
-const std::string BamToolsIndex::Extension(void) {
-    return BamToolsIndex::BTI_EXTENSION;
-}
-
 void BamToolsIndex::GetOffset(const BamRegion& region, int64_t& offset, bool* hasAlignmentsInRegion) {
 
     // return false ref ID is not a valid index in file summary data

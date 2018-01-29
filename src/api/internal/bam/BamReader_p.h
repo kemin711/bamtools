@@ -30,13 +30,15 @@
 #include <string>
 
 namespace BamTools {
+class BamReader;
 namespace Internal {
 
-class BamReaderPrivate {
+using namespace BamTools;
 
+class BamReaderPrivate {
     // ctor & dtor
     public:
-        BamReaderPrivate(BamReader* parent);
+        BamReaderPrivate(BamTools::BamReader* parent);
         ~BamReaderPrivate(void);
 
     // BamReader interface
@@ -69,9 +71,18 @@ class BamReaderPrivate {
         bool OpenIndex(const std::string& indexFilename);
         void SetIndex(BamIndex* index);
 
-        // error handling
-        std::string GetErrorString(void) const;
-        void SetErrorString(const std::string& where, const std::string& what);
+        /**
+         * TODO: should remove this old fashioned way of 
+         * error handling. Use C++ exception
+         */
+        string GetErrorString(void) const {
+            return m_errorString;
+        }
+        void SetErrorString(const std::string& where, const std::string& what) {
+            //static const string SEPARATOR = ": ";
+            //m_errorString = where + SEPARATOR + what;
+            m_errorString = where + ": " + what;
+        }
 
     // internal methods, but available as a BamReaderPrivate 'interface'
     //
@@ -98,10 +109,16 @@ class BamReaderPrivate {
         std::string m_filename;
         RefVector   m_references;
 
-        // system data
+        /** 
+         * system data
+         * TODO: Should auto detect.
+         */
         bool m_isBigEndian;
 
-        // parent BamReader
+        /**
+         * parent BamReader
+         * TODO: poor design should remove.
+         */
         BamReader* m_parent;
 
         // BamReaderPrivate components

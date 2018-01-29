@@ -32,18 +32,15 @@ namespace Internal {
 
 // contains data for each 'block' in a BTI index
 struct BtiBlock {
-
     // data members
     int32_t MaxEndPosition;
     int64_t StartOffset;
     int32_t StartPosition;
 
     // ctor
-    BtiBlock(const int32_t& maxEndPosition = 0,
-             const int64_t& startOffset    = 0,
+    BtiBlock(const int32_t& maxEndPosition=0, const int64_t& startOffset=0,
              const int32_t& startPosition  = 0)
-        : MaxEndPosition(maxEndPosition)
-        , StartOffset(startOffset)
+        : MaxEndPosition(maxEndPosition), StartOffset(startOffset)
         , StartPosition(startPosition)
     { }
 };
@@ -54,20 +51,16 @@ typedef std::vector<BtiBlock> BtiBlockVector;
 // contains all fields necessary for building, loading, & writing
 // full BTI index data for a single reference
 struct BtiReferenceEntry {
-
     // data members
     int32_t ID;
     BtiBlockVector Blocks;
 
     // ctor
-    BtiReferenceEntry(const int& id = -1)
-        : ID(id)
-    { }
+    BtiReferenceEntry(const int& id = -1) : ID(id) { }
 };
 
 // provides (persistent) summary of BtiReferenceEntry's index data
 struct BtiReferenceSummary {
-
     // data members
     int NumBlocks;
     uint64_t FirstBlockFilePosition;
@@ -83,7 +76,6 @@ struct BtiReferenceSummary {
 typedef std::vector<BtiReferenceSummary> BtiFileSummary;
 
 class BamToolsIndex : public BamIndex {
-
     // keep a list of any supported versions here
     // (might be useful later to handle any 'legacy' versions if the format changes)
     // listed for example like: BTI_1_0 = 1, BTI_1_1 = 2, BTI_1_2 = 3, BTI_2_0 = 4, and so on
@@ -94,11 +86,7 @@ class BamToolsIndex : public BamIndex {
     //   do something new
     // else
     //   do the old thing
-    enum Version { BTI_1_0 = 1
-                 , BTI_1_1
-                 , BTI_1_2
-                 , BTI_2_0
-                 };
+    enum Version { BTI_1_0 = 1, BTI_1_1, BTI_1_2, BTI_2_0 };
 
     // ctor & dtor
     public:
@@ -107,21 +95,38 @@ class BamToolsIndex : public BamIndex {
 
     // BamIndex implementation
     public:
-        // builds index from associated BAM file & writes out to index file
+        /** 
+         * builds index from associated BAM file & writes out to index file
+         */
         bool Create(void);
-        // returns whether reference has alignments or no
+        /** 
+         * returns whether reference has alignments or no
+         */
         bool HasAlignments(const int& referenceID) const;
-        // attempts to use index data to jump to @region, returns success/fail
-        // a "successful" jump indicates no error, but not whether this region has data
-        //   * thus, the method sets a flag to indicate whether there are alignments
-        //     available after the jump position
+        /** 
+         * attempts to use index data to jump to @region, returns success/fail
+         * a "successful" jump indicates no error, but not whether this region has data
+         *   * thus, the method sets a flag to indicate whether there are alignments
+         *     available after the jump position
+         */
         bool Jump(const BamTools::BamRegion& region, bool* hasAlignmentsInRegion);
         // loads existing data from file into memory
         bool Load(const std::string& filename);
         BamIndex::IndexType Type(void) const { return BamIndex::BAMTOOLS; }
     public:
-        // returns format's file extension
-        static const std::string Extension(void);
+        /**
+         * @returns format's file extension: ".bti"
+         */
+        static std::string Extension(void) {
+            return BTI_EXTENSION;
+        }
+        /**
+         * @return a reference to the BTI_EXTENSION const string
+         */
+        static const std::string& getExtension(void) {
+            return BTI_EXTENSION;
+        }
+
 
     // internal methods
     private:

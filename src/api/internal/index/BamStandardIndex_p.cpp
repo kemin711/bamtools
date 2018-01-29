@@ -37,21 +37,13 @@ const int BamStandardIndex::SIZEOF_LINEAROFFSET   = sizeof(uint64_t);
 // ----------------------------
 // RaiiWrapper implementation
 // ----------------------------
-
-BamStandardIndex::RaiiWrapper::RaiiWrapper(void)
-    : Device(0)
-    , Buffer(0)
-{ }
-
 BamStandardIndex::RaiiWrapper::~RaiiWrapper(void) {
-
-    if ( Device ) {
+    if (Device) {
         Device->Close();
         delete Device;
         Device = 0;
     }
-
-    if ( Buffer ) {
+    if (Buffer) {
         delete[] Buffer;
         Buffer = 0;
     }
@@ -63,8 +55,7 @@ BamStandardIndex::RaiiWrapper::~RaiiWrapper(void) {
 
 // ctor
 BamStandardIndex::BamStandardIndex(Internal::BamReaderPrivate* reader)
-    : BamIndex(reader)
-    , m_bufferLength(0)
+    : BamIndex(reader), m_bufferLength(0)
 {
      m_isBigEndian = BamTools::SystemIsBigEndian();
 }
@@ -417,11 +408,6 @@ bool BamStandardIndex::Create(void) {
 
     // return success
     return true;
-}
-
-// returns format's file extension
-const string BamStandardIndex::Extension(void) {
-    return BamStandardIndex::BAI_EXTENSION;
 }
 
 void BamStandardIndex::GetOffset(const BamRegion& region, int64_t& offset, bool* hasAlignmentsInRegion) {
@@ -895,7 +881,6 @@ void BamStandardIndex::WriteBin(const uint32_t& binId, BaiAlignmentChunkVector& 
 }
 
 void BamStandardIndex::WriteBins(const int& refId, BaiBinMap& bins) {
-
     // write number of bins
     int32_t binCount = bins.size();
     if ( m_isBigEndian ) SwapEndian_32(binCount);

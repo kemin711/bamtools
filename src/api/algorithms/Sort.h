@@ -7,7 +7,10 @@
 // ---------------------------------------------------------------------------
 // Provides sorting functionality.
 // ***************************************************************************
-
+// There is not much content in this file. Everything can be throw away
+// if using proper C++ design patterns and features.
+// Programmer is still thinking in C.
+//
 #ifndef ALGORITHMS_SORT_H
 #define ALGORITHMS_SORT_H
 
@@ -24,32 +27,39 @@
 namespace BamTools {
 namespace Algorithms {
 
-/*! \struct BamTools::Algorithms::Sort
-    \brief Provides classes & methods related to sorting BamAlignments
+/** 
+    Provides classes & methods related to sorting BamAlignments
 */
 struct API_EXPORT Sort {
+    /** 
+     * Provides explicit values for specifying desired sort ordering
+     */
+    enum Order { AscendingOrder=0 , DescendingOrder };
 
-    //! Provides explicit values for specifying desired sort ordering
-    enum Order { AscendingOrder = 0
-               , DescendingOrder
-               };
-
-    /*! \fn template<typename ElemType> static inline bool sort_helper(const Sort::Order& order, const ElemType& lhs, const ElemType& rhs)
-        \internal
-
-        Determines necessary STL function object depending on requested Sort::Order
+    /** 
+     *  Determines necessary STL function object depending on requested Sort::Order
     */
     template<typename ElemType>
     static inline bool sort_helper(const Sort::Order& order, const ElemType& lhs, const ElemType& rhs) {
-        switch ( order ) {
-            case ( Sort::AscendingOrder  ) : { std::less<ElemType> comp;    return comp(lhs, rhs); }
-            case ( Sort::DescendingOrder ) : { std::greater<ElemType> comp; return comp(lhs, rhs); }
-            default : BT_ASSERT_UNREACHABLE;
+        switch (order) {
+            case (Sort::AscendingOrder) : 
+               //{std::less<ElemType> comp;    
+               //return comp(lhs, rhs); }
+               return lhs < rhs;
+            case (Sort::DescendingOrder) : 
+               //{
+               //std::greater<ElemType> comp; 
+               //return comp(lhs, rhs); }
+               return rhs < lhs;
+            default : 
+               BT_ASSERT_UNREACHABLE;
         }
         return false; // <-- unreachable
     }
 
-    //! Base class for our sorting function objects
+    /** 
+     * Base class for our sorting function objects
+     */
     typedef std::binary_function<BamAlignment, BamAlignment, bool> AlignmentSortBase;
 
     /*! \struct BamTools::Algorithms::Sort::ByName
@@ -69,7 +79,6 @@ struct API_EXPORT Sort {
         \endcode
     */
     struct ByName : public AlignmentSortBase {
-
         // ctor
         ByName(const Sort::Order& order = Sort::AscendingOrder)
             : m_order(order)
@@ -88,24 +97,23 @@ struct API_EXPORT Sort {
             const Sort::Order m_order;
     };
 
-    /*! \struct BamTools::Algorithms::Sort::ByPosition
-        \brief Function object for comparing alignments by position
-
-        Default sort order is Sort::AscendingOrder.
-
-        \code
-            std::vector<BamAlignment> a;
-
-            // sort by position, in ascending order (the following two lines are equivalent):
-            std::sort( a.begin(), a.end(), Sort::ByPosition() );
-            std::sort( a.begin(), a.end(), Sort::ByPosition(Sort::AscendingOrder) );
-
-            // OR sort in descending order
-            std::sort( a.begin(), a.end(), Sort::ByPosition(Sort::DescendingOrder) );
-        \endcode
+    /** 
+     *  Function object for comparing alignments by position
+     *
+     *  Default sort order is Sort::AscendingOrder.
+     *
+     *  <pre>
+     *      std::vector<BamAlignment> a;
+     *
+     *      // sort by position, in ascending order (the following two lines are equivalent):
+     *      std::sort( a.begin(), a.end(), Sort::ByPosition() );
+     *      std::sort( a.begin(), a.end(), Sort::ByPosition(Sort::AscendingOrder) );
+     *
+     *      // OR sort in descending order
+     *      std::sort( a.begin(), a.end(), Sort::ByPosition(Sort::DescendingOrder) );
+     *  </pre>
     */
     struct ByPosition : public AlignmentSortBase {
-
         // ctor
         ByPosition(const Sort::Order& order = Sort::AscendingOrder)
             : m_order(order)
@@ -204,43 +212,43 @@ struct API_EXPORT Sort {
         static inline bool UsesCharData(void) { return false; }
     };
 
-    /*! Sorts a std::vector of alignments (in-place), using the provided compare function.
-
-        \code
-            std::vector<BamAlignemnt> a;
-            // populate data
-
-            // sort our alignment list by edit distance
-            Sort::SortAlignments(a, Sort::ByTag<int>("NM"));
-        \endcode
-
-        \param[in,out] data vector of alignments to be sorted
-        \param[in]     comp comparison function object
+    /** Sorts a std::vector of alignments (in-place), using the provided compare function.
+     *
+     *  \code
+     *      std::vector<BamAlignemnt> a;
+     *      // populate data
+     *
+     *      // sort our alignment list by edit distance
+     *      Sort::SortAlignments(a, Sort::ByTag<int>("NM"));
+     *  \endcode
+     *
+     *  \param[in,out] data vector of alignments to be sorted
+     *  \param[in]     comp comparison function object
     */
     template<typename Compare>
-    static inline void SortAlignments(std::vector<BamAlignment>& data,
-                                      const Compare& comp = Compare())
+    static void SortAlignments(std::vector<BamAlignment>& data, const Compare& comp=Compare())
     {
         std::sort(data.begin(), data.end(), comp);
     }
 
-    /*! Returns a sorted copy of the input alignments, using the provided compare function.
-
-        \code
-            std::vector<BamAlignemnt> a;
-            // populate data
-
-            // get a copy of our original data, sorted by edit distance (descending order)
-            std::vector<BamAligment> sortedData;
-            sortedData = Sort::SortAlignments(a, Sort::ByTag<int>("NM", Sort::DescendingOrder));
-        \endcode
-
-        \param[in] input vector of alignments to be sorted
-        \param[in] comp  comparison function object
-        \return sorted copy of the input data
+    /** 
+     * Returns a sorted copy of the input alignments, using the provided compare function.
+     *
+     *  \code
+     *      std::vector<BamAlignemnt> a;
+     *      // populate data
+     *
+     *      // get a copy of our original data, sorted by edit distance (descending order)
+     *      std::vector<BamAligment> sortedData;
+     *      sortedData = Sort::SortAlignments(a, Sort::ByTag<int>("NM", Sort::DescendingOrder));
+     *  \endcode
+     *
+     *  @param[in] input vector of alignments to be sorted
+     *  @param[in] comp  comparison function object
+     *  @return sorted copy of the input data
     */
     template<typename Compare>
-    static inline std::vector<BamAlignment> SortAlignments(const std::vector<BamAlignment>& input,
+    static std::vector<BamAlignment> SortAlignments(const std::vector<BamAlignment>& input,
                                                            const Compare& comp = Compare())
     {
         std::vector<BamAlignment> output(input);
@@ -284,29 +292,31 @@ struct API_EXPORT Sort {
             results.push_back(al);
 
         // sort & return alignments
-        SortAlignments(results, comp);
+        //SortAlignments(results, comp);
+        std::sort(results.begin(), results.end(), comp);
         return results;
     }
 
-    /*! Reads a region of alignments from position-sorted BAM files,
-        then sorts by the provided compare function
-
-        \code
-            BamMultiReader reader;
-            // open BAM files & index files
-
-            BamRegion region;
-            // define a region of interest (i.e. a exon or some other feature)
-
-            // get all alignments covering that region, sorted by read group name
-            std::vector<BamAlignments> a;
-            a = Sort::GetSortedRegion(reader, region, Sort::ByTag<std::string>("RG"));
-        \endcode
-
-        \param[in] reader BamMultiReader opened on desired BAM files
-        \param[in] region desired region-of-interest
-        \param[in] comp   comparison function object
-        \return sorted vector of the region's alignments
+    /** 
+     * Reads a region of alignments from position-sorted BAM files,
+     *  then sorts by the provided compare function
+     *
+     *  \code
+     *      BamMultiReader reader;
+     *      // open BAM files & index files
+     *
+     *      BamRegion region;
+     *      // define a region of interest (i.e. a exon or some other feature)
+     *
+     *      // get all alignments covering that region, sorted by read group name
+     *      std::vector<BamAlignments> a;
+     *      a = Sort::GetSortedRegion(reader, region, Sort::ByTag<std::string>("RG"));
+     *  \endcode
+     *
+     *  @param[in] reader BamMultiReader opened on desired BAM files
+     *  @param[in] region desired region-of-interest
+     *  @param[in] comp   comparison function object
+     *  @return sorted vector of the region's alignments
     */
     template<typename Compare>
     static std::vector<BamAlignment> GetSortedRegion(BamMultiReader& reader,
@@ -314,8 +324,10 @@ struct API_EXPORT Sort {
                                                      const Compare& comp = Compare())
     {
         // return empty container if unable to find region
-        if ( !reader.HasOpenReaders() )  return std::vector<BamAlignment>();
-        if ( !reader.SetRegion(region) ) return std::vector<BamAlignment>();
+        if ( !reader.HasOpenReaders() )  
+           return std::vector<BamAlignment>();
+        if ( !reader.SetRegion(region) ) 
+           return std::vector<BamAlignment>();
 
         // iterate through region, grabbing alignments
         BamAlignment al;
@@ -324,7 +336,9 @@ struct API_EXPORT Sort {
             results.push_back(al);
 
         // sort & return alignments
-        SortAlignments(results, comp);
+        //SortAlignments(results, comp);
+        //std::sort(data.begin(), data.end(), comp);
+        std::sort(results.begin(), results.end(), comp);
         return results;
     }
 };

@@ -29,8 +29,7 @@ using namespace std;
 
 // constructor
 BamReaderPrivate::BamReaderPrivate(BamReader* parent)
-    : m_alignmentsBeginOffset(0)
-    , m_parent(parent)
+    : m_alignmentsBeginOffset(0), m_parent(parent)
 {
     m_isBigEndian = BamTools::SystemIsBigEndian();
 }
@@ -71,7 +70,6 @@ bool BamReaderPrivate::Close(void) {
 
 // creates an index file of requested type on current BAM file
 bool BamReaderPrivate::CreateIndex(const BamIndex::IndexType& type) {
-
     // skip if BAM file not open
     if ( !IsOpen() ) {
         SetErrorString("BamReader::CreateIndex", "cannot create index on unopened BAM file");
@@ -96,10 +94,6 @@ const string BamReaderPrivate::Filename(void) const {
 
 const SamHeader& BamReaderPrivate::GetConstSamHeader(void) const {
     return m_header.ToConstSamHeader();
-}
-
-string BamReaderPrivate::GetErrorString(void) const {
-    return m_errorString;
 }
 
 // return header data as std::string
@@ -414,11 +408,6 @@ bool BamReaderPrivate::Seek(const int64_t& position) {
         SetErrorString("BamReader::Seek", message);
         return false;
     }
-}
-
-void BamReaderPrivate::SetErrorString(const string& where, const string& what) {
-    static const string SEPARATOR = ": ";
-    m_errorString = where + SEPARATOR + what;
 }
 
 void BamReaderPrivate::SetIndex(BamIndex* index) {

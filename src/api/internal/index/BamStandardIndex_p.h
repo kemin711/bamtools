@@ -36,24 +36,27 @@ namespace Internal {
 
 // defines start and end of a contiguous run of alignments
 struct BaiAlignmentChunk {
-
     // data members
     uint64_t Start;
     uint64_t Stop;
 
     // constructor
-    BaiAlignmentChunk(const uint64_t& start = 0,
-                      const uint64_t& stop = 0)
-        : Start(start)
-        , Stop(stop)
-    { }
+    BaiAlignmentChunk(const uint64_t& start = 0, const uint64_t& stop = 0)
+        : Start(start), Stop(stop) { }
+    /**
+     * Comparison less overator. 
+     * Only compares the start member.
+     */
+    bool operator<(const BaiAlignmentChunk& r) const {
+       return Start < r.Start;
+    }
 };
 
 // comparison operator (for sorting)
-inline
-bool operator<(const BaiAlignmentChunk& lhs, const BaiAlignmentChunk& rhs) {
-    return lhs.Start < rhs.Start;
-}
+//inline
+//bool operator<(const BaiAlignmentChunk& lhs, const BaiAlignmentChunk& rhs) {
+//    return lhs.Start < rhs.Start;
+//}
 
 // convenience typedef for a list of all alignment 'chunks' in a BAI bin
 typedef std::vector<BaiAlignmentChunk> BaiAlignmentChunkVector;
@@ -64,24 +67,32 @@ typedef std::map<uint32_t, BaiAlignmentChunkVector> BaiBinMap;
 // convenience typedef for a list of all 'linear offsets' in a reference
 typedef std::vector<uint64_t> BaiLinearOffsetVector;
 
-// contains all fields necessary for building, loading, & writing
-// full BAI index data for a single reference
+/**
+ * Class BaiReferenceEntry contains all fields necessary for building, loading, & writing
+ * full BAI index data for a single reference
+ */
 struct BaiReferenceEntry {
+    BaiReferenceEntry(const int32_t& id = -1)
+        : ID(id) { }
 
-    // data members
+    /** reference id */
     int32_t ID;
+    /**
+     * map<uint32_t, BaiAlignmentChunkVector>
+     * map<uint32_t, vector<BaiAlignmentChunk> >
+     */
     BaiBinMap Bins;
+    /**
+     * vector<unt64_t>
+     */
     BaiLinearOffsetVector LinearOffsets;
 
-    // ctor
-    BaiReferenceEntry(const int32_t& id = -1)
-        : ID(id)
-    { }
 };
 
-// provides (persistent) summary of BaiReferenceEntry's index data
+/** 
+ * provides (persistent) summary of BaiReferenceEntry's index data
+ */
 struct BaiReferenceSummary {
-
     // data members
     int NumBins;
     int NumLinearOffsets;
@@ -90,10 +101,7 @@ struct BaiReferenceSummary {
 
     // ctor
     BaiReferenceSummary(void)
-        : NumBins(0)
-        , NumLinearOffsets(0)
-        , FirstBinFilePosition(0)
-        , FirstLinearOffsetFilePosition(0)
+        : NumBins(0), NumLinearOffsets(0), FirstBinFilePosition(0), FirstLinearOffsetFilePosition(0)
     { }
 };
 
@@ -103,8 +111,10 @@ typedef std::vector<BaiReferenceSummary> BaiFileSummary;
 // end BamStandardIndex data structures
 // -----------------------------------------------------------------------------
 
+/**
+ * Implements the BamIndex interface
+ */
 class BamStandardIndex : public BamIndex {
-
     // ctor & dtor
     public:
         BamStandardIndex(Internal::BamReaderPrivate* reader);
@@ -125,8 +135,18 @@ class BamStandardIndex : public BamIndex {
         bool Load(const std::string& filename);
         BamIndex::IndexType Type(void) const { return BamIndex::STANDARD; }
     public:
-        // returns format's file extension
-        static const std::string Extension(void);
+        /** 
+         * @returns format's file extension: ".bai"
+         */
+        static std::string Extension(void) {
+            return BAI_EXTENSION;
+        }
+        /**
+         * @return a reference to the file extension.
+         */
+        static const std::string& getExtension() {
+            return BAI_EXTENSION;
+        }
 
     // internal methods
     private:
@@ -205,7 +225,8 @@ class BamStandardIndex : public BamIndex {
         struct RaiiWrapper {
             IBamIODevice* Device;
             char* Buffer;
-            RaiiWrapper(void);
+
+            RaiiWrapper(void) : Device(0) , Buffer(0) { }
             ~RaiiWrapper(void);
         };
         RaiiWrapper m_resources;

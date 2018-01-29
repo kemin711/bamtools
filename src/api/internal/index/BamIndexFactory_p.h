@@ -17,10 +17,15 @@ namespace BamTools {
 namespace Internal {
 
 class BamIndexFactory {
-
     // static interface methods
     public:
-        // creates a new BamIndex object, depending on extension of @indexFilename
+        /**
+         * creates a new BamIndex object, depending on extension of @indexFilename
+         * @param indesFilename is the index file name whose extension is 
+         *   used to determine which type of index is to be constructed.
+         * @return a new pointer to a BamIndex. This pointer
+         *    must be deallocated by the caller. TODO poor design.
+         */
         static BamIndex* CreateIndexFromFilename(const std::string& indexFilename,
                                                  BamReaderPrivate* reader);
         // creates a new BamIndex object, of requested @type
@@ -35,11 +40,18 @@ class BamIndexFactory {
 
     // internal methods
     public:
-        // generates index filename from BAM filename (depending on requested type)
-        // if type is unknown, returns empty string
+        /** 
+         * generates index filename from BAM filename (depending on requested type)
+         * if type is unknown, returns empty string
+         * @return indexFileName by adding a file extension that is 
+         *   determined by index type.
+         */
         static const std::string CreateIndexFilename(const std::string& bamFilename,
                                                      const BamIndex::IndexType& type);
-        // retrieves file extension (including '.')
+        /** 
+         * retrieves file extension (including '.')
+         * @return extesnion with ., such as '.bai'
+         */
         static const std::string FileExtension(const std::string& filename);
 };
 

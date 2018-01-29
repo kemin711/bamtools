@@ -19,9 +19,11 @@ using namespace std;
 const string BamIndexFactory::CreateIndexFilename(const string& bamFilename,
                                                   const BamIndex::IndexType& type)
 {
-    switch ( type ) {
-        case ( BamIndex::STANDARD ) : return ( bamFilename + BamStandardIndex::Extension() );
-        case ( BamIndex::BAMTOOLS ) : return ( bamFilename + BamToolsIndex::Extension() );
+    switch (type) {
+        case ( BamIndex::STANDARD ) : 
+           return ( bamFilename + BamStandardIndex::Extension() );
+        case ( BamIndex::BAMTOOLS ) : 
+           return ( bamFilename + BamToolsIndex::Extension() );
         default :
             return string();
     }
@@ -29,16 +31,16 @@ const string BamIndexFactory::CreateIndexFilename(const string& bamFilename,
 
 // creates a new BamIndex object, depending on extension of @indexFilename
 BamIndex* BamIndexFactory::CreateIndexFromFilename(const string& indexFilename, BamReaderPrivate* reader) {
-
     // get file extension from index filename, including dot (".EXT")
     // if can't get file extension, return null index
     const string extension = FileExtension(indexFilename);
-    if ( extension.empty() )
-        return 0;
+    if ( extension.empty() ) return 0;
 
     // create index based on extension
-    if      ( extension == BamStandardIndex::Extension() ) return new BamStandardIndex(reader);
-    else if ( extension == BamToolsIndex::Extension()    ) return new BamToolsIndex(reader);
+    if (extension == BamStandardIndex::Extension()) 
+       return new BamStandardIndex(reader);
+    else if (extension == BamToolsIndex::Extension()) 
+       return new BamToolsIndex(reader);
     else
         return 0;
 }
@@ -48,8 +50,10 @@ BamIndex* BamIndexFactory::CreateIndexOfType(const BamIndex::IndexType& type,
                                              BamReaderPrivate* reader)
 {
     switch ( type ) {
-        case ( BamIndex::STANDARD ) : return new BamStandardIndex(reader);
-        case ( BamIndex::BAMTOOLS ) : return new BamToolsIndex(reader);
+        case ( BamIndex::STANDARD ) : 
+           return new BamStandardIndex(reader);
+        case ( BamIndex::BAMTOOLS ) : 
+           return new BamToolsIndex(reader);
         default :
             return 0;
     }
@@ -57,18 +61,15 @@ BamIndex* BamIndexFactory::CreateIndexOfType(const BamIndex::IndexType& type,
 
 // retrieves file extension (including '.')
 const string BamIndexFactory::FileExtension(const string& filename) {
-
     // if filename cannot contain valid path + extension, return empty string
     if ( filename.empty() || filename.length() <= 4 )
         return string();
-
     // look for last dot in filename
-    const size_t lastDotPosition = filename.find_last_of('.');
-
+    //const size_t lastDotPosition = filename.find_last_of('.');
+    string::size_type lastDotPosition = filename.rfind('.');
     // if none found, return empty string
     if ( lastDotPosition == string::npos )
         return string();
-
     // return substring from last dot position
     return filename.substr(lastDotPosition);
 }
