@@ -1595,9 +1595,10 @@ void BamAlignment::advanceIndex(int &i, int &j, int &b,
    if (cigarState == 'D') { // it is possible that the consensus is D
       // but one of the read has a base, we will skip the D and 
       // make the subsequence shorter
-      cerr << *this << endl;
-      cerr << __func__ << " WARN: stop inside a D state!\n";
-      cerr << "Subsequence is shortened because consensus favors deletion\n";
+      //cerr << *this << endl;
+      //cerr << __FILE__ << ":" << __LINE__ << ":" << __func__ 
+      //   << " WARN: stop inside a D state!\n";
+      //cerr << "Subsequence is shortened because consensus favors deletion\n";
       //throw BamAlignmentException(string(__FILE__) + to_string(__LINE__)
       //      + string(__func__) + " begin index start inside D");
       while (cigarIdx < CigarData[ci].Length) {
@@ -1729,6 +1730,73 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
    //   << "new cigarstring: " << tmp.getCigarString() << endl;
    return tmp;
 } 
+
+std::string BamAlignment::substringByRef(int b, int e) const {
+   assert(b>=Position);
+   // InsertSize, CigarData
+   int i=Position, j=0; //i on reference, j index on query
+   char cigarState = 'M';
+   unsigned int cigarIdx=0, ci=0; // cigarIdx is index within each cigar segment
+   // ci is the cigar segment index
+   int subqseqBegin = 0; // begin index in query bases
+   // skip initial softclip if start after the soft clip
+   if (CigarData[ci].Type == 'S') { // S => next state
+      subqseqBegin = CigarData[ci].Length;
+      j += CigarData[ci].Length;
+      ++ci;
+   }
+   if (i<b) {
+      advanceIndex(i, j, b, cigarIdx, ci, cigarState);
+      subqseqBegin=j;
+   }
+   // bring i to e on reference, j follows on query
+   while (i < e) {
+      if (cigarIdx < CigarData[ci].Length) { // in this cigar segment
+         if (cigarState == 'M') {
+            ++i; ++j; ++cigarIdx;
+         } // i at b
+         else if (cigarState == 'D') {
+            ++i; ++cigarIdx;
+         }
+         else if (cigarState == 'I') {
+            ++j; ++cigarIdx;
+         }
+         else {
+            cerr << "wrong cigarop: " << cigarState 
+               << __FILE__ << ":" << __LINE__ << endl;
+            throw runtime_error("while obtaining subseq unknown cigar state");
+         }
+      }
+      else { // next cigar segment, end of last segment
+         //cout << "Next cigar segment\n";
+         ++ci;
+         if (ci >= CigarData.size()) {
+            cerr << __FILE__ << ":" << __LINE__ 
+               << " walked off the cigar string: ci=" << ci 
+               << endl;
+            exit(1);
+         }
+         char newState = CigarData[ci].Type;
+         if ((cigarState == 'I' && newState == 'D')
+               || (cigarState == 'D' && newState == 'I')) {
+            cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
+               << ":WARN I/D or D/I transition in cigarop need more coding.\n";
+            throw runtime_error("Cigar I|D or D|I transition");
+            //exit(1);
+         }
+         cigarIdx = 0;
+         cigarState = newState;
+      }
+   }
+   if (cigarIdx == CigarData[ci].Length && ci+1 < CigarData.size()
+         && CigarData[ci+1].Type == 'S') 
+   {
+      // query index needs to be push further
+      j += CigarData[ci+1].Length;
+   }
+   //cout << "query sub: " << subqseqBegin << "-" << j+1 << endl;
+   return QueryBases.substr(subqseqBegin, j-subqseqBegin+1);
+}
 
 // due to redundancy, extra work is needed
 // bad design

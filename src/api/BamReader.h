@@ -15,7 +15,7 @@
 #include "api/BamIndex.h"
 #include "api/SamHeader.h"
 #include <string>
-#include "api/internal/bam/BamReader_p.h"
+//#include "api/internal/bam/BamReader_p.h"
 
 using namespace std;
 

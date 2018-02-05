@@ -45,10 +45,10 @@ class BamAlignmentException : public exception {
       string message;
 
 };
+
 // BamAlignment data structure
 class API_EXPORT BamAlignment {
    // API_EXPORT are constructed used for Window DDL
-
     // constructors & destructor
     public:
         /** 
@@ -575,6 +575,13 @@ class API_EXPORT BamAlignment {
          *    Closed end of the interval.
          */
         int getEndPosition() const { return GetEndPosition(false, true); }
+        /**
+         * @return true if this alignment contains a closed end
+         *   range [b,e] on the genomic reference coordinate.
+         */
+        bool contains(int b, int e) const {
+            return getPosition() <= b && getEndPosition() >= e;
+        }
 
         /**
          * return the [start, end] range of the mapping 
@@ -835,8 +842,15 @@ class API_EXPORT BamAlignment {
         /**
          * Use the reference (genomic) coordinate to pick subsequence
          * of the query alignment.
+         * @return a new BamAlignment from b to e on the reference
+         *   [b,e] is an closed end interval.
          */
         BamAlignment subsequenceByRef(int b, int e) const;
+        /**
+         * @return the substring of the query sequence according
+         * to closed range [b,e]
+         */
+        std::string substringByRef(int b, int e) const;
         /**
          * Recalculate the value for tag NM
          * This is needed after taking a subsequence or 
