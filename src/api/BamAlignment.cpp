@@ -12,6 +12,7 @@
 #include <functional>
 #include <algorithm>
 #include <iterator>
+#include <numeric>
 
 using namespace BamTools;
 using namespace std;
