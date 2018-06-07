@@ -1803,25 +1803,29 @@ std::string BamAlignment::substringByRef(int b, int e) const {
 // bad design
 void BamAlignment::chopFirstSoftclip() {
    // remove the first cigar operation
-   assert(CigarDdata.front().Type == 'S');
-   int tmplen = CigarData.front().getLength();
-   QueryBases=QueryBases.substr(tmplen);
-   Length -= tmplen;
-   Qualities=Qualities.substr(tmplen);
-   SupportData.QuerySequenceLength = Length;
-   SupportData.NumCigarOperations = CigarData.size()-1;
-   CigarData.erase(CigarData.begin());
+   //assert(CigarData.front().Type == 'S');
+   if (CigarData.front().Type == 'S') {
+      int tmplen = CigarData.front().getLength();
+      QueryBases=QueryBases.substr(tmplen);
+      Length -= tmplen;
+      Qualities=Qualities.substr(tmplen);
+      SupportData.QuerySequenceLength = Length;
+      SupportData.NumCigarOperations = CigarData.size()-1;
+      CigarData.erase(CigarData.begin());
+   }
 }
 
 void BamAlignment::chopLastSoftclip() {
-   assert(CigarDdata.back().getType() == 'S');
-   int tmplen = CigarData.back().getLength();
-   Length -= tmplen;
-   QueryBases.resize(Length);
-   Qualities.resize(Length);
-   SupportData.QuerySequenceLength = Length;
-   SupportData.NumCigarOperations = CigarData.size()-1;
-   CigarData.resize(CigarData.size()-1);
+   //assert(CigarData.back().getType() == 'S');
+   if (CigarData.back().getType() == 'S') {
+      int tmplen = CigarData.back().getLength();
+      Length -= tmplen;
+      QueryBases.resize(Length);
+      Qualities.resize(Length);
+      SupportData.QuerySequenceLength = Length;
+      SupportData.NumCigarOperations = CigarData.size()-1;
+      CigarData.resize(CigarData.size()-1);
+   }
 }
 
 void BamAlignment::updateNMTag(const string& refseq) {
