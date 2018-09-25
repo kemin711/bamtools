@@ -928,7 +928,11 @@ class API_EXPORT BamAlignment {
         std::vector<CigarOp> CigarData; 
         /** ID number for reference sequence where alignment's mate was aligned */
         int32_t     MateRefID;          
-        /** position (0-based) where alignment's mate starts */
+        /** position (0-based) where alignment's mate starts.
+         *  SEELF position [a, b], MATE[c, d]
+         *  If mate on the same reference, [a, b] and [c, d]
+         *  could be identical.
+         *  */
         int32_t     MatePosition;       
         /**
          * Field 9: TLEN in bam/sam format.  signed observed Template
