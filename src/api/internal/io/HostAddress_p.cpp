@@ -322,7 +322,7 @@ std::string HostAddress::GetIPString(void) const {
     // IPv6 format
     else if ( m_protocol == HostAddress::IPv6Protocol ) {
         for ( uint8_t i = 0; i < 8; ++i ) {
-            if ( i != 0 ) ss << ':';
+            if ( i != 0 ) { ss << ':'; }
             ss << hex << ( (uint16_t(m_ip6Address[2*i]) << 8) |
                            (uint16_t(m_ip6Address[2*i+1])));
         }
