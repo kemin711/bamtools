@@ -1,5 +1,7 @@
 # (c) 2017 Kemin Zhou
 include_directories(SYSTEM /usr/local/include)
+include_directories(PUBLIC ${INSTALL_PREFIX}/include)
+link_directories(${INSTALL_PREFIX}/lib)
 
 #TODO: this make file is not working with parallel make yet
 # needs to spend one or two days to learn the intricacies of
