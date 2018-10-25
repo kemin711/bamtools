@@ -372,6 +372,27 @@ void BamAlignment::fixStaggerGap() {
    }
 }
 
+pair<int,int> BamAlignment::getMismatchCount() const {
+   int num_mismatch = 0;
+   if (HasTag("NM")) {
+      GetTag("NM", num_mismatch);
+   }
+   else {
+      throw runtime_error("No NM tag in bam file");
+   }
+   int alnlen=0;
+   int indel=0;
+   for (auto& cd : CigarData) {
+      if (cd.Type == 'M') {
+         alnlen += cd.Length;
+      }
+      else if (cd.Type == 'D' || cd.Type == 'I') {
+         indel += cd.Length;
+      }
+   }
+   return make_pair(num_mismatch-indel, alnlen);
+}
+
 float BamAlignment::getNGIdentity() const {
    int num_mismatch = 0;
    if (HasTag("NM")) {
@@ -392,6 +413,7 @@ float BamAlignment::getNGIdentity() const {
    }
    return (1-(num_mismatch-indel)/(float)alnlen);
 }
+
 float BamAlignment::getIdentity() const {
    int num_mismatch = 0;
    if (HasTag("NM")) {
