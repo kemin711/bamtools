@@ -375,7 +375,7 @@ class API_EXPORT BamAlignment {
          *  LB Z Library
          *  MC Z CIGAR string for mate/next segment
          *  MD Z String for mismatching positions
-         *  MF ?  Reserved for backwards compatibility reasons
+         *  MF ? Reserved for backwards compatibility reasons
          *  MQ i Mapping quality of the mate/next segment
          *  NH i Number of reported alignments that contains the query in the current record
          *  NM i Edit distance to the reference. This is use by BWA. MissMatch+Indel.
@@ -706,6 +706,11 @@ class API_EXPORT BamAlignment {
          *  BamWriter use the InsertSize directly for output.
          */
         int32_t getInsertSize() const { return InsertSize; }
+        /**
+         * @return the length of the InsertSize if it is not zero
+         *   otherwise return the length of the projected length
+         *   of the read on the reference.
+         */
         int getTemplateLength() const;
         /**
          * @return a const reference to the CIGAR operations for this alignment
@@ -753,6 +758,12 @@ class API_EXPORT BamAlignment {
          * @return ungapped identity.
          */
         float getNGIdentity() const;
+        /**
+         * This function requires the NM tag being present
+         * NM is the mismath+del total base count.
+         * @return number of mismatch, alngnment length excluding gaps
+         */
+        pair<int,int> getMismatchCount() const;
         /**
          * @return NM/alnlen as a fraction number that
          *   represents the local alignment identity.
@@ -945,6 +956,9 @@ class API_EXPORT BamAlignment {
          * Note: even when I set this member to > 0, when the 
          * read is marked as unpaired, the BamWriter will still
          * output the filed as ZERO. Have not figured why.
+         *
+         * This value may be misleading in computing real fragment
+         * length of the read. Need another function.
          */
         int32_t     InsertSize;        
         // alignment should not store its file name
