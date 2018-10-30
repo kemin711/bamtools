@@ -31,8 +31,8 @@ ensure_out_of_source_build( "
 
 # set BamTools version information
 set( BamTools_VERSION_MAJOR 2 )
-set( BamTools_VERSION_MINOR 4 )
-set( BamTools_VERSION_BUILD 7 )
+set( BamTools_VERSION_MINOR 5 )
+set( BamTools_VERSION_BUILD 6 )
 
 # set our library and executable destination dirs
 set( EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin" )
