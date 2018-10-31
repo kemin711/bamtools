@@ -13,8 +13,8 @@
 // CMake uses this file as a template to generate "bamtools_version.h".
 // These constants are defined to match the variables set in the build system. 
 #define BAMTOOLS_VERSION_MAJOR 2
-#define BAMTOOLS_VERSION_MINOR 4
-#define BAMTOOLS_VERSION_BUILD 7
+#define BAMTOOLS_VERSION_MINOR 5
+#define BAMTOOLS_VERSION_BUILD 6
 
 #endif // BAMTOOLS_VERSION_H
 
