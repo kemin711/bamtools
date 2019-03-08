@@ -1039,9 +1039,6 @@ bool BamAlignment::HasTag(const std::string& tag) const {
     return FindTag(tag, pTagData, tagDataLength, numBytesParsed);
 }
 
-/*! \fn bool BamAlignment::IsDuplicate(void) const
-    \return \c true if this read is a PCR duplicate
-*/
 bool BamAlignment::IsDuplicate(void) const {
     return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_DUPLICATE) != 0 );
 }
@@ -1429,6 +1426,16 @@ std::pair<int,int> BamAlignment::getPairedRange() const {
       e=b+getInsertSize()-1;
    }
    return make_pair(b,e);
+}
+
+int BamAlignment::getPairedEndPosition() const {
+   if (!mateOnSameReference()) {
+      return getEndPosition();
+   }
+   if (IsReverseStrand()) {
+      return GetEndPosition(false,true);
+   }
+   return b+getInsertSize()-1;
 }
       
 // [b, e] on the query sequence
