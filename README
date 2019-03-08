@@ -74,4 +74,10 @@ cd Debug
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 make
 
+To build documents
+
+cd docs
+doxygen 
+This will produce html directory for distribution to a web server.
+
 There is not make dist
