@@ -214,6 +214,7 @@ class API_EXPORT BamReader {
          */
         bool GetNextAlignment(BamAlignment& alignment);
         /** 
+         * TODO: Should create a base class to read core only.
          * Retrieves next available alignment, without populating the
          * alignment's string data fields.
          *

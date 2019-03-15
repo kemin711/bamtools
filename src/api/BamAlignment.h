@@ -584,7 +584,7 @@ class API_EXPORT BamAlignment {
         }
 
         /**
-         * return the [start, end] range of the mapping 
+         * @return the [start, end] range of the mapping 
          * of reads on the reference in 0-based index.
          */
         std::pair<int,int> getRange() const { 
@@ -597,12 +597,14 @@ class API_EXPORT BamAlignment {
            return GetEndPosition(false,false) - getPosition();
         }
         /**
+         * <pre>
          * Get the range if it is paired on the same reference
          *    b1      e1     b2      e2
          * 1) ==this==> ---- <==mate==  return [b1, b2] we don't know e2
          *    b2      e2     b1      e1
          * 2) ==mate==> ---- <==this==   return [b2, e1] we know the whole range
          * Otherwise just the range of this alignment.
+         * </pre>
          */
         std::pair<int,int> getPairedRange() const;
 
