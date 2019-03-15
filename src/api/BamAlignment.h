@@ -175,7 +175,7 @@ class API_EXPORT BamAlignment {
          * @return true if Mate is unmapped
          */
         bool isMateUnmapped() const {
-           return (AlignmentFlat & MATE_UNMAPPED) != 0;
+           return (AlignmentFlag & MATE_UNMAPPED) != 0;
         }
         /** 
          *  If the read is mapped to the reference then there is
@@ -275,6 +275,9 @@ class API_EXPORT BamAlignment {
             return (AlignmentFlag & PROPER_PAIR) != 0;
         }
         bool isNotProperPair() const {
+            return (AlignmentFlag & PROPER_PAIR) == 0;
+        }
+        bool isImproperPair() const {
             return (AlignmentFlag & PROPER_PAIR) == 0;
         }
 
@@ -634,6 +637,7 @@ class API_EXPORT BamAlignment {
            return GetEndPosition(false,false) - getPosition();
         }
         /**
+         * For properly mapped pairs: +/- or -/+ configuration
          * <pre>
          * Get the range if it is paired on the same reference
          *    b1      e1     b2      e2
@@ -642,6 +646,7 @@ class API_EXPORT BamAlignment {
          * 2) ==mate==> ---- <==this==   return [b2, e1] we know the whole range
          * Otherwise just the range of this alignment.
          * </pre>
+         * Should always be [small, large]
          */
         std::pair<int,int> getPairedRange() const;
 
@@ -740,6 +745,7 @@ class API_EXPORT BamAlignment {
          */
         bool mateOnSameReference() const { return MateRefID == RefID; }
         /**
+         * If read is unpaired, the insert size is also zero.
          * @return length of the template positive for
          *    plus strand mate and negative for minus strand mate.
          *    If the two reads map to different references then
@@ -966,7 +972,10 @@ class API_EXPORT BamAlignment {
          * TODO: rewrite this part.
          */
         std::string TagData;            
-        int32_t     RefID;              // ID number for reference sequence
+        /** ID number for reference sequence
+         *  -1 for unmapped reads
+         */
+        int32_t     RefID;              
         /**
          * (0-based) where alignment starts on reference.
          */
@@ -1009,6 +1018,15 @@ class API_EXPORT BamAlignment {
          *
          * This value may be misleading in computing real fragment
          * length of the read. Need another function.
+         * For both reads in the negative strand the insert size is wrong
+         * <pre>
+         * BWA problem:
+         * <--R1-- <--R2--
+         * |--I----| insert size is the number of bases in the range
+         *       |--I----| should the the correct value
+         * </pre>
+         * Need some correction for the -/- configuration
+         * Then you can get the range properly
          */
         int32_t     InsertSize;        
         // alignment should not store its file name

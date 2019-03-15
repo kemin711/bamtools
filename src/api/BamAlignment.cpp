@@ -1417,13 +1417,58 @@ std::pair<int,int> BamAlignment::getPairedRange() const {
       return getRange();
    }
    int b, e;
-   if (IsReverseStrand()) {
-      b=getMatePosition();
-      e=GetEndPosition(false,true);
+   if (IsReverseStrand()) { // read1 - 
+      if (isMateReverseStrand()) { // read 2 - <--R1--  <--R2--
+         if (getPosition() < getMatePosition()) {
+            b=getEndPosition();
+            e = b + getInsertSize() - 1;
+         }
+         else {  // <--R2-- <--R1--
+            e = getEndPosition();
+            b= e-abs(getInsertSize()) + 1; // insert Size is negative for the last one
+         }
+      }
+      else { // read 2 +   -/+
+         if (getEndPosition() <= getMatePosition()) {
+            // <--R1--     --R2-->
+            //       |--I--|
+            b=getEndPosition();
+            e=getMatePosition();
+            //cerr << "improper mapped read pair <--R1-- <--R2--\n"
+            //   << b << "-" << e << endl;
+            //cerr << *this << endl;
+            //exit(1);
+         }
+         else { // read 2 + --R2--> <--R1--
+            b=getMatePosition();
+            e=getEndPosition();
+         }
+      }
    }
-   else { // + strand
-      b=getPosition();
-      e=b+getInsertSize()-1;
+   else { // + strand --R1-->
+      if (isMateReverseStrand()) { // Read 2 -
+        if (getPosition() <= getMatePosition() + getQueryLength()) { // --R1--> <--R2--
+            // this is an estimate of Read 2 length with read 1 length
+            // this is the defect of Sam/Bam schema
+            b=getPosition();
+            e=b+getInsertSize()-1;
+        }
+        else { // <--R2--   --R1--> 
+           //           b   e   cannot get e exactly without R2 length
+           e=getPosition();
+           b=e-abs(getInsertSize()) + 1;
+        }
+      }
+      else { // --R1--> --R2-->
+         if (getPosition() < getMatePosition()) {
+            b=getPosition();
+            e=getMatePosition();
+         }
+         else {
+            e=getPosition();
+            b=getMatePosition();
+         }
+      }
    }
    return make_pair(b,e);
 }
@@ -1432,9 +1477,12 @@ int BamAlignment::getPairedEndPosition() const {
    if (!mateOnSameReference()) {
       return getEndPosition();
    }
+   int b;
    if (IsReverseStrand()) {
+      b=getMatePosition();
       return GetEndPosition(false,true);
    }
+   b=getPosition();
    return b+getInsertSize()-1;
 }
       
