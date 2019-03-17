@@ -102,14 +102,20 @@ class API_EXPORT BamAlignment {
     // 16   0x10  SEQ being reverse complemented
     // 32   0x20  SEQ of the next segment in the template being reverse complemented
     // 64   0x40  the first segment in the template (first mate or read)
+    //             This is determined by the order in the input file (READ1)
     // 128  0x80  the last segment in the template (second mate or read)
+    //             Appears after READ1 in the input order.
     // 256  0x100 secondary alignment
     // 512  0x200 not passing filters, such as platform/vendor quality controls
     // 1024 0x400 PCR or optical duplicate
     // 2048 0x800 supplementary alignment
     // the following tests the flag field against different bits
     public:        
-        bool IsDuplicate(void) const;         // returns true if this read is a PCR duplicate
+         /** 
+          * This cannot be relied on.
+          * @return true if this read is a PCR duplicate
+         */
+        bool IsDuplicate(void) const;
         bool IsFailedQC(void) const;          // returns true if this read failed quality control
         /**
          *  @return true if alignment is first mate on paired-end read
@@ -159,7 +165,20 @@ class API_EXPORT BamAlignment {
         bool isUnmapped() const {
            return AlignmentFlag & UNMAPPED;
         }
-        bool IsMateMapped(void) const;        // returns true if alignment's mate is mapped
+        /** 
+         * Is a flag check
+         * @return true if alignment's mate is mapped
+         */
+        bool IsMateMapped(void) const;        
+        bool isMateMapped(void) const {
+            return (AlignmentFlag & MATE_UNMAPPED) == 0;
+        }
+        /**
+         * @return true if Mate is unmapped
+         */
+        bool isMateUnmapped() const {
+           return (AlignmentFlag & MATE_UNMAPPED) != 0;
+        }
         /** 
          *  If the read is mapped to the reference then there is
          *  only two choices +/-.  - is the reverse strand.
@@ -171,10 +190,10 @@ class API_EXPORT BamAlignment {
          * @return true if alignment mapped to reverse strand of refseq.
          */
         bool isReverseStrand(void) const {
-           return AlignmentFlag & REVERSE_STRAND; 
+           return (AlignmentFlag & REVERSE_STRAND) != 0; 
         }
         bool isForwardStrand() const {
-           return !(AlignmentFlag & REVERSE_STRAND); 
+           return (AlignmentFlag & REVERSE_STRAND) == 0; 
         }
         /**
          * @return -1 reverse strand, +1 for forward strand, and
@@ -189,6 +208,12 @@ class API_EXPORT BamAlignment {
          * @return true if alignment's mate mapped to reverse strand
          */
         bool IsMateReverseStrand(void) const; 
+        bool isMateReverseStrand() const {
+            return (AlignmentFlag & MATE_REVERSE_STRAND) != 0;
+        }
+        bool isMateForwardStrand() const {
+            return (AlignmentFlag & MATE_REVERSE_STRAND) == 0;
+        }
         /**
          * Get a value to represent the strand.
          * For simple alignment of single sequence it is either
@@ -200,7 +225,10 @@ class API_EXPORT BamAlignment {
         double getFractionStrand() const;
         /** @returns true if alignment part of paired-end read
          */
-        bool IsPaired(void) const;            
+        bool IsPaired(void) const; 
+        bool isPaired() const { 
+            return (AlignmentFlag & PAIRED) != 0;
+        }
         /** 
          * @return true if reported position is primary alignment
          */
@@ -245,11 +273,14 @@ class API_EXPORT BamAlignment {
          *       mean std (3 or 4 std away from mean?) This is
          *       all determined by the aligner.
          */
-        bool isProperPair(void) const {
-            return AlignmentFlag & PROPER_PAIR;
+        bool isProperPair() const {
+            return (AlignmentFlag & PROPER_PAIR) != 0;
         }
-        bool isNotProperPair(void) const {
-            return !(AlignmentFlag & PROPER_PAIR);
+        bool isNotProperPair() const {
+            return (AlignmentFlag & PROPER_PAIR) == 0;
+        }
+        bool isImproperPair() const {
+            return (AlignmentFlag & PROPER_PAIR) == 0;
         }
 
     // manipulate alignment flags
@@ -279,7 +310,7 @@ class API_EXPORT BamAlignment {
         void SetIsProperPair(bool ok);        
         void SetIsSecondMate(bool ok);        // sets value of "alignment is second mate on read" flag
 
-        // convenient constants
+        // convenient constants octal number
        static const int PAIRED              = 0x0001;
        static const int PROPER_PAIR         = 0x0002;
        static const int UNMAPPED            = 0x0004;
@@ -576,6 +607,17 @@ class API_EXPORT BamAlignment {
          */
         int getEndPosition() const { return GetEndPosition(false, true); }
         /**
+         * @return the end position of the read pair.
+         *   if calling from this which is mapped to the forward
+         *   strand, mate will be mapped to the reverse strand
+         *   then the end of the end of mate mapping.
+         *  if this read is the reverse strand, then the end is 
+         *  this mapping's end.
+         *  If the mate is mapped to a different chromosome
+         *  then just the end position of this mapping for this read.
+         */
+        int getPairedEndPosition() const;
+        /**
          * @return true if this alignment contains a closed end
          *   range [b,e] on the genomic reference coordinate.
          */
@@ -586,6 +628,7 @@ class API_EXPORT BamAlignment {
         /**
          * @return the [start, end] range of the mapping 
          * of reads on the reference in 0-based index.
+         * start < end
          */
         std::pair<int,int> getRange() const { 
            return std::pair<int,int>(getPosition(), GetEndPosition(false, true)); 
@@ -597,6 +640,7 @@ class API_EXPORT BamAlignment {
            return GetEndPosition(false,false) - getPosition();
         }
         /**
+         * For properly mapped pairs: +/- or -/+ configuration
          * <pre>
          * Get the range if it is paired on the same reference
          *    b1      e1     b2      e2
@@ -605,6 +649,7 @@ class API_EXPORT BamAlignment {
          * 2) ==mate==> ---- <==this==   return [b2, e1] we know the whole range
          * Otherwise just the range of this alignment.
          * </pre>
+         * Should always be [small, large]
          */
         std::pair<int,int> getPairedRange() const;
 
@@ -624,6 +669,7 @@ class API_EXPORT BamAlignment {
          * get the name of the query squence
          */
         const std::string& getQueryName() const { return Name; }
+        const std::string& getName() const { return Name; }
         /**
          * getter method for the length of the query (read)
          */
@@ -702,16 +748,23 @@ class API_EXPORT BamAlignment {
          */
         bool mateOnSameReference() const { return MateRefID == RefID; }
         /**
+         * If read is unpaired, the insert size is also zero.
          * @return length of the template positive for
          *    plus strand mate and negative for minus strand mate.
+         *    If the two reads map to different references then
+         *    the insert size is set to zero.
          *
          *  BamWriter use the InsertSize directly for output.
          */
-        int32_t getInsertSize() const { return InsertSize; }
+        int32_t getInsertSize() const { 
+           return InsertSize; 
+        }
         /**
          * @return the length of the InsertSize if it is not zero
          *   otherwise return the length of the projected length
          *   of the read on the reference.
+         *
+         *  This function used getInsertSize()
          */
         int getTemplateLength() const;
         /**
@@ -841,7 +894,9 @@ class API_EXPORT BamAlignment {
          * Sets the insert size which is the 
          * length of the template.
          */
-        void setInsertSize(int32_t insize) { InsertSize = insize; }  
+        void setInsertSize(int32_t insize) { 
+           InsertSize = insize; 
+        }  
 
         // mutation functions
         /**
@@ -887,7 +942,9 @@ class API_EXPORT BamAlignment {
 
     // public data fields, these fileds should all become private in the future
     public:
-        /** read or query name */
+        /** read or query name 
+         * Use getName() to read this one
+         * */
         std::string Name;    
         /** 
          * length of query sequence
@@ -918,7 +975,10 @@ class API_EXPORT BamAlignment {
          * TODO: rewrite this part.
          */
         std::string TagData;            
-        int32_t     RefID;              // ID number for reference sequence
+        /** ID number for reference sequence
+         *  -1 for unmapped reads
+         */
+        int32_t     RefID;              
         /**
          * (0-based) where alignment starts on reference.
          */
@@ -961,6 +1021,15 @@ class API_EXPORT BamAlignment {
          *
          * This value may be misleading in computing real fragment
          * length of the read. Need another function.
+         * For both reads in the negative strand the insert size is wrong
+         * <pre>
+         * BWA problem:
+         * <--R1-- <--R2--
+         * |--I----| insert size is the number of bases in the range
+         *       |--I----| should the the correct value
+         * </pre>
+         * Need some correction for the -/- configuration
+         * Then you can get the range properly
          */
         int32_t     InsertSize;        
         // alignment should not store its file name

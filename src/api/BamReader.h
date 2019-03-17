@@ -213,6 +213,11 @@ class API_EXPORT BamReader {
          *  @see SetRegion()
          */
         bool GetNextAlignment(BamAlignment& alignment);
+        /**
+         * @return next BamAlignment pointer if exists
+         *  otherwise return nullptr
+         */
+        BamAlignment* next();
         /** 
          * TODO: Should create a base class to read core only.
          * Retrieves next available alignment, without populating the
@@ -295,6 +300,12 @@ class API_EXPORT BamReader {
          *     { RefName (string), RefLength(int32_t) }
          *    
          * @returns all reference meta data
+         *
+         * The index in the vector (RefVector) has a pattern
+         * chrM 0, chr1 1, ..., chr22 22, chrX 23, chrY 24.
+         * Not sure how others are names, so you have to
+         * rely on the index to get the string to be safe.
+         * The number after 24 is unreliable.
          *
          * Note: this is a bad design using std vector
          * would be more portable and more readable.

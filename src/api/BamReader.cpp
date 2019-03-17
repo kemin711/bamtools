@@ -61,6 +61,17 @@ bool BamReader::GetNextAlignment(BamAlignment& alignment) {
    // uses Internal::BamReaderPrivate to do the work
    return d->GetNextAlignment(alignment);
 }
+
+BamAlignment* BamReader::next() {
+   BamAlignment* ptr = new BamAlignment();
+   if (d->GetNextAlignment(*ptr)) {
+      return ptr;
+   }
+   delete ptr;
+   return nullptr;
+}
+
+
 bool BamReader::GetNextAlignmentCore(BamAlignment& alignment) {
    return d->GetNextAlignmentCore(alignment);
 }
@@ -113,8 +124,5 @@ vector<pair<string,int> > BamReader::getReferenceMetaData() const {
    }
    return res;
 }
-
-
-
 
 
