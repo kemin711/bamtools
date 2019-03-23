@@ -102,7 +102,9 @@ class API_EXPORT BamAlignment {
     // 16   0x10  SEQ being reverse complemented
     // 32   0x20  SEQ of the next segment in the template being reverse complemented
     // 64   0x40  the first segment in the template (first mate or read)
+    //             This is determined by the order in the input file (READ1)
     // 128  0x80  the last segment in the template (second mate or read)
+    //             Appears after READ1 in the input order.
     // 256  0x100 secondary alignment
     // 512  0x200 not passing filters, such as platform/vendor quality controls
     // 1024 0x400 PCR or optical duplicate
@@ -624,8 +626,9 @@ class API_EXPORT BamAlignment {
         }
 
         /**
-         * return the [start, end] range of the mapping 
+         * @return the [start, end] range of the mapping 
          * of reads on the reference in 0-based index.
+         * start < end
          */
         std::pair<int,int> getRange() const { 
            return std::pair<int,int>(getPosition(), GetEndPosition(false, true)); 
