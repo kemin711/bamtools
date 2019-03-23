@@ -1145,15 +1145,12 @@ bool BamAlignment::IsValidSize(const std::string& tag, const std::string& type) 
     \param[in] tag 2-character name of field to remove
 */
 void BamAlignment::RemoveTag(const std::string& tag) {
-  
     // if char data not populated, do that first
     if ( SupportData.HasCoreOnly )
         BuildCharData();
-
     // skip if no tags available
     if ( TagData.empty() )
         return;
-  
     // localize the tag data
     char* pOriginalTagData = (char*)TagData.data();
     char* pTagData = pOriginalTagData;
@@ -1164,7 +1161,6 @@ void BamAlignment::RemoveTag(const std::string& tag) {
     // skip if tag not found
     if  (!FindTag(tag, pTagData, originalTagDataLength, numBytesParsed))
         return;
-
     // otherwise, remove it
     RaiiBuffer newTagData(originalTagDataLength);
 

@@ -225,15 +225,16 @@ bool BamReaderPrivate::LoadNextAlignment(BamAlignment& alignment) {
     fill_n(buffer, sizeof(uint32_t), 0);
     m_stream.Read(buffer, sizeof(uint32_t));
     alignment.SupportData.BlockLength = BamTools::UnpackUnsignedInt(buffer);
-    if ( m_isBigEndian ) BamTools::SwapEndian_32(alignment.SupportData.BlockLength);
-    if ( alignment.SupportData.BlockLength == 0 )
+    if (m_isBigEndian) 
+       BamTools::SwapEndian_32(alignment.SupportData.BlockLength);
+    if (alignment.SupportData.BlockLength == 0)
         return false;
     // read in core alignment data, make sure the right size of data was read
     char x[Constants::BAM_CORE_SIZE];
-    if ( m_stream.Read(x, Constants::BAM_CORE_SIZE) != Constants::BAM_CORE_SIZE )
+    if (m_stream.Read(x, Constants::BAM_CORE_SIZE) != Constants::BAM_CORE_SIZE )
         return false;
     // swap core endian-ness if necessary
-    if ( m_isBigEndian ) {
+    if (m_isBigEndian) {
         for ( unsigned int i = 0; i < Constants::BAM_CORE_SIZE; i+=sizeof(uint32_t) )
             BamTools::SwapEndian_32p(&x[i]);
     }
