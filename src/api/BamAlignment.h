@@ -634,6 +634,10 @@ class API_EXPORT BamAlignment {
            return std::pair<int,int>(getPosition(), GetEndPosition(false, true)); 
         }
         /**
+         * the first is always smaller than the second
+         */
+        std::pair<int,int> getInterval() const;
+        /**
          * The distance coverted by the alignment on the reference.
          */
         int getReferenceWidth() const {

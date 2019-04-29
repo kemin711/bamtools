@@ -1408,6 +1408,14 @@ int BamAlignment::getAverageQualityScore() const {
    return accumulate(q.begin(), q.end(), 0)/float(q.size());
 }
 
+std::pair<int,int> BamAlignment::getInterval() const { 
+   pair<int,int> tmp = std::pair<int,int>(getPosition(), GetEndPosition(false, true)); 
+   if (tmp.first > tmp.second) {
+      swap(tmp.first, tmp.second);
+   }
+   return tmp;
+}
+
 std::pair<int,int> BamAlignment::getPairedRange() const {
    if (!mateOnSameReference()) {
       return getRange();
