@@ -1418,7 +1418,8 @@ std::pair<int,int> BamAlignment::getInterval() const {
 
 std::pair<int,int> BamAlignment::getPairedRange() const {
    if (!mateOnSameReference()) {
-      return getRange();
+      //return getRange();
+      return getInterval();
    }
    int b, e;
    if (IsReverseStrand()) { // read1 - 
@@ -1475,6 +1476,13 @@ std::pair<int,int> BamAlignment::getPairedRange() const {
       }
    }
    return make_pair(b,e);
+}
+std::pair<int,int> BamAlignment::getPairedInterval() const {
+   pair<int,int> tmp = getPairedRange();
+   if (tmp.first > tmp.second) {
+      return make_pair(tmp.second, tmp.first);
+   }
+   return tmp;
 }
 
 int BamAlignment::getPairedEndPosition() const {

@@ -653,9 +653,14 @@ class API_EXPORT BamAlignment {
          * 2) ==mate==> ---- <==this==   return [b2, e1] we know the whole range
          * Otherwise just the range of this alignment.
          * </pre>
-         * Should always be [small, large]
+         * b could be larger than e
          */
         std::pair<int,int> getPairedRange() const;
+        /**
+         * Same as getPairedRange
+         * Should always be [small, large]
+         */
+        std::pair<int,int> getPairedInterval() const;
 
         // returns a description of the last error that occurred
         std::string GetErrorString(void) const;
