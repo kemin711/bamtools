@@ -1917,6 +1917,61 @@ void BamAlignment::chopLastSoftclip() {
    }
 }
 
+// remove the first len bases
+// assume has MD tag for performance if no MD then
+// need to write more code
+void trimFont() {
+   string md;
+   if (GetTag("MD", md)) {
+      vector<unsigned char> mdarr;
+      // even position number, odd position letter last 3 digits
+      // for bases 00 A, 01 C, 10 G, 11 T, 100 N, first bit del
+      auto i=0;
+      while (i < md.size()) {
+         auto b=i;
+         while (isdigit(md[i])) ++i;
+         mdarr.push_back(atoi(md.substr(b, i)));
+         b = i;
+         while (!isdigit(md[i])) ++i;
+         if (i-b == 1) {
+            char base = md[b];
+            switch (base) {
+               case 'A' : mdarr.push_back(0); break;
+               case 'C' : mdarr.push_back(1); break;
+               case 'G' : mdarr.push_back(2); break;
+               case 'T' : mdarr.push_back(3); break;
+               case 'N' : mdarr.push_back(4); break;
+               default: cerr << "illigal base " << base << endl;
+                        throw runtime_error("illigal base in MD tag");
+            }
+         }
+         else {
+            if (md[b] != '^') {
+               throw runtime_error("^ expected in MD tag");
+            }
+            char base = md[b+1];
+            unsigned char b;
+            switch (base) {
+               case 'A' : b = 0; break;
+               case 'C' : b = 1; break;
+               case 'G' : b = 2; break;
+               case 'T' : b = 3; break;
+               case 'N' : b = 4; break;
+               default: cerr << "illigal base " << base << endl;
+                        throw runtime_error("illigal base in MD tag");
+            }
+            b |= (0x01 << 7);
+            mdarr.push_back(b);
+         }
+      }
+   }
+}
+
+void trimEnd() {
+}
+void trim() {
+}
+
 void BamAlignment::updateNMTag(const string& refseq) {
    int b = getPosition();
    int e = GetEndPosition(); // one passed the end [b,e)
