@@ -805,6 +805,9 @@ class API_EXPORT BamAlignment {
         bool startWithSoftclip() const {
             return !CigarData.empty() && getCigar().front().Type == 'S';
         }
+        /**
+         * @return true if ends with softclip
+         */
         bool endWithSoftclip() const {
             return !CigarData.empty() && getCigar().back().Type == 'S';
         }

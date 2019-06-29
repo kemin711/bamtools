@@ -80,4 +80,4 @@ cd docs
 doxygen 
 This will produce html directory for distribution to a web server.
 
-There is not make dist
+How to make a distribution?

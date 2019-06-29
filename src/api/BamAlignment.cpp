@@ -2044,6 +2044,8 @@ bool trimFont() {
    return false;
 }
 
+// MD tag such as 130A1C0
+// 130, 1, 0 | A, C
 void trimEnd() {
    pair<vector<int>, vector<string>> mdvec = getMDArray();
    int trimlen=0;
@@ -2054,7 +2056,7 @@ void trimEnd() {
    }
    // trim raw data if trimlen > 0
    if (trimlen > 0) {
-      trimEnd(trimlen, mdvec.first.size()-i);
+      trimEnd(trimlen, i);
       ostringstream oust;
       int end=i;
       while (i < mdvec.first.size()) {
