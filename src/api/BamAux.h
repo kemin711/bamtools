@@ -66,8 +66,18 @@ struct API_EXPORT CigarOp {
      */
     pair<char, int> topair() const { return pair<char,int>(Type, Length); }
     void fromPair(const pair<char,int> &p) { Type=p.first; Length = p.second; }
+    /**
+     * @return the length as 32-bits integer
+     */
     uint32_t getLength() const { return Length; }
+    /**
+     * @return the cigar operation one of MIDNSHPX=
+     */
     char getType() const { return Type; }
+    /**
+     * change the length for the cigar segment to l.
+     * @param l new length.
+     */
     void setLength(uint32_t l) { Length = l; }
     void setType(char t) { Type = t; }
 };

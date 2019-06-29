@@ -331,7 +331,7 @@ class API_EXPORT BamAlignment {
        * Does NOT modify an existing tag - use \link BamAlignment::EditTag() 
        *    \endlink instead.
        * @param[in] tag   2-character tag name
-       * @param[in] type  1-character tag type such as Z, i
+       * @param[in] type  1-character tag type such as Z, H, or i
        * @param[in] value data to store
        * @return \c true if the \b new tag was added successfully
        * @see \samSpecURL for more details on reserved tag names, 
@@ -339,14 +339,14 @@ class API_EXPORT BamAlignment {
       */
         template<typename T> bool AddTag(const std::string& tag, const std::string& type, const T& value);
         template<typename T> bool AddTag(const std::string& tag, const std::vector<T>& values);
-        // edit (or append) tag
         /** 
+         *  edit (or append) tag
          *  \brief Edits a BAM tag field.
          *
          *  If \a tag does not exist, a new entry is created.
          *
          *  @param tag[in]   2-character tag name
-         *  @param type[in]  1-character tag type (must be "Z" or "H")
+         *  @param type[in]  1-character tag type (must be "Z", "i", or "H")
          *     Z for string. H for byte array in Hex format.
          *  @param value[in] new data value
          *
@@ -928,6 +928,12 @@ class API_EXPORT BamAlignment {
          * to closed range [b,e]
          */
         std::string substringByRef(int b, int e) const;
+        /** even position number, odd position letter last 3 digits
+         * for bases 00 A, 01 C, 10 G, 11 T, 100 N, first bit del
+         * MD:Z:20^A127
+         * MD:Z:108^TTCTAAGGCCAGCTCCTGCACC39
+        */ 
+        pair<vector<int>, vector<string>> getMDVectorShort();
         /**
          * Recalculate the value for tag NM
          * This is needed after taking a subsequence or 
@@ -1006,16 +1012,17 @@ class API_EXPORT BamAlignment {
        /**  
         * CIGAR operations for this alignment.
         * CigarOp has Type,Length public field
+        * Defined in BamAux.h
         */
         std::vector<CigarOp> CigarData; 
         /** ID number for reference sequence where alignment's mate was aligned */
-        int32_t     MateRefID;          
+        int32_t MateRefID;          
         /** position (0-based) where alignment's mate starts.
          *  SEELF position [a, b], MATE[c, d]
          *  If mate on the same reference, [a, b] and [c, d]
          *  could be identical.
          *  */
-        int32_t     MatePosition;       
+        int32_t MatePosition;       
         /**
          * Field 9: TLEN in bam/sam format.  signed observed Template
          *          LENgth.
@@ -1040,7 +1047,7 @@ class API_EXPORT BamAlignment {
          * Need some correction for the -/- configuration
          * Then you can get the range properly
          */
-        int32_t     InsertSize;        
+        int32_t InsertSize;        
         // alignment should not store its file name
         // information repetation, remove in future version
         // TODO: remove in next release
@@ -1290,12 +1297,11 @@ inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& v
 }
 
 template<typename T>
-inline bool BamAlignment::EditTag(const std::string& tag, const std::string& type, const T& value) {
-
+inline bool BamAlignment::EditTag(const std::string& tag, const std::string& type, const T& value) 
+{
     // if char data not populated, do that first
     if ( SupportData.HasCoreOnly )
         BuildCharData();
-
     // remove existing tag if present, then append tag with new value
     if ( HasTag(tag) )
         RemoveTag(tag);
@@ -1325,11 +1331,16 @@ inline bool BamAlignment::EditTag(const std::string& tag, const std::vector<T>& 
         RemoveTag(tag);
     return AddTag(tag, values);
 }
-
+/**
+ * Obtain the tag value tag and put into destination
+ * @param tag name of the tag such as NM
+ * @param destination value of which will be updated from this 
+ *    object.
+ */
 template<typename T>
 inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
     // skip if alignment is core-only
-    if ( SupportData.HasCoreOnly ) {
+    if (SupportData.HasCoreOnly) {
         // TODO: set error string?
         return false;
     }

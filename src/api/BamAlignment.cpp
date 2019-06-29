@@ -1917,57 +1917,156 @@ void BamAlignment::chopLastSoftclip() {
    }
 }
 
-// remove the first len bases
-// assume has MD tag for performance if no MD then
-// need to write more code
-void trimFont() {
+// the read should not be longer than 255 nt
+// for longer reads we need to use integer as type
+// the first character being ^ means deletion
+pair<vector<int>, vector<string>> BamAlignment::getMDArray() {
+   vector<int> mdseg;
+   vector<string> mdref;
    string md;
    if (GetTag("MD", md)) {
-      vector<unsigned char> mdarr;
       // even position number, odd position letter last 3 digits
       // for bases 00 A, 01 C, 10 G, 11 T, 100 N, first bit del
       auto i=0;
       while (i < md.size()) {
          auto b=i;
-         while (isdigit(md[i])) ++i;
-         mdarr.push_back(atoi(md.substr(b, i)));
-         b = i;
-         while (!isdigit(md[i])) ++i;
-         if (i-b == 1) {
-            char base = md[b];
-            switch (base) {
-               case 'A' : mdarr.push_back(0); break;
-               case 'C' : mdarr.push_back(1); break;
-               case 'G' : mdarr.push_back(2); break;
-               case 'T' : mdarr.push_back(3); break;
-               case 'N' : mdarr.push_back(4); break;
-               default: cerr << "illigal base " << base << endl;
-                        throw runtime_error("illigal base in MD tag");
-            }
+         while (i < md.size() && isdigit(md[i])) ++i;
+         if (i == md.size()) {
+            mdseg.push_back(std::stoi(md.substr(b)));
+            break;
          }
          else {
-            if (md[b] != '^') {
-               throw runtime_error("^ expected in MD tag");
-            }
-            char base = md[b+1];
-            unsigned char b;
-            switch (base) {
-               case 'A' : b = 0; break;
-               case 'C' : b = 1; break;
-               case 'G' : b = 2; break;
-               case 'T' : b = 3; break;
-               case 'N' : b = 4; break;
-               default: cerr << "illigal base " << base << endl;
-                        throw runtime_error("illigal base in MD tag");
-            }
-            b |= (0x01 << 7);
-            mdarr.push_back(b);
+            mdseg.push_back(std::stoi(md.substr(b, i-b)));
          }
+         b = i;
+         while (i < md.size() && !isdigit(md[i])) ++i;
+         if (i == md.size()) {
+            throw runtime_error("improper md tag: " + md);
+         }
+         mdref.push_back(md.substr(b, i-b));
       }
    }
+   return make_pair(mdseg, mdref);
+}
+
+// TODO: refactor common operations from if else
+void trimFront(int len, int numMismatch) {
+   // TODO: consider updating these fileds
+   //std::string TagData;            
+   if (AlignedBases.size() > len+5) {
+      string::size_type x=0;
+      size_t i=0;
+      while (x < len) {
+         if (AlignedBases[i] == '-') {
+            ++i;
+         }
+         else {
+            ++i; ++x;
+         }
+      }
+      AlignedBases=AlignedBases.substr(i);
+   }
+   Position += len;
+   if (getInsertSize() > 0) {
+      InsertSize -= len;        
+   }
+   else if (getInsertSize() < 0) {
+      InsertSize += len;
+   }
+   // if InsertSize is zero do nothing
+   int NMval = getNMValue();
+   if (NMval >= numMismatch) {
+      NMval -= numMismatch;
+      EditTag("NM", "i", edit);
+   }
+   else {
+      throw runtime_error("NM value update error");
+   }
+   // with and without softclip different part
+   if (!startWithSoftclip()) { // no softclip
+      Length -= len;
+      SupportData.QuerySequenceLength = Length;
+      QueryBases = QueryBases.substr(len);         
+      Qualities = Qualities.substr(len);          
+      if (CigarData.front().getType() == 'M') { // such as 147M
+         CigarData.front().setLength(CigarData.front().getLength()-len);
+      }
+      else {
+         cerr << __FILE__ << ":" << __LINE__ << " write more code for Cigar modification\n";
+         throw runtime_error("need more work on fron unmatched type in Cigar");
+      }
+   }
+   else { 
+      if (CigarData[1].getType() == 'M') { //such as 50S130M
+         // expand softclip and shrink first match
+         CigarData[1].setLength(CigarData[1].getLength()-len);
+         CigarData.front().setLength(CigarData.front().getLength()+len);
+      }
+      else {
+         cerr << __FILE__ << ":" << __LINE__ << " write more code for Cigar modification\n";
+         throw runtime_error("need more work on first M operation in Cigar");
+      }
+   }
+   //inner class SupportData members
+   //? not sure what to do std::string AllCharData;
+   //         uint32_t    BlockLength;  // not sure what this is
+   //         uint32_t    NumCigarOperations; // should be calculated on the fly
+   //         uint32_t    QueryNameLength;  // duplicate data discard in the future
+   //QuerySequenceLength; // is this duplicate of QueryLength?
+   //         bool        HasCoreOnly;
+}
+
+// remove the first len bases
+// assume has MD tag for performance if no MD then
+// need to write more code
+// Caller need to update mateposition from the other mate
+bool trimFont() {
+   pair<vector<int>, vector<string>> mdvec = getMDArray();
+   int trimlen=0;
+   size_t i = 0;
+   while (i < mdvec.first.size() && mdvec.first[i] < 3) {
+      trimlen += (mdvec.first[i] + 1);
+      ++i;
+   }
+   // trim raw data if trimlen > 0
+   if (trimlen > 0) {
+      trimFront(trimlen, i);
+      ostringstream oust;
+      while (i < mdvec.first.size()) {
+         oust << mdvec.first[i];
+         if (i < mdvec.second.size()) {
+            oust << mdvec.second[i];
+         }
+      }
+      EditTag("MD", "Z", oust.str());
+      return true;
+   }
+   return false;
 }
 
 void trimEnd() {
+   pair<vector<int>, vector<string>> mdvec = getMDArray();
+   int trimlen=0;
+   int i = mdvec.first.size()-1;
+   while (i > -1 && mdvec.first[i] < 3) {
+      trimlen += (mdvec.first[i] + 1);
+      --i;
+   }
+   // trim raw data if trimlen > 0
+   if (trimlen > 0) {
+      trimEnd(trimlen, mdvec.first.size()-i);
+      ostringstream oust;
+      int end=i;
+      while (i < mdvec.first.size()) {
+         oust << mdvec.first[i];
+         if (i < mdvec.second.size()) {
+            oust << mdvec.second[i];
+         }
+      }
+      EditTag("MD", "Z", oust.str());
+      return true;
+   }
+   return false;
 }
 void trim() {
 }
