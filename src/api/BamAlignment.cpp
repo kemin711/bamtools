@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <iterator>
 #include <numeric>
+#include <sstream>
 
 using namespace BamTools;
 using namespace std;
@@ -1927,7 +1928,7 @@ pair<vector<int>, vector<string>> BamAlignment::getMDArray() {
    if (GetTag("MD", md)) {
       // even position number, odd position letter last 3 digits
       // for bases 00 A, 01 C, 10 G, 11 T, 100 N, first bit del
-      auto i=0;
+      string::size_type i=0;
       while (i < md.size()) {
          auto b=i;
          while (i < md.size() && isdigit(md[i])) ++i;
@@ -1949,10 +1950,7 @@ pair<vector<int>, vector<string>> BamAlignment::getMDArray() {
    return make_pair(mdseg, mdref);
 }
 
-// TODO: refactor common operations from if else
-void trimFront(int len, int numMismatch) {
-   // TODO: consider updating these fileds
-   //std::string TagData;            
+void BamAlignment::chopFront(size_t len, int numMismatch) {
    if (AlignedBases.size() > len+5) {
       string::size_type x=0;
       size_t i=0;
@@ -1977,7 +1975,7 @@ void trimFront(int len, int numMismatch) {
    int NMval = getNMValue();
    if (NMval >= numMismatch) {
       NMval -= numMismatch;
-      EditTag("NM", "i", edit);
+      EditTag("NM", "i", NMval);
    }
    else {
       throw runtime_error("NM value update error");
@@ -1993,7 +1991,7 @@ void trimFront(int len, int numMismatch) {
       }
       else {
          cerr << __FILE__ << ":" << __LINE__ << " write more code for Cigar modification\n";
-         throw runtime_error("need more work on fron unmatched type in Cigar");
+         throw runtime_error("need more work on front unmatched type in Cigar");
       }
    }
    else { 
@@ -2007,20 +2005,70 @@ void trimFront(int len, int numMismatch) {
          throw runtime_error("need more work on first M operation in Cigar");
       }
    }
-   //inner class SupportData members
-   //? not sure what to do std::string AllCharData;
-   //         uint32_t    BlockLength;  // not sure what this is
-   //         uint32_t    NumCigarOperations; // should be calculated on the fly
-   //         uint32_t    QueryNameLength;  // duplicate data discard in the future
-   //QuerySequenceLength; // is this duplicate of QueryLength?
-   //         bool        HasCoreOnly;
+}
+
+void BamAlignment::chopBack(size_t len, int numMismatch) {
+   if (AlignedBases.size() > len+5) {
+      string::size_type x=0;
+      size_t i=AlignedBases.size()-1;
+      while (x < len) {
+         if (AlignedBases[i] == '-') {
+            --i;
+         }
+         else {
+            --i; ++x;
+         }
+      }
+      AlignedBases=AlignedBases.substr(0, i+1);
+   }
+   //Position += len;
+   if (getInsertSize() > 0) {
+      InsertSize -= len;        
+   }
+   else if (getInsertSize() < 0) {
+      InsertSize += len;
+   }
+   // if InsertSize is zero do nothing
+   int NMval = getNMValue();
+   if (NMval >= numMismatch) {
+      NMval -= numMismatch;
+      EditTag("NM", "i", NMval);
+   }
+   else {
+      throw runtime_error("NM value update error");
+   }
+   // with and without softclip different part
+   if (!endWithSoftclip()) { // no softclip
+      Length -= len;
+      SupportData.QuerySequenceLength = Length;
+      QueryBases.resize(Length);
+      Qualities.resize(Length);
+      if (CigarData.back().getType() == 'M') { // such as 147M
+         CigarData.back().setLength(CigarData.back().getLength()-len);
+      }
+      else {
+         cerr << __FILE__ << ":" << __LINE__ << " write more code for Cigar modification\n";
+         throw runtime_error("need more work on back unmatched type in Cigar");
+      }
+   }
+   else {  
+      if (CigarData[CigarData.size()-1].getType() == 'M') { //such as 121M50S
+         // expand softclip and shrink first match
+         CigarData[CigarData.size()-1].setLength(CigarData[CigarData.size()-1].getLength()-len);
+         CigarData.back().setLength(CigarData.back().getLength()+len);
+      }
+      else {
+         cerr << __FILE__ << ":" << __LINE__ << " write more code for Cigar modification\n";
+         throw runtime_error("need more work on first M operation in Cigar");
+      }
+   }
 }
 
 // remove the first len bases
 // assume has MD tag for performance if no MD then
 // need to write more code
 // Caller need to update mateposition from the other mate
-bool trimFont() {
+bool BamAlignment::trimFront() {
    pair<vector<int>, vector<string>> mdvec = getMDArray();
    int trimlen=0;
    size_t i = 0;
@@ -2030,7 +2078,7 @@ bool trimFont() {
    }
    // trim raw data if trimlen > 0
    if (trimlen > 0) {
-      trimFront(trimlen, i);
+      chopFront(trimlen, i);
       ostringstream oust;
       while (i < mdvec.first.size()) {
          oust << mdvec.first[i];
@@ -2046,7 +2094,7 @@ bool trimFont() {
 
 // MD tag such as 130A1C0
 // 130, 1, 0 | A, C
-void trimEnd() {
+bool BamAlignment::trimBack() {
    pair<vector<int>, vector<string>> mdvec = getMDArray();
    int trimlen=0;
    int i = mdvec.first.size()-1;
@@ -2056,21 +2104,29 @@ void trimEnd() {
    }
    // trim raw data if trimlen > 0
    if (trimlen > 0) {
-      trimEnd(trimlen, i);
+      cerr << "before trimming:\n" << *this << endl;
+      chopBack(trimlen, mdvec.second.size()-i);
       ostringstream oust;
-      int end=i;
-      while (i < mdvec.first.size()) {
+      int idxSaveEnd=i;
+      i=0;
+      while (i <= idxSaveEnd) {
          oust << mdvec.first[i];
-         if (i < mdvec.second.size()) {
+         if (i < idxSaveEnd) {
             oust << mdvec.second[i];
          }
       }
       EditTag("MD", "Z", oust.str());
+      cerr << "after trimming:\n" << *this << endl;
       return true;
    }
    return false;
 }
-void trim() {
+
+pair<bool,bool> BamAlignment::trim() {
+   pair<bool,bool> trimmed;
+   trimmed.first = trimFront();
+   trimmed.second = trimBack();
+   return trimmed;
 }
 
 void BamAlignment::updateNMTag(const string& refseq) {

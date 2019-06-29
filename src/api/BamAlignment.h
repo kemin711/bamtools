@@ -936,7 +936,30 @@ class API_EXPORT BamAlignment {
          * MD:Z:20^A127
          * MD:Z:108^TTCTAAGGCCAGCTCCTGCACC39
         */ 
-        pair<vector<int>, vector<string>> getMDVectorShort();
+        pair<vector<int>, vector<string>> getMDArray();
+        /**
+         * Helper method used by trimFront()
+         */
+        void chopFront(size_t len, int numMismatch);
+        /**
+         * Helper used by trimBack()
+         */
+        void chopBack(size_t len, int numMismatch);
+        /**
+         * Remove fuzzy end from the front of the alignment
+         * @return true if trimming happened.
+         */
+        bool trimFront();
+        /**
+         * Remove fuzzy end from the back of the alignment
+         * @return true if trimming happened.
+         */
+        bool trimBack();
+        /**
+         * @return the trimming status for front and back.
+         *   The first if for front, second for back.
+         */
+        pair<bool,bool> trim();
         /**
          * Recalculate the value for tag NM
          * This is needed after taking a subsequence or 
@@ -969,6 +992,9 @@ class API_EXPORT BamAlignment {
          * Design flaw: This field is redundant with
          *   SupporData::QuerySequenceLength. Both fields
          *   needs to be updated!
+         *   This filed is also redundant with the QueryBases.size()
+         *
+         *  TODO: consider redesign 
          */
         int32_t     Length;             
         /** 'original' sequence (contained in BAM file)
