@@ -15,9 +15,12 @@
 #include <numeric>
 #include <sstream>
 
+#define DEBUG
+
 using namespace BamTools;
 using namespace std;
 
+//mutex BamAlignment::gmtx;
 /*! \class BamTools::BamAlignment
     \brief The main BAM alignment data structure.
 
@@ -2078,6 +2081,9 @@ bool BamAlignment::trimFront() {
    }
    // trim raw data if trimlen > 0
    if (trimlen > 0) {
+#ifdef DEBUG
+      cerr << "before trimFront()\n" << *this << endl;
+#endif
       chopFront(trimlen, i);
       ostringstream oust;
       while (i < mdvec.first.size()) {
@@ -2087,6 +2093,9 @@ bool BamAlignment::trimFront() {
          }
       }
       EditTag("MD", "Z", oust.str());
+#ifdef DEBUG
+      cerr << "after trimFront()\n" << *this << endl;
+#endif
       return true;
    }
    return false;
@@ -2104,7 +2113,9 @@ bool BamAlignment::trimBack() {
    }
    // trim raw data if trimlen > 0
    if (trimlen > 0) {
-      cerr << "before trimming:\n" << *this << endl;
+#ifdef DEBUG
+      cerr << "before trimBack():\n" << *this << endl;
+#endif
       chopBack(trimlen, mdvec.second.size()-i);
       ostringstream oust;
       int idxSaveEnd=i;
@@ -2116,7 +2127,9 @@ bool BamAlignment::trimBack() {
          }
       }
       EditTag("MD", "Z", oust.str());
-      cerr << "after trimming:\n" << *this << endl;
+#ifdef DEBUG
+      cerr << "after trimBack():\n" << *this << endl;
+#endif
       return true;
    }
    return false;

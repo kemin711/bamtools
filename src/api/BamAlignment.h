@@ -20,6 +20,7 @@
 #include <iostream>
 #include <utility>
 #include <typeinfo>
+//#include <mutex>
 
 namespace BamTools {
 
@@ -203,6 +204,11 @@ class API_EXPORT BamAlignment {
            if (isReverseStrand()) return -1;
            if (isForwardStrand()) return 1;
            return 0;
+        }
+        char getStrandChar() const {
+           if (isReverseStrand()) return '-';
+           if (isForwardStrand()) return '+';
+           return '?';
         }
         /** 
          * @return true if alignment's mate mapped to reverse strand
@@ -573,7 +579,9 @@ class API_EXPORT BamAlignment {
         bool GetTagType(const std::string& tag, char& type) const;
         // retrieves the SAM/BAM type-code for the data elements in an array tag
         bool GetArrayTagType(const std::string& tag, char& type) const;
-        // returns true if alignment has a record for this tag name
+        /** 
+         * returns true if alignment has a record for this tag name
+         */
         bool HasTag(const std::string& tag) const;
         /** 
          * removes a tag
@@ -750,6 +758,9 @@ class API_EXPORT BamAlignment {
          * @return the reference if of the mate
          */
         int32_t getMateReferenceId() const { return MateRefID; }
+        /**
+         * @return mape position
+         */
         int32_t getMatePosition() const { return MatePosition; }
         /**
          * @return true if mate is mapped to the same reference.
@@ -901,6 +912,9 @@ class API_EXPORT BamAlignment {
          * @param materefid Mate reference id, set to -1 if mate unmapped
          */
         void setMateRefID(int32_t materefid)  {  MateRefID = materefid; } 
+        /**
+         * update mate position
+         */
         void setMatePosition(int32_t matepos) { MatePosition = matepos; } 
         /**
          * Sets the insert size which is the 
@@ -1082,6 +1096,7 @@ class API_EXPORT BamAlignment {
         // TODO: remove in next release
         // this is used in multiple file input operations
         std::string Filename;           // name of BAM file which this alignment comes from
+        //static mutex gmtx;
 
     //! \internal
     // internal utility methods
