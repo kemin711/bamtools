@@ -284,10 +284,17 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
          ous << "XS: FAIL" << sep;
       }
    }
+   if (ba.HasTag("MD")) {
+      ba.GetTag("MD", val);
+      ous << "MD: " << val << sep;
+   }
+   if (ba.HasTag("SA")) {
+      ba.GetTag("SA", val);
+      ous << "SA: " << val << sep;
+   }
 
    return ous;
-}
-}
+}}
 
 vector<pair<char,int> > BamAlignment::getCigarOperation() const {
    vector<pair<char,int> > tmp(CigarData.size());
@@ -2091,6 +2098,7 @@ bool BamAlignment::trimFront() {
          if (i < mdvec.second.size()) {
             oust << mdvec.second[i];
          }
+         ++i;
       }
       EditTag("MD", "Z", oust.str());
 #ifdef DEBUG
@@ -2125,6 +2133,7 @@ bool BamAlignment::trimBack() {
          if (i < idxSaveEnd) {
             oust << mdvec.second[i];
          }
+         ++i;
       }
       EditTag("MD", "Z", oust.str());
 #ifdef DEBUG
