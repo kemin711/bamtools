@@ -15,7 +15,7 @@
 #include <numeric>
 #include <sstream>
 
-#define DEBUG
+//#define DEBUG
 
 using namespace BamTools;
 using namespace std;
@@ -1960,11 +1960,151 @@ pair<vector<int>, vector<string>> BamAlignment::getMDArray() {
    return make_pair(mdseg, mdref);
 }
 
+// len is the length to trim from query
 void BamAlignment::chopFront(size_t len, int numMismatch) {
-   if (AlignedBases.size() > len+5) {
+   // if InsertSize is zero do nothing
+   if (numMismatch > 0) {
+      int NMval = getNMValue();
+      if (NMval >= numMismatch) {
+         NMval -= numMismatch;
+         EditTag("NM", "i", NMval);
+      }
+      else {
+         throw runtime_error("NM value update error");
+      }
+   }
+   unsigned int alnchop=len;
+   unsigned int querychop=len;
+   unsigned int refadvance = len;
+   // with and without softclip different part
+   if (!startWithSoftclip()) { // no softclip
+      if (CigarData.front().getType() == 'M') { // such as 147M, 114M2I19M
+         if (CigarData.front().getLength() > len) {
+            CigarData.front().shrink(len);
+         }
+         else if (CigarData.front().getLength() == len) {
+            // 2M6D145M needs special treatment
+            if (CigarData[1].getType() == 'D') {
+               // remove two cigardata
+               alnchop += CigarData[1].getLength();
+               refadvance += CigarData[1].getLength();
+               CigarData.erase(CigarData.begin(), CigarData.begin()+2);
+            }
+            else if (CigarData[1].getType() == 'I') {
+               cerr << "should convert insertion to softclip " << getCigarString() << endl;
+               throw logic_error(to_string(__LINE__) + ":DEBUG write more code for cigar "
+                     + getCigarString());
+               alnchop = len + CigarData[1].getLength();
+               querychop = len + CigarData[1].getLength();
+               CigarData.erase(CigarData.begin(), CigarData.begin()+2);
+            }
+            else {
+               throw logic_error(to_string(__LINE__) + ":DEBUG unexpected cigar pattern " + getCigarString());
+            }
+         }
+         else { //if (CigarData.front().getLength() < len) {
+            // 3M1D135M MD: 3^G1G133 len=5 3match, 1D, 1G
+            unsigned int c=0;
+            size_t x=0;
+            while (c < CigarData.size()) {
+               if (CigarData[c].getType() == 'M') {
+                  if (x + CigarData[c].getLength() < len) {
+                     x += CigarData[c].getLength();
+                     ++c; 
+                  }
+                  else if (x + CigarData[c].getLength() == len) {
+                     throw logic_error(to_string(__LINE__) + ":DEBUG write more code cigar insertion state " + getCigarString() + " c=" + to_string(c) + " x=" + to_string(x));
+                  }
+                  else { // larger than 
+                     CigarData[c].shrink(len-x);
+                     break; // finished
+                  }
+               }
+               else if (CigarData[c].getType() == 'D') {
+                  refadvance += CigarData[c].getLength();
+                  alnchop += CigarData[c].getLength();
+                  ++c;
+               }
+               else if (CigarData[c].getType() == 'I') {
+                  throw logic_error("write more code cigar insertion state " + getCigarString()
+                        + " c=" + to_string(c) + " x=" + to_string(x));
+               }
+               else {
+                  throw logic_error("unexpected cigar op " + getCigarString()  + " c=" + to_string(c) + " x=" + to_string(x));
+               }
+            }
+            CigarData.erase(CigarData.begin(), CigarData.begin()+c);
+         }
+      }
+      Length -= querychop;
+      SupportData.QuerySequenceLength = Length;
+      QueryBases = QueryBases.substr(querychop);         
+      Qualities = Qualities.substr(querychop);          
+   }
+   else {  // front is softclip
+      if (CigarData[1].getType() != 'M') { 
+         cerr << __FILE__ << ":" << __LINE__ << " write more code for Cigar modification\n";
+         throw logic_error(string(__FILE__) + to_string(__LINE__) + ":ERROR need more work on first not M operation in Cigar: " + getCigarString());
+      }
+      //if (CigarData[1].getType() == 'M') { //such as 50S130M, 21S2M15D91M5I28M
+      if (CigarData[1].getLength() > len) { // enough length to remove
+         CigarData[1].shrink(len);
+         CigarData.front().expand(len);
+      }
+      else if (CigarData[1].getLength() == len) {
+         if (CigarData.size() <= 3) {
+            throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":DEBUG not enough cigar segments at front: " + getCigarString() + " write more code");
+         }
+         if (CigarData[2].getType() == 'D') { // 21S2M15D91M5I28M
+            alnchop += CigarData[2].getLength();
+            refadvance += CigarData[2].getLength();
+            CigarData[0].expand(len); // query missing 15D, not affecting softclip len
+            CigarData.erase(CigarData.begin()+1, CigarData.begin()+3);
+         }
+         else {
+            throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":DEBUG unexpected cigar pattern at front: " + getCigarString() + " write more code");
+         }
+      }
+      else { // < len
+         unsigned int c=1;
+         size_t x=0;
+         while (c < CigarData.size()) {
+            if (CigarData[c].getType() == 'M') {
+               if (x + CigarData[c].getLength() < len) {
+                  x += CigarData[c].getLength();
+                  ++c; 
+               }
+               else if (x + CigarData[c].getLength() == len) {
+                  throw logic_error(to_string(__LINE__) + ":DEBUG write more code cigar insertion state " + getCigarString() + " c=" + to_string(c) + " x=" + to_string(x));
+               }
+               else { // larger than 
+                  CigarData[c].shrink(len-x);
+                  break; // finished
+               }
+            }
+            else if (CigarData[c].getType() == 'D') {
+               refadvance += CigarData[c].getLength();
+               alnchop += CigarData[c].getLength();
+               ++c;
+            }
+            else if (CigarData[c].getType() == 'I') {
+               throw logic_error("write more code cigar insertion state " + getCigarString()
+                     + " c=" + to_string(c) + " x=" + to_string(x));
+            }
+            else {
+               throw logic_error("unexpected cigar op " + getCigarString()  + " c=" + to_string(c) + " x=" + to_string(x));
+            }
+         }
+         CigarData.erase(CigarData.begin()+1, CigarData.begin()+c);
+         CigarData.front().expand(len);
+         //throw logic_error("len " + to_string(len) + " is longer than cigar match at front with softclip " + getCigarString() + " write more code");
+      }
+   }
+   // common operation in different cases
+   if (AlignedBases.size() > alnchop) {
       string::size_type x=0;
       size_t i=0;
-      while (x < len) {
+      while (x < alnchop) {
          if (AlignedBases[i] == '-') {
             ++i;
          }
@@ -1974,54 +2114,160 @@ void BamAlignment::chopFront(size_t len, int numMismatch) {
       }
       AlignedBases=AlignedBases.substr(i);
    }
-   Position += len;
+   Position += refadvance;
    if (getInsertSize() > 0) {
-      InsertSize -= len;        
+      InsertSize -= refadvance;        
    }
    else if (getInsertSize() < 0) {
-      InsertSize += len;
-   }
-   // if InsertSize is zero do nothing
-   int NMval = getNMValue();
-   if (NMval >= numMismatch) {
-      NMval -= numMismatch;
-      EditTag("NM", "i", NMval);
-   }
-   else {
-      throw runtime_error("NM value update error");
-   }
-   // with and without softclip different part
-   if (!startWithSoftclip()) { // no softclip
-      Length -= len;
-      SupportData.QuerySequenceLength = Length;
-      QueryBases = QueryBases.substr(len);         
-      Qualities = Qualities.substr(len);          
-      if (CigarData.front().getType() == 'M') { // such as 147M
-         CigarData.front().setLength(CigarData.front().getLength()-len);
-      }
-      else {
-         cerr << __FILE__ << ":" << __LINE__ << " write more code for Cigar modification\n";
-         throw runtime_error("need more work on front unmatched type in Cigar");
-      }
-   }
-   else { 
-      if (CigarData[1].getType() == 'M') { //such as 50S130M
-         // expand softclip and shrink first match
-         CigarData[1].setLength(CigarData[1].getLength()-len);
-         CigarData.front().setLength(CigarData.front().getLength()+len);
-      }
-      else {
-         cerr << __FILE__ << ":" << __LINE__ << " write more code for Cigar modification\n";
-         throw runtime_error("need more work on first M operation in Cigar");
-      }
+      InsertSize += refadvance;
    }
 }
 
 void BamAlignment::chopBack(size_t len, int numMismatch) {
-   if (AlignedBases.size() > len+5) {
+   // if InsertSize is zero do nothing
+   if (numMismatch > 0) {
+      int NMval = getNMValue();
+      if (NMval >= numMismatch) {
+         NMval -= numMismatch;
+         EditTag("NM", "i", NMval);
+      }
+      else {
+         throw runtime_error("NM value update error");
+      }
+   }
+   unsigned int chopQuery=len;
+   unsigned int chopAlign=len;
+   unsigned int chopRef = len; 
+   // with and without softclip different part
+   if (!endWithSoftclip()) { // no softclip at 3' end
+      if (CigarData.back().getType() != 'M') {
+         throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR expected M as last cigarop " + getCigarString());
+      }
+      if (CigarData.back().getLength() > len) {
+         CigarData.back().shrink(len);
+      }
+      else if (CigarData.back().getLength() == len) {
+         if (CigarData.size() <= 2) {
+            throw runtime_error("cigar " + getCigarString() + " too small");
+         }
+         unsigned int c=CigarData.size()-1;
+         if (CigarData.back().getType() == 'M' && CigarData[c-1].getType() == 'D') {
+            //123M5D3M
+            chopAlign += CigarData[c-1].getLength();
+            chopRef = chopAlign;
+            CigarData.resize(CigarData.size()-2);
+         }
+         else {
+            throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__)
+                  + " write more code " + getCigarString());
+         }
+      }
+      else { //if (CigarData.back().getLength() < len) 
+         unsigned int c=CigarData.size()-1;
+         size_t x=0;
+         while (c >= 0) {
+            if (CigarData[c].getType() == 'M') {
+               if (x + CigarData[c].getLength() < len) {
+                  x += CigarData[c].getLength();
+                  --c; 
+               }
+               else if (x + CigarData[c].getLength() == len) {
+                  throw logic_error(to_string(__LINE__) + ":DEBUG write more code cigar insertion state " + getCigarString() + " c=" + to_string(c) + " x=" + to_string(x));
+               }
+               else { // larger than 
+                  CigarData[c].shrink(len-x);
+                  break; // finished
+               }
+            }
+            else if (CigarData[c].getType() == 'D') {
+               chopAlign += CigarData[c].getLength();
+               chopRef += CigarData[c].getLength();
+               --c;
+            }
+            else if (CigarData[c].getType() == 'I') {
+               throw logic_error("write more code cigar insertion state " + getCigarString()
+                     + " c=" + to_string(c) + " x=" + to_string(x));
+            }
+            else {
+               throw logic_error(to_string(__LINE__) + ":DEBUG unexpected cigar op " + getCigarString()  + " c=" + to_string(c) + " x=" + to_string(x));
+            }
+         }
+         CigarData.erase(CigarData.begin()+c+1, CigarData.end());
+      }
+      Length -= chopQuery;
+      SupportData.QuerySequenceLength = Length;
+      QueryBases.resize(Length);
+      Qualities.resize(Length);
+   }
+   else {  // end with softclip
+      unsigned int c=CigarData.size()-2; // last M index
+      if (CigarData[c].getType() != 'M') { //such as 121M50S
+         cerr << __FILE__ << ":" << __LINE__ << " write more code for "
+            << getCigarString() << " Cigar modification\n" << *this << endl;
+         throw runtime_error("need more work on last before S not M operation in Cigar=" + getCigarString());
+      }
+      //if (CigarData[c].getType() == 'M') { //such as 121M50S
+      if (CigarData[c].getLength() > len) {
+         CigarData[c].shrink(len);
+         CigarData.back().expand(len);
+      }
+      else if (CigarData[c].getLength() == len) {
+         if (CigarData.size() <= 3) {
+            throw logic_error("cigar " + getCigarString() + " not enough segment for len "
+                  + to_string(len) + " trimming from back");
+         }
+         if (CigarData[c-1].getType() == 'D') {
+            // such as 112M5D2M50S => 112M(2+50)S Note 5D does not
+            // contribute to softclip
+            chopAlign += CigarData[c-1].getLength();
+            chopRef = chopAlign;
+            CigarData.back().expand(len);
+            CigarData.erase(CigarData.end()-3, CigarData.end()-1);
+         }
+         else {
+            throw runtime_error("write more code for cigar " + getCigarString());
+         }
+      }
+      else { //if (len > CigarData[lastIdx].getLength()) {
+         if (CigarData.size() < 3) {
+            throw logic_error("cigar must have 3 or more segments " + getCigarString());
+         }
+         size_t x=0;
+         while (c >= 0) {
+            if (CigarData[c].getType() == 'M') {
+               if (x + CigarData[c].getLength() < len) {
+                  x += CigarData[c].getLength();
+                  --c; 
+               }
+               else if (x + CigarData[c].getLength() == len) {
+                  throw logic_error(to_string(__LINE__) + ":DEBUG write more code cigar insertion state " + getCigarString() + " c=" + to_string(c) + " x=" + to_string(x));
+               }
+               else { // larger than 
+                  CigarData[c].shrink(len-x);
+                  break; // finished
+               }
+            }
+            else if (CigarData[c].getType() == 'D') {
+               chopAlign += CigarData[c].getLength();
+               chopRef += CigarData[c].getLength();
+               --c;
+            }
+            else if (CigarData[c].getType() == 'I') {
+               throw logic_error("write more code cigar insertion state " + getCigarString()
+                     + " c=" + to_string(c) + " x=" + to_string(x));
+            }
+            else {
+               throw logic_error(to_string(__LINE__) + ":DEBUG unexpected cigar op " + getCigarString()  + " c=" + to_string(c) + " x=" + to_string(x));
+            }
+         }
+         CigarData.back().expand(len);
+         CigarData.erase(CigarData.begin()+c+1, CigarData.end()-1);
+      }
+   }
+   if (AlignedBases.size() > chopAlign) {
       string::size_type x=0;
       size_t i=AlignedBases.size()-1;
-      while (x < len) {
+      while (x < chopAlign) {
          if (AlignedBases[i] == '-') {
             --i;
          }
@@ -2031,46 +2277,11 @@ void BamAlignment::chopBack(size_t len, int numMismatch) {
       }
       AlignedBases=AlignedBases.substr(0, i+1);
    }
-   //Position += len;
    if (getInsertSize() > 0) {
-      InsertSize -= len;        
+      InsertSize -= chopRef;        
    }
    else if (getInsertSize() < 0) {
-      InsertSize += len;
-   }
-   // if InsertSize is zero do nothing
-   int NMval = getNMValue();
-   if (NMval >= numMismatch) {
-      NMval -= numMismatch;
-      EditTag("NM", "i", NMval);
-   }
-   else {
-      throw runtime_error("NM value update error");
-   }
-   // with and without softclip different part
-   if (!endWithSoftclip()) { // no softclip
-      Length -= len;
-      SupportData.QuerySequenceLength = Length;
-      QueryBases.resize(Length);
-      Qualities.resize(Length);
-      if (CigarData.back().getType() == 'M') { // such as 147M
-         CigarData.back().setLength(CigarData.back().getLength()-len);
-      }
-      else {
-         cerr << __FILE__ << ":" << __LINE__ << " write more code for Cigar modification\n";
-         throw runtime_error("need more work on back unmatched type in Cigar");
-      }
-   }
-   else {  
-      if (CigarData[CigarData.size()-1].getType() == 'M') { //such as 121M50S
-         // expand softclip and shrink first match
-         CigarData[CigarData.size()-1].setLength(CigarData[CigarData.size()-1].getLength()-len);
-         CigarData.back().setLength(CigarData.back().getLength()+len);
-      }
-      else {
-         cerr << __FILE__ << ":" << __LINE__ << " write more code for Cigar modification\n";
-         throw runtime_error("need more work on first M operation in Cigar");
-      }
+      InsertSize += chopRef;
    }
 }
 
@@ -2080,10 +2291,19 @@ void BamAlignment::chopBack(size_t len, int numMismatch) {
 // Caller need to update mateposition from the other mate
 bool BamAlignment::trimFront() {
    pair<vector<int>, vector<string>> mdvec = getMDArray();
-   int trimlen=0;
+   int trimlen=0, mismatch=0;
    size_t i = 0;
-   while (i < mdvec.first.size() && mdvec.first[i] < 3) {
-      trimlen += (mdvec.first[i] + 1);
+   while (i < mdvec.first.size() && mdvec.first[i] < 4) {
+      if (i >= mdvec.second.size()) {
+         throw runtime_error("out of range in trimFront()");
+      }
+      if (mdvec.second[i].front() != '^') {
+         trimlen += (mdvec.first[i] + 1);
+         ++mismatch;
+      }
+      else {
+         trimlen += mdvec.first[i];
+      }
       ++i;
    }
    // trim raw data if trimlen > 0
@@ -2091,7 +2311,7 @@ bool BamAlignment::trimFront() {
 #ifdef DEBUG
       cerr << "before trimFront()\n" << *this << endl;
 #endif
-      chopFront(trimlen, i);
+      chopFront(trimlen, mismatch);
       ostringstream oust;
       while (i < mdvec.first.size()) {
          oust << mdvec.first[i];
@@ -2114,9 +2334,19 @@ bool BamAlignment::trimFront() {
 bool BamAlignment::trimBack() {
    pair<vector<int>, vector<string>> mdvec = getMDArray();
    int trimlen=0;
+   int mismatch=0;
    int i = mdvec.first.size()-1;
-   while (i > -1 && mdvec.first[i] < 3) {
-      trimlen += (mdvec.first[i] + 1);
+   while (i > -1 && mdvec.first[i] < 4) {
+      if (i-1 < 0) {
+         throw runtime_error("i indes out of range in trimBack()");
+      }
+      if (mdvec.second[i-1].front() == '^') {
+         trimlen += mdvec.first[i];
+      }
+      else {
+         trimlen += (mdvec.first[i] + 1);
+         ++mismatch;
+      }
       --i;
    }
    // trim raw data if trimlen > 0
@@ -2124,7 +2354,7 @@ bool BamAlignment::trimBack() {
 #ifdef DEBUG
       cerr << "before trimBack():\n" << *this << endl;
 #endif
-      chopBack(trimlen, mdvec.second.size()-i);
+      chopBack(trimlen, mismatch);
       ostringstream oust;
       int idxSaveEnd=i;
       i=0;

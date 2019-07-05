@@ -763,6 +763,14 @@ class API_EXPORT BamAlignment {
          */
         int32_t getMatePosition() const { return MatePosition; }
         /**
+         * @return the strand as a single char + or -
+         */
+        char getMateStrandChar() const {
+           if (IsMateReverseStrand()) return '-';
+           else return '+';
+        }
+
+        /**
          * @return true if mate is mapped to the same reference.
          *   If no mate or mate is not mapped will return false.
          */
