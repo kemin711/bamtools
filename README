@@ -83,5 +83,5 @@ This will produce html directory for distribution to a web server.
 How to make a distribution?
 I have added some package functionality
 
-make target_source
+make package_source
 will gnerate source distribution in different formats

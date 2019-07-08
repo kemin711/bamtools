@@ -1991,12 +1991,12 @@ void BamAlignment::chopFront(size_t len, int numMismatch) {
                CigarData.erase(CigarData.begin(), CigarData.begin()+2);
             }
             else if (CigarData[1].getType() == 'I') {
-               cerr << "should convert insertion to softclip " << getCigarString() << endl;
-               throw logic_error(to_string(__LINE__) + ":DEBUG write more code for cigar "
-                     + getCigarString());
-               alnchop = len + CigarData[1].getLength();
-               querychop = len + CigarData[1].getLength();
+               alnchop += CigarData[1].getLength();
+               querychop += CigarData[1].getLength();
                CigarData.erase(CigarData.begin(), CigarData.begin()+2);
+               //cerr << "should convert insertion to softclip " << getCigarString() << endl;
+               //throw logic_error(to_string(__LINE__) + ":DEBUG write more code for cigar "
+               //      + getCigarString());
             }
             else {
                throw logic_error(to_string(__LINE__) + ":DEBUG unexpected cigar pattern " + getCigarString());
@@ -2059,6 +2059,12 @@ void BamAlignment::chopFront(size_t len, int numMismatch) {
             alnchop += CigarData[2].getLength();
             refadvance += CigarData[2].getLength();
             CigarData[0].expand(len); // query missing 15D, not affecting softclip len
+            CigarData.erase(CigarData.begin()+1, CigarData.begin()+3);
+         }
+         else if (CigarData[2].getType() == 'I') {
+            alnchop += CigarData[2].getLength();
+            querychop += CigarData[2].getLength();
+            CigarData[0].expand(querychop);
             CigarData.erase(CigarData.begin()+1, CigarData.begin()+3);
          }
          else {
@@ -2157,6 +2163,12 @@ void BamAlignment::chopBack(size_t len, int numMismatch) {
             chopRef = chopAlign;
             CigarData.resize(CigarData.size()-2);
          }
+         else if (CigarData.back().getType() == 'M' && CigarData[c-1].getType() == 'I') {
+            //72M6D68M1I10M MD: 72^GTGTGA1T52C13T1G3T3 3' end of Query CCTTTTTTNNTNTTTNTTT
+            chopAlign += CigarData[c-1].getLength();
+            chopQuery += CigarData[c-1].getLength();
+            CigarData.resize(CigarData.size()-2);
+         }
          else {
             cerr << *this << endl;
             throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__)
@@ -2223,6 +2235,12 @@ void BamAlignment::chopBack(size_t len, int numMismatch) {
             chopAlign += CigarData[c-1].getLength();
             chopRef = chopAlign;
             CigarData.back().expand(len);
+            CigarData.erase(CigarData.end()-3, CigarData.end()-1);
+         }
+         else if (CigarData[c-1].getType() == 'I') {
+            chopAlign += CigarData[c-1].getLength();
+            chopQuery += CigarData[c-1].getLength();
+            CigarData.back().expand(chopQuery);
             CigarData.erase(CigarData.end()-3, CigarData.end()-1);
          }
          else {
@@ -2339,7 +2357,7 @@ bool BamAlignment::trimBack() {
    int i = mdvec.first.size()-1;
    while (i > -1 && mdvec.first[i] < 4) {
       if (i-1 < 0) {
-         throw runtime_error("i indes out of range in trimBack()");
+         throw runtime_error("i index out of range in trimBack()");
       }
       if (mdvec.second[i-1].front() == '^') {
          trimlen += mdvec.first[i];
