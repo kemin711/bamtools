@@ -2158,8 +2158,9 @@ void BamAlignment::chopBack(size_t len, int numMismatch) {
             CigarData.resize(CigarData.size()-2);
          }
          else {
+            cerr << *this << endl;
             throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__)
-                  + " write more code " + getCigarString());
+                  + " write more code for " + getQueryName() + " " + getCigarString());
          }
       }
       else { //if (CigarData.back().getLength() < len) 
