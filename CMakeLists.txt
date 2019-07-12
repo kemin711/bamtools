@@ -53,6 +53,9 @@ set( LIBRARY_OUTPUT_PATH    "${CMAKE_SOURCE_DIR}/lib" )
 
 # define compiler flags for all code
 set( CMAKE_BUILD_TYPE Release )
+#set( CMAKE_BUILD_TYPE Debug )
+#set(CMAKE_CXX_FLAGS "-g -std=c++11 -Wall")
+# cmake -DCMAKE_BUILD_TYPE=Debug .. in the build subdirectory
 # old setting std=c++98
 set( CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -Wall ${CMAKE_CXX_FLAGS_RELEASE}" )
 set( CMAKE_CXX_FLAGS_DEBUG "-g -std=c++11 -Wall ${CMAKE_CXX_FLAGS_DEBUG}" )
@@ -60,6 +63,7 @@ set( CMAKE_CXX_FLAGS_DEBUG "-g -std=c++11 -Wall ${CMAKE_CXX_FLAGS_DEBUG}" )
 add_definitions( -D_FILE_OFFSET_BITS=64 )
 message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
 message("CMAKE_CXX_FLAGS_RELEASE is ${CMAKE_CXX_FLAGS_RELEASE}")
+message("CMAKE_CXX_FLAGS is ${CMAKE_CXX_FLAGS}")
 
 find_package(ZLIB)
 if (ZLIB_FOUND)
@@ -86,4 +90,7 @@ endif()
 include_directories( src )
 
 # list subdirectories to build in
+enable_testing()
 add_subdirectory( src )
+add_subdirectory( test )
+

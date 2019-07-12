@@ -56,6 +56,19 @@ class API_EXPORT BamAlignment {
          *   Default constructor
          */
         BamAlignment(void);
+
+        /**
+         * Convenient constructor for testing
+         */
+        BamAlignment(const std::string& qname, int32_t refid, int32_t refpos, uint32_t alnflag, 
+              int32_t mrefid, int32_t mrefpos, const std::string& queryseq, const std::string& qstring)
+           : Name(qname), Length(queryseq.size()),
+             QueryBases(queryseq), AlignedBases(), Qualities(qstring),
+             TagData(), RefID(refid), Position(refpos), Bin(0), MapQuality(0),
+             AlignmentFlag(alnflag), CigarData(),
+            MateRefID(mrefid), MatePosition(mrefpos), InsertSize(0),
+            Filename()
+        {}
         /** 
          *  Copy constructor
          */
@@ -123,6 +136,9 @@ class API_EXPORT BamAlignment {
          *  First mate is also first read: Two words meaning the same thing.
          */
         bool IsFirstMate(void) const;         
+        void setAlignmentFlag(uint32_t flag) {
+           AlignmentFlag = flag;
+        }
         /**
          * @return true if is the First Read in a paired end read.
          * Alias for IsFirstMate.
@@ -892,7 +908,15 @@ class API_EXPORT BamAlignment {
         void setQueryName(const std::string &qname) { Name = qname; }
         void setQuerySequenceLength(int32_t qlen) {  Length = qlen; }
         void setQueryLength(int32_t qlen) {  Length = qlen; }
-        void setQueryBases(const std::string &qseq) { QueryBases = qseq; }
+        /**
+         * Once query bases is changed the length will also
+         * change. There is no need to call setQueryLength()
+         * after calling this method.
+         */
+        void setQueryBases(const std::string &qseq) { 
+           QueryBases = qseq; 
+           setQueryLength(QueryBases.size());
+        }
         void setAlignedBases(const std::string &alnedseq) { AlignedBases = alnedseq; }
         /** set quality from string data */
         void setQuality(const std::string &qual) { Qualities = qual; }
@@ -901,6 +925,7 @@ class API_EXPORT BamAlignment {
          */
         void setQuality(const std::vector<int> &qual);
         void setRefID(int32_t refid) { RefID = refid; }
+        void setReferenceId(int32_t refid) { RefID = refid; }
         void setPosition(int32_t alnstart) { Position = alnstart; }
         /** alias for setPosition */
         void setStart(int32_t alnstart) { Position = alnstart; }
@@ -959,6 +984,7 @@ class API_EXPORT BamAlignment {
          * MD:Z:108^TTCTAAGGCCAGCTCCTGCACC39
         */ 
         pair<vector<int>, vector<string>> getMDArray();
+        void updateMDTag(const pair<vector<int>, vector<string>>& mdvec);
         /**
          * Helper method used by trimFront()
          */
@@ -982,6 +1008,12 @@ class API_EXPORT BamAlignment {
          *   The first if for front, second for back.
          */
         pair<bool,bool> trim();
+        /**
+         * Only change the bases near the end < 7 nt
+         * if the Query base is different from the reference base
+         * on both ends. MD tag will also needs to be updated.
+         */
+        void patchEnd();
         /**
          * Recalculate the value for tag NM
          * This is needed after taking a subsequence or 

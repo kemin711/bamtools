@@ -9,7 +9,8 @@ add_subdirectory( api )
 add_subdirectory( third_party )
 add_subdirectory( toolkit )
 add_subdirectory( utils )
-add_subdirectory( test )
+#enable_testing()
+#add_subdirectory( test )
 
 # export shared headers
 include( ExportHeader.cmake )
