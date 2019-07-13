@@ -2408,6 +2408,8 @@ void BamAlignment::patchEnd() {
    //vector<int>::iterator it1 = mdvec.first.begin();
    //vector<string>::iterator it2 = mdvec.second.begin();
 
+   static const int TRIMLEN_MAX = 6;
+   static const int GAP_CUT = 3;
    //map<int, char> correction; // only one, pos, char of ref
    size_t trimlen=0, m=0, qi=0, c=0;
    bool patchFront = true;
@@ -2423,7 +2425,7 @@ void BamAlignment::patchEnd() {
       patchFront=false;
    }
    if (patchFront) {
-      while (trimlen < 7 && mdvec.first[m] < 5 && mdvec.second[m].front() != '^'
+      while (trimlen < TRIMLEN_MAX && mdvec.first[m] < GAP_CTU && mdvec.second[m].front() != '^'
             && CigarData[c].getLength() > trimlen + mdvec.first[m]) 
       {
          qi += mdvec.first[m];
@@ -2454,7 +2456,7 @@ void BamAlignment::patchEnd() {
    else if (CigarData[c].getType() == 'M') { }
    else return;
 
-   while (trimlen < 7 && m > 0 && mdvec.first[m] < 5 && mdvec.second[m-1].front() != '^'
+   while (trimlen < TRIMLEN_MAX && m > 0 && mdvec.first[m] < GAP_CUT && mdvec.second[m-1].front() != '^'
             && CigarData[c].getLength() > trimlen + mdvec.first[m]) 
    {
       qi -= mdvec.first[m];
