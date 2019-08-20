@@ -2481,6 +2481,7 @@ void BamAlignment::patchEnd() {
    }
 }
 
+// regenerate AlignedBases
 void BamAlignment::updateNMTag(const string& refseq) {
    int b = getPosition();
    int e = GetEndPosition(); // one passed the end [b,e)
@@ -2529,18 +2530,18 @@ void BamAlignment::updateNMTag(const string& refseq) {
    }
    //cout << "recalculated edit distance: " << edit << endl;
    if (HasTag("NM")) {
-      int tmp;
-      if (!GetTag("NM", tmp)) {
-         cerr << "Failed to get NM tag!\n";
-         exit(1);
-      }
+      //int tmp;
+      //if (!GetTag("NM", tmp)) {
+      //   cerr << "Failed to get NM tag!\n";
+      //   exit(1);
+      //}
       //cout << "Old edit distance: " << tmp << endl;
-      if (abs(tmp - edit) > 50) {
-         cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
-            << " old " << tmp << " and  new " << edit << " edit distance too big check logic\n"
-            << *this << endl;
-         exit(1);
-      }
+      //if (abs(tmp - edit) > 50) {
+      //   cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
+      //      << " old " << tmp << " and  new " << edit << " edit distance too big check logic\n"
+      //      << *this << endl;
+      //   exit(1);
+      //}
       EditTag("NM", "i", edit);
    }
    else {

@@ -659,6 +659,8 @@ class API_EXPORT BamAlignment {
         }
         /**
          * the first is always smaller than the second
+         * @return the [begin,end] of the closed range for the mapping of this sequence
+         *    on the genomic DNA. 0-based index. 
          */
         std::pair<int,int> getInterval() const;
         /**
@@ -739,6 +741,20 @@ class API_EXPORT BamAlignment {
            //}
            return AlignedBases; 
         }
+        void clearAlignedBases() {
+           AlignedBases.clear();
+        }
+        /**
+         * Update AlignedBases.
+         * This function needs to be called if the alignment
+         * part of the object is changed.
+         * For simplicity, the alignment can simply be cleared.
+         * Most operations will not need this part of the computed
+         * result. The result can be computed from the Cigar string.
+         * The designer should not have included it as a member of the 
+         * object in the first place.
+         */
+        void setAlignedBases(const std::string &alnedseq) { AlignedBases = alnedseq; }
         /** 
          * @return the FASTQ qualities (ASCII characters, not numeric values)
          * Values are ASCII 33-93
@@ -917,7 +933,6 @@ class API_EXPORT BamAlignment {
            QueryBases = qseq; 
            setQueryLength(QueryBases.size());
         }
-        void setAlignedBases(const std::string &alnedseq) { AlignedBases = alnedseq; }
         /** set quality from string data */
         void setQuality(const std::string &qual) { Qualities = qual; }
         /** integer version
