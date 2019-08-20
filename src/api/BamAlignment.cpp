@@ -20,6 +20,9 @@
 using namespace BamTools;
 using namespace std;
 
+int BamAlignment::TRIMLEN_MAX = 6;
+int BamAlignment::GAP_CUT = 3;
+
 //mutex BamAlignment::gmtx;
 /*! \class BamTools::BamAlignment
     \brief The main BAM alignment data structure.
@@ -2413,7 +2416,7 @@ void BamAlignment::patchEnd() {
    //map<int, char> correction; // only one, pos, char of ref
    size_t trimlen=0, m=0, qi=0, c=0;
    bool patchFront = true;
-   cerr << CigarData.size() << "Cigar size\n";
+   //cerr << CigarData.size() << "Cigar size\n";
    if (CigarData.front().getType() == 'M') {
    }
    else if (CigarData.front().getType() == 'S') {
@@ -2425,7 +2428,7 @@ void BamAlignment::patchEnd() {
       patchFront=false;
    }
    if (patchFront) {
-      while (trimlen < TRIMLEN_MAX && mdvec.first[m] < GAP_CTU && mdvec.second[m].front() != '^'
+      while (trimlen < TRIMLEN_MAX && mdvec.first[m] < GAP_CUT && mdvec.second[m].front() != '^'
             && CigarData[c].getLength() > trimlen + mdvec.first[m]) 
       {
          qi += mdvec.first[m];

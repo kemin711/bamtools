@@ -55,6 +55,7 @@ set( LIBRARY_OUTPUT_PATH    "${CMAKE_SOURCE_DIR}/lib" )
 set( CMAKE_BUILD_TYPE Release )
 #set( CMAKE_BUILD_TYPE Debug )
 #set(CMAKE_CXX_FLAGS "-g -std=c++11 -Wall")
+set(CMAKE_CXX_FLAGS "-O3 -std=c++11 -Wall")
 # cmake -DCMAKE_BUILD_TYPE=Debug .. in the build subdirectory
 # old setting std=c++98
 set( CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -Wall ${CMAKE_CXX_FLAGS_RELEASE}" )
@@ -90,7 +91,7 @@ endif()
 include_directories( src )
 
 # list subdirectories to build in
-enable_testing()
+#enable_testing()
 add_subdirectory( src )
-add_subdirectory( test )
+#add_subdirectory( test )
 

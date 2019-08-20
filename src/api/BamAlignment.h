@@ -1031,6 +1031,12 @@ class API_EXPORT BamAlignment {
          * @return -1 if not found NM tag
          */
          int getNMValue() const;
+         static void setPolishMax(int len) {
+            TRIMLEN_MAX = len;
+         }
+         static void setPolishGap(int gap) {
+            GAP_CUT = gap;
+         }
 
     private:
       void advanceIndex(int &i, int &j, int &b, unsigned int &cigarIdx, unsigned int &ci, char &cigarState) const;
@@ -1158,10 +1164,20 @@ class API_EXPORT BamAlignment {
         bool SkipToNextTag(const char storageType,
                            char*& pTagData,
                            unsigned int& numBytesParsed) const;
+         /**
+          * Max length from either end to to polishing
+          * default 6
+          */
+         static int TRIMLEN_MAX; // = 6;
+         /**
+          * Max length between mismatch to do polishing
+          * default 3
+          */
+         static int GAP_CUT; // = 3;
+
 
     // internal data
     private:
-
         // nested class TODO: simplify in future versions
         struct BamAlignmentSupportData {
             /** 
