@@ -73,6 +73,7 @@ mkdir Debug
 cd Debug
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 make
+For testing, have to manually run the binary
 
 To build documents
 
@@ -83,5 +84,8 @@ This will produce html directory for distribution to a web server.
 How to make a distribution?
 I have added some package functionality
 
-make package_source
+** make package_source **
 will gnerate source distribution in different formats
+There is a bug in cmake, you have to clean the build directory 
+first before running this command otherwise it will hung 
+there forever.

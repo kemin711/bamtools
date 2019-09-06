@@ -234,25 +234,36 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    /* problem regardless of which int type to use
     * int32_t or int, cause strange character to 
     * be printed to the terminal
+    */
    vector<std::string> tagNames = ba.GetTagNames();
    // automatic probe is causing some problems
    // removing it.
    for (auto& t : tagNames) {
       char tagtype;
       ba.GetTagType(t, tagtype);
-      if (tagtype == 'i') {
+      if (tagtype == 'i' || tagtype == 'C') { // BamConstants.h define the tag type
          int32_t intval; // must use this type, int is wrong
          ba.GetTag(t, intval);
-         ous << t << ": " << intval << "; ";
+         ous << t << ":" << tagtype << ":" << intval << "; ";
       }
-      else {
+      // actually C is also type int32_t!, using int8_t results in wrong results
+      //else if (tagtype == 'C') {
+      //   int8_t intval; // must use this type, int is wrong
+      //   ba.GetTag(t, intval);
+      //   ous << t << ":" << tagtype << ":" << intval << "; ";
+      //}
+      else if (tagtype == 'Z') {
          string tagval;
          ba.GetTag(t, tagval);
          ous << t << ": " << tagval << "; ";
       }
+      else {
+         ous << "tag type: " << tagtype << " for tag: " << t
+            << " not considered yet\n";
+      }
    }
-   */
    // the following is fine
+   /*
    string val;
    if (ba.HasTag("BC")) {
       ba.GetTag("BC", val);
@@ -295,6 +306,7 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
       ba.GetTag("SA", val);
       ous << "SA: " << val << sep;
    }
+   */
 
    return ous;
 }}
@@ -935,7 +947,7 @@ bool BamAlignment::GetSoftClips(vector<int>& clipSizes,
     return softClipFound;
 }
 
-/*! \fn std::vector<std::string> BamAlignment::GetTagNames(void) const
+/* \fn std::vector<std::string> BamAlignment::GetTagNames(void) const
     \brief Retrieves the BAM tag names.
 
     When paired with GetTagType() and GetTag(), this method allows you

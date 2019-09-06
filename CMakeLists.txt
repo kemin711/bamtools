@@ -91,7 +91,7 @@ endif()
 include_directories( src )
 
 # list subdirectories to build in
-#enable_testing()
+enable_testing()
 add_subdirectory( src )
-#add_subdirectory( test )
+add_subdirectory( test )
 
