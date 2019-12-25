@@ -1109,7 +1109,7 @@ double BamAlignment::getFractionStrand() const {
          return 0;
       }
       else {
-         return (double)overlap/getReferenceWidth();
+         return 1-(double)overlap/getReferenceWidth();
       }
    }
    else {

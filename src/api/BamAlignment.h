@@ -246,6 +246,9 @@ class API_EXPORT BamAlignment {
          * having the XO tag this value could be [0, 1)
          * a fractional number between 0 and 1.
          * If the overlap is 100% of the read length, then it is zero.
+         * The higher the value approaching 1 the lower the overlap.
+         * We use a single return value to record
+         * this multiple situations.
          */
         double getFractionStrand() const;
         /** @returns true if alignment part of paired-end read
