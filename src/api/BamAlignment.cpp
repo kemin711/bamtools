@@ -806,18 +806,14 @@ bool BamAlignment::GetArrayTagType(const std::string& tag, char& type) const {
     \return alignment end position
 */
 int BamAlignment::GetEndPosition(bool usePadded, bool closedInterval) const {
-
     // initialize alignment end to starting position
     int alignEnd = Position;
-
     // iterate over cigar operations
     vector<CigarOp>::const_iterator cigarIter = CigarData.begin();
     vector<CigarOp>::const_iterator cigarEnd  = CigarData.end();
     for ( ; cigarIter != cigarEnd; ++cigarIter) {
         const CigarOp& op = (*cigarIter);
-
         switch ( op.Type ) {
-
             // increase end position on CIGAR chars [DMXN=]
             case Constants::BAM_CIGAR_DEL_CHAR      :
             case Constants::BAM_CIGAR_MATCH_CHAR    :
@@ -826,23 +822,19 @@ int BamAlignment::GetEndPosition(bool usePadded, bool closedInterval) const {
             case Constants::BAM_CIGAR_SEQMATCH_CHAR :
                 alignEnd += op.Length;
                 break;
-
             // increase end position on insertion, only if @usePadded is true
             case Constants::BAM_CIGAR_INS_CHAR :
                 if ( usePadded )
                     alignEnd += op.Length;
                 break;
-
             // all other CIGAR chars do not affect end position
             default :
                 break;
         }
     }
-
     // adjust for closedInterval, if requested
     if ( closedInterval )
         alignEnd -= 1;
-
     // return result
     return alignEnd;
 }
@@ -1454,6 +1446,12 @@ std::pair<int,int> BamAlignment::getPairedRange() const {
             b=getEndPosition();
             e = b + getInsertSize() - 1;
          }
+         else if (getPosition() == getMatePosition()) {
+            // <--R1--      or   <--R1--------
+            // <--R2-----        <--R2--
+            b=getEndPosition();
+            e=b+getInsertSize();
+         }
          else {  // <--R2-- <--R1--
             e = getEndPosition();
             b= e-abs(getInsertSize()) + 1; // insert Size is negative for the last one
@@ -1487,7 +1485,7 @@ std::pair<int,int> BamAlignment::getPairedRange() const {
         else { // <--R2--   --R1--> 
            //           b   e   cannot get e exactly without R2 length
            e=getPosition();
-           b=e-abs(getInsertSize()) + 1;
+           b=e-abs(getInsertSize()) + 1; // how bwa compute it
         }
       }
       else { // --R1--> --R2-->
@@ -1503,6 +1501,7 @@ std::pair<int,int> BamAlignment::getPairedRange() const {
    }
    return make_pair(b,e);
 }
+
 std::pair<int,int> BamAlignment::getPairedInterval() const {
    pair<int,int> tmp = getPairedRange();
    if (tmp.first > tmp.second) {
