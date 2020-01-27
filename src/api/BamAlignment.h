@@ -22,6 +22,9 @@
 #include <typeinfo>
 //#include <mutex>
 
+// to turn off debug mode uncomment the following line
+//#define NDEBUG 
+//above will disable assert()
 namespace BamTools {
 
 //! \cond
@@ -858,6 +861,9 @@ class API_EXPORT BamAlignment {
          * for working with other applications.
          */
         vector<pair<char,int> > getCigarOperation() const;
+        /**
+         * @return a string version of Cigar.
+         */
         string getCigarString() const;
         /**
          * Some alignment's cigar entry is *
@@ -865,6 +871,22 @@ class API_EXPORT BamAlignment {
          * @return true if no cigar
          */
         bool lackCigar() const { return CigarData.empty(); }
+        /**
+         * @return the  Cigar operation type as a single char
+         *    at index i.
+         */
+        char getCigarType(unsigned int i) const {
+           return CigarData[i].getType();
+        }
+        /**
+         * @return the length of the Cigar setment at index i
+         */
+        unsigned int getCigarLength(unsigned int i) const {
+           return CigarData[i].getLength();
+        }
+        int getCigarOperationCount() const {
+           return CigarData.size();
+        }
         /**
          * To fix certain aligner's tendency to put two gap
          * when a small region of the sequence has more mismatches
@@ -973,7 +995,10 @@ class API_EXPORT BamAlignment {
         /**
          * update CigarData with a new value.
          */
-        void setCigarData(const std::vector<CigarOp> &cd) { CigarData = cd; } 
+        void setCigarData(const std::vector<CigarOp> &cd) { 
+           CigarData = cd; 
+           SupportData.NumCigarOperations=cd.size();
+        } 
         /** 
          * set CigarData from a vector a pair {char, int}
          *  for easy communication with external world.
@@ -1017,6 +1042,22 @@ class API_EXPORT BamAlignment {
          * to closed range [b,e]
          */
         std::string substringByRef(int b, int e) const;
+        /**
+         * @return the char at index b according to the reference
+         *    sequence index coordinate system.
+         */
+        char charAtByRef(int ri) const;
+        /**
+         * @param len length of the deletion from query.
+         * @return true of index is a deletion of query sequence for
+         *    length of len.
+         */
+        bool isDeletionAt(int ri, int len) const;
+        /**
+         * The position is followed by a insertion of particular
+         *   sequence.
+         */
+        bool isInsertionAt(int ri, const string& seq) const;
         /** even position number, odd position letter last 3 digits
          * for bases 00 A, 01 C, 10 G, 11 T, 100 N, first bit del
          * MD:Z:20^A127
@@ -1078,7 +1119,24 @@ class API_EXPORT BamAlignment {
          }
 
     private:
-      void advanceIndex(int &i, int &j, int &b, unsigned int &cigarIdx, unsigned int &ci, char &cigarState) const;
+         /** 
+          * Helper function apply to generic situation where
+          * both Ref or Query may be advanced.
+          *
+          * move i to position b if i is not at b
+          * j to the start of the query index
+          * @param i index in reference seq 0-based index
+          * @param j index in query sequence 0-based index
+          * @param x desired index to advance i to on refseq. If x happen
+          *     to reside in a Deletion, then x will be automatically
+          *     advanced to the first base of the next M. Not sure
+          *     this behavior is good or bad. Need to debug.
+          * @param cigarIdx the index inside one Cigar segment
+          *     range from [0, segment.length-1]
+          * @param ci cigar segment index [0, NumberOfCigar-1]
+          */
+         void advanceIndex(int &i, int &j, int &x, unsigned int &cigarIdx, unsigned int &ci) const;
+         //void advanceIndex(int &i, int &j, int &x, unsigned int &cigarIdx, unsigned int &ci, char &cigarState) const;
 
     // public data fields, these fileds should all become private in the future
     public:
@@ -1199,6 +1257,14 @@ class API_EXPORT BamAlignment {
         bool FindTag(const std::string& tag, char*& pTagData, 
               const unsigned int& tagDataLength, unsigned int& numBytesParsed) const;
         bool IsValidSize(const std::string& tag, const std::string& type) const;
+         /**
+          * Sets a formatted error string for this alignment.
+          *
+          * @param[in] where class/method where error occurred
+          * @param[in] what  description of error
+          * TODO: This type of error handling is ad hock, should use the
+          * C++ language exception handling. Should remove in future versions.
+          */
         void SetErrorString(const std::string& where, const std::string& what) const;
         bool SkipToNextTag(const char storageType,
                            char*& pTagData,
