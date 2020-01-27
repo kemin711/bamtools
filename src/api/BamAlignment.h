@@ -1499,28 +1499,34 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
         // TODO: set error string?
         return false;
     }
-    //cout << __FILE__ << ":" << __LINE__ << ": after FindTag operation. pTagData-1: "
+    //cerr << __FILE__ << ":" << __LINE__ << ": after FindTag operation. pTagData-1: "
     //   << pTagData-1 << endl;
     // fetch data type
     //const char type = *(pTagData - 1);
     char type = *(pTagData - 1);
-    if (type == 'C' && (tag == "NM" || tag == "AS" || tag == "XS")) { // patch a bug
+    if (type == 'C')
+     //  && (tag == "NM" || tag == "AS" || tag == "XS" 
+     //        || tag == "XX" || tag == "YY" || tag == "XY"
+     //        || tag == "XC" || tag == "YM" || tag == "YG"
+     //        || tag == "XO")) 
+    { // patch a bug in bamtools thinking type i as C
        //type = Constants::BAM_TAG_TYPE_INT32;
-      //cout << __FILE__ << ":" << __LINE__ << ": pTagData: "
-      //   << pTagData << endl;
+      //cerr << __FILE__ << ":" << __LINE__ << ": pTagData: "
+       //  << pTagData << endl;
       //cerr << "NM int val at pTagData: " << (int)(*pTagData) << " at 2 bytes later: "
       //   << (int)(*(pTagData+2)) << endl;
        // this is a short term patc for the bug
-      destination=(int)(*pTagData);
+      destination=(uint32_t)(*pTagData);
       return true;
     }
-    else if ( !TagTypeHelper<T>::CanConvertFrom(type) ) {
+    //else if (!TagTypeHelper<T>::CanConvertFrom(type)) {
         // TODO: set error string ?
-       cerr << __FILE__ << ":" << __LINE__ << ":"
-          << "Failed to convert to " << typeid(destination).name() 
-          << " from " << type << endl;
-        return false;
-    }
+   //    cerr << endl << __FILE__ << ":" << __LINE__ << ":"
+    //      << "Failed to convert to " << typeid(destination).name() 
+    //      << " from " << type << " tag: " << tag << endl
+    //      << endl << *this << endl << endl;
+    //    return false;
+    //}
     // determine data length
     //int destinationLength = 0;
     size_t destinationLength = 0;
