@@ -74,6 +74,8 @@ cd Debug
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 make
 For testing, have to manually run the binary
+../bin/testbamalignment
+
 Automatic testing always crashes:
 [100%] Linking CXX executable ../../bin/testbamalignment
 CMakeFiles/testbamalignment.dir/testbamalignment.cpp.o: In function `BamAlignmentTest_pathEndSoftBack_Test::TestBody()':
@@ -109,7 +111,13 @@ How to make a distribution?
 I have added some package functionality
 
 ** make package_source **
-will gnerate source distribution in different formats
+===================
+cd build
+rm -rf * # you must remove everything othewise cmake will hung
+cmake ..
+make package_source
+=====================
+will genrate source distribution in different formats
 There is a bug in cmake, you have to clean the build directory 
 first before running this command otherwise it will hung 
 there forever.

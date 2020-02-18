@@ -72,6 +72,20 @@ class API_EXPORT BamAlignment {
             MateRefID(mrefid), MatePosition(mrefpos), InsertSize(0),
             Filename()
         {}
+        /**
+         * Convenient constructor with Cigar input for testing
+         */
+        BamAlignment(const std::string& qname, int32_t refid, int32_t refpos, uint32_t alnflag, 
+              int32_t mrefid, int32_t mrefpos, const std::string& queryseq, const std::string& qstring,
+              const string& cigarstr)
+           : Name(qname), Length(queryseq.size()),
+             QueryBases(queryseq), AlignedBases(), Qualities(qstring),
+             TagData(), RefID(refid), Position(refpos), Bin(0), MapQuality(0),
+             AlignmentFlag(alnflag), CigarData(),
+            MateRefID(mrefid), MatePosition(mrefpos), InsertSize(0),
+            Filename()
+        { setCigar(cigarstr); }
+
         /** 
          *  Copy constructor
          */
@@ -872,6 +886,16 @@ class API_EXPORT BamAlignment {
          */
         bool lackCigar() const { return CigarData.empty(); }
         /**
+         * There is no Deletion segment in the Cigar
+         */
+        bool lackDCigar() const;
+        bool hasDCigar() const;
+        /**
+         * There is not Insertion segment in the Cigar
+         */
+        bool lackICigar() const;
+        bool hasICigar() const;
+        /**
          * @return the  Cigar operation type as a single char
          *    at index i.
          */
@@ -884,7 +908,7 @@ class API_EXPORT BamAlignment {
         unsigned int getCigarLength(unsigned int i) const {
            return CigarData[i].getLength();
         }
-        int getCigarOperationCount() const {
+        unsigned int getCigarOperationCount() const {
            return CigarData.size();
         }
         /**
@@ -960,7 +984,7 @@ class API_EXPORT BamAlignment {
          */
         void chopLastSoftclip();
 
-        /// setter methods
+        ///// setter methods ////
         /**
          * change the name of the query
          */
@@ -1005,6 +1029,7 @@ class API_EXPORT BamAlignment {
          *  @param cd CigarData in more universal std data type
          * */
         void setCigarOperation(const std::vector<pair<char,int> > &cd); 
+        void setCigar(const string& cstr);
         /**
          * @param materefid Mate reference id, set to -1 if mate unmapped
          */
@@ -1021,7 +1046,11 @@ class API_EXPORT BamAlignment {
            InsertSize = insize; 
         }  
 
+        //// end of setter methods ////
+
         // mutation functions
+        void nextCigar(int& i, int& j, unsigned int& ci) const;
+        int indexRef2Query(int ri) const;
         /**
          * Pick the subsequence based on the 0-based index
          * of query sequence. If the [b,e] fall in a 
@@ -1056,6 +1085,8 @@ class API_EXPORT BamAlignment {
         /**
          * The position is followed by a insertion of particular
          *   sequence.
+         * @param seq is the sequence of last Base of M
+         *   plus the entire bases of I.
          */
         bool isInsertionAt(int ri, const string& seq) const;
         /** even position number, odd position letter last 3 digits
@@ -1135,8 +1166,9 @@ class API_EXPORT BamAlignment {
           *     range from [0, segment.length-1]
           * @param ci cigar segment index [0, NumberOfCigar-1]
           */
-         void advanceIndex(int &i, int &j, int &x, unsigned int &cigarIdx, unsigned int &ci) const;
-         //void advanceIndex(int &i, int &j, int &x, unsigned int &cigarIdx, unsigned int &ci, char &cigarState) const;
+         //void advanceIndex(int &i, int &j, int &x, unsigned int &cigarIdx, unsigned int &ci) const;
+         // above new implementation did not pass test yet
+         void advanceIndex(int &i, int &j, int &x, unsigned int &cigarIdx, unsigned int &ci, char &cigarState) const;
 
     // public data fields, these fileds should all become private in the future
     public:
