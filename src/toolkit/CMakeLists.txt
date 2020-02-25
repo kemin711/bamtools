@@ -9,8 +9,9 @@
 include_directories( ${BamTools_SOURCE_DIR}/src/api
                      ${BamTools_SOURCE_DIR}/src/utils
                      ${BamTools_SOURCE_DIR}/src/third_party
-                   )
-
+)
+#set(CMAKE_LIBRARY_PATH $LD_LIBRARY_PATH)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 # compile main bamtools application
 add_executable( bamtools_cmd
                 bamtools_convert.cpp
@@ -27,7 +28,7 @@ add_executable( bamtools_cmd
                 bamtools_split.cpp
                 bamtools_stats.cpp
                 bamtools.cpp
-              )
+)
 
 # set BamTools application properties
 set_target_properties( bamtools_cmd PROPERTIES
@@ -38,7 +39,8 @@ set_target_properties( bamtools_cmd PROPERTIES
 configure_file( bamtools_version.h.in ${BamTools_SOURCE_DIR}/src/toolkit/bamtools_version.h )
 
 # define libraries to link
-target_link_libraries( bamtools_cmd BamTools BamTools-utils jsoncpp )
+link_directories($ENV{LD_LIBRARY_PATH})
+target_link_libraries(bamtools_cmd BamTools BamTools-utils jsoncpp)
 
 # set application install destinations
 install( TARGETS bamtools_cmd DESTINATION "bin")

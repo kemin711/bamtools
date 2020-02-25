@@ -27,16 +27,31 @@
 namespace BamTools {
 namespace Internal {
 
+/**
+ * Use only by this file
+ * IP version 6 use 128 bit value
+ * IP version 4 use 32 bits
+ */
 struct IPv6Address {
 
-    // ctor
-    inline IPv6Address(void) { memset(&data, 0, sizeof(uint8_t)*16); }
+    /** 
+     * Default constructor
+     */
+    IPv6Address() : data{0} { 
+       //memset(&data, 0, sizeof(uint8_t)*16); 
+    }
+
+    void clear() {
+       std::fill(data, data+16, 0);
+    }
 
     // data access (no bounds checking)
     inline uint8_t& operator[](size_t index)       { return data[index]; }
     inline uint8_t  operator[](size_t index) const { return data[index]; }
 
-    // data
+    /**
+     *  Raw data to hold the ip address
+     */
     uint8_t data[16];
 };
 

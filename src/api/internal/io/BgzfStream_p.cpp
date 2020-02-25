@@ -48,7 +48,7 @@ BgzfStream::~BgzfStream(void) {
 // checks BGZF block header
 bool BgzfStream::CheckBlockHeader(char* header) {
     return (header[0] == Constants::GZIP_ID1 &&
-            header[1] == Constants::GZIP_ID2 &&
+            header[1] == char(Constants::GZIP_ID2) &&
             header[2] == Z_DEFLATED &&
             (header[3] & Constants::FLG_FEXTRA) != 0 &&
             BamTools::UnpackUnsignedShort(&header[10]) == Constants::BGZF_XLEN &&
@@ -82,9 +82,7 @@ void BgzfStream::Close(void) {
 
     // reset state
     m_blockLength = 0;
-    m_blockOffset = 0;
-    m_blockAddress = 0;
-    m_isWriteCompressed = true;
+    m_blockOffset = 0; m_blockAddress = 0; m_isWriteCompressed = true;
 }
 
 // compresses the current block
@@ -93,10 +91,10 @@ size_t BgzfStream::DeflateBlock(int32_t blockLength) {
     char* buffer = m_compressedBlock.Buffer;
     memset(buffer, 0, 18);
     buffer[0]  = Constants::GZIP_ID1;
-    buffer[1]  = Constants::GZIP_ID2;
+    buffer[1]  = char(Constants::GZIP_ID2);
     buffer[2]  = Constants::CM_DEFLATE;
     buffer[3]  = Constants::FLG_FEXTRA;
-    buffer[9]  = Constants::OS_UNKNOWN;
+    buffer[9]  = char(Constants::OS_UNKNOWN);
     buffer[10] = Constants::BGZF_XLEN;
     buffer[12] = Constants::BGZF_ID1;
     buffer[13] = Constants::BGZF_ID2;
@@ -133,8 +131,7 @@ size_t BgzfStream::DeflateBlock(int32_t blockLength) {
         // compress the data
         status = deflate(&zs, Z_FINISH);
         // if not at stream end
-        if ( status != Z_STREAM_END ) {
-            deflateEnd(&zs);
+        if ( status != Z_STREAM_END ) { deflateEnd(&zs);
             // there was not enough space available in buffer
             // try to reduce the input length & re-start loop
             if ( status == Z_OK ) {

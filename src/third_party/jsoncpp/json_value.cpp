@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <cstring>
 #include <cassert>
+#include <string>
 #ifdef JSON_USE_CPPTL
 # include <cpptl/conststring.h>
 #endif
@@ -89,13 +90,13 @@ releaseStringValue( char *value )
 
 
 Value::CommentInfo::CommentInfo()
-   : comment_( 0 )
+   : comment_(nullptr)
 {
 }
 
 Value::CommentInfo::~CommentInfo()
 {
-   if ( comment_ )
+   if (comment_ != nullptr)
       releaseStringValue( comment_ );
 }
 
@@ -103,7 +104,7 @@ Value::CommentInfo::~CommentInfo()
 void 
 Value::CommentInfo::setComment( const char *text )
 {
-   if ( comment_ )
+   if (comment_ != nullptr)
       releaseStringValue( comment_ );
    JSON_ASSERT( text );
    JSON_ASSERT_MESSAGE( text[0]=='\0' || text[0]=='/', "Comments must start with /");
@@ -137,14 +138,20 @@ Value::CZString::CZString( const char *cstr, DuplicationPolicy allocate )
 {
 }
 
-Value::CZString::CZString( const CZString &other )
-: cstr_( other.index_ != noDuplication &&  other.cstr_ != 0
-                ?  duplicateStringValue( other.cstr_ )
-                : other.cstr_ )
-   , index_( other.cstr_ ? (other.index_ == noDuplication ? noDuplication : duplicate)
-                         : other.index_ )
-{
-}
+// very bad code comparing enum with unsigned int (ArrayIndex index_)
+Value::CZString::CZString(const CZString &other)
+: cstr_(other.index_ != 0 && other.cstr_ != nullptr ? 
+      duplicateStringValue( other.cstr_ ) : other.cstr_)
+   ,index_(other.cstr_ ? 
+         (other.index_ == 0 ? 0 : 1) : other.index_)
+{ }
+   /*
+: cstr_(other.index_ != noDuplication && other.cstr_ != nullptr ? 
+      duplicateStringValue( other.cstr_ ) : other.cstr_)
+   ,index_(other.cstr_ ? 
+         (other.index_ == noDuplication ? noDuplication : duplicate) : other.index_)
+{ }
+*/
 
 Value::CZString::~CZString()
 {
@@ -218,16 +225,16 @@ Value::CZString::isStaticString() const
  * memset( this, 0, sizeof(Value) )
  * This optimization is used in ValueInternalMap fast allocator.
  */
-Value::Value( ValueType type )
-   : type_( type )
-   , allocated_( 0 )
-   , comments_( 0 )
+Value::Value(ValueType type)
+   : type_(type) , 
+   //allocated_(0) , 
+   allocated_(false) , 
+   comments_(nullptr)
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
-   , itemIsUsed_( 0 )
+   , itemIsUsed_(0)
 #endif
 {
-   switch ( type )
-   {
+   switch (type) {
    case nullValue:
       break;
    case intValue:
@@ -261,11 +268,10 @@ Value::Value( ValueType type )
    }
 }
 
-
 #if !defined(JSON_NO_INT64)
 Value::Value( ArrayIndex value )
    : type_( uintValue )
-   , comments_( 0 )
+   , comments_(nullptr)
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -273,9 +279,8 @@ Value::Value( ArrayIndex value )
    value_.uint_ = value;
 }
 
-Value::Value( int value )
-   : type_( intValue )
-   , comments_( 0 )
+Value::Value(int value)
+   : type_( intValue ) , comments_(nullptr)
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -286,9 +291,8 @@ Value::Value( int value )
 #endif // if !defined(JSON_NO_INT64)
 
 
-Value::Value( Int value )
-   : type_( intValue )
-   , comments_( 0 )
+Value::Value(Int value)
+   : type_( intValue ) , comments_(nullptr)
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -297,9 +301,8 @@ Value::Value( Int value )
 }
 
 
-Value::Value( UInt value )
-   : type_( uintValue )
-   , comments_( 0 )
+Value::Value(UInt value)
+   : type_( uintValue ) , comments_(nullptr)
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -308,8 +311,12 @@ Value::Value( UInt value )
 }
 
 Value::Value( double value )
-   : type_( realValue )
-   , comments_( 0 )
+   : type_( realValue ), 
+   //allocated_(true), // adding this caused overflow issue
+   //allocated_(1), // adding this caused overflow issue
+   //allocated_(0), // this eliminates overflow issue
+   //allocated_(false), // this eliminates overflow issue
+   comments_(nullptr)
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -317,23 +324,23 @@ Value::Value( double value )
    value_.real_ = value;
 }
 
-Value::Value( const char *value )
-   : type_( stringValue )
-   , allocated_( true )
-   , comments_( 0 )
-# ifdef JSON_VALUE_USE_INTERNAL_MAP
-   , itemIsUsed_( 0 )
+Value::Value(const char *vvalue)
+   : type_(stringValue), 
+    allocated_(true), 
+      comments_(nullptr)
+#ifdef JSON_VALUE_USE_INTERNAL_MAP
+      , itemIsUsed_( 0 )
 #endif
 {
-   value_.string_ = duplicateStringValue( value );
+   value_.string_ = duplicateStringValue(vvalue);
 }
 
 
 Value::Value( const char *beginValue, 
               const char *endValue )
-   : type_( stringValue )
-   , allocated_( true )
-   , comments_( 0 )
+   : type_( stringValue ),  
+    allocated_( true ), 
+   comments_( 0 )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -344,8 +351,7 @@ Value::Value( const char *beginValue,
 
 
 Value::Value( const std::string &value )
-   : type_( stringValue )
-   , allocated_( true )
+   : type_( stringValue ), allocated_( true )
    , comments_( 0 )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
@@ -358,7 +364,7 @@ Value::Value( const std::string &value )
 
 Value::Value( const StaticString &value )
    : type_( stringValue )
-   , allocated_( false )
+   ,allocated_(false)
    , comments_( 0 )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
@@ -433,8 +439,7 @@ Value::Value( const Value &other )
    default:
       JSON_ASSERT_UNREACHABLE;
    }
-   if ( other.comments_ )
-   {
+   if (other.comments_ != nullptr) {
       comments_ = new CommentInfo[numberOfCommentPlacement];
       for ( int comment =0; comment < numberOfCommentPlacement; ++comment )
       {
@@ -501,17 +506,13 @@ Value::swap( Value &other )
    other.allocated_ = temp2;
 }
 
-ValueType 
-Value::type() const
+ValueType Value::type() const
 {
    return type_;
 }
-
-
-int 
-Value::compare( const Value &other )
+/*
+int Value::compare( const Value &other )
 {
-   /*
    int typeDelta = other.type_ - type_;
    switch ( type_ )
    {
@@ -534,9 +535,9 @@ Value::compare( const Value &other )
    default:
       JSON_ASSERT_UNREACHABLE;
    }
-   */
    return 0;  // unreachable
 }
+   */
 
 bool 
 Value::operator <( const Value &other ) const
@@ -1538,8 +1539,7 @@ Path::Path( const std::string &path,
 }
 
 
-void 
-Path::makePath( const std::string &path,
+void Path::makePath( const std::string &path,
                 const InArgs &in )
 {
    const char *current = path.c_str();
@@ -1551,7 +1551,7 @@ Path::makePath( const std::string &path,
       {
          ++current;
          if ( *current == '%' )
-            addPathInArg( path, in, itInArg, PathArgument::kindIndex );
+            addPathInArg(path, in, itInArg, PathArgument::kindIndex );
          else
          {
             ArrayIndex index = 0;
@@ -1581,13 +1581,13 @@ Path::makePath( const std::string &path,
    }
 }
 
-
-void 
-Path::addPathInArg( const std::string &path, 
+void Path::addPathInArg( const std::string &path, 
                     const InArgs &in, 
                     InArgs::const_iterator &itInArg, 
-                    PathArgument::Kind kind )
+                    PathArgument::Kind kind)
 {
+   //using namespace std;
+   std::cerr << ":WARN unused argument (path) " << path << std::endl;
    if ( itInArg == in.end() )
    {
       // Error: missing argument %d
@@ -1603,11 +1603,13 @@ Path::addPathInArg( const std::string &path,
 }
 
 
-void 
-Path::invalidPath( const std::string &path, 
+void Path::invalidPath( const std::string &path, 
                    int location )
 {
    // Error: invalid path.
+   std::cerr << __FILE__ << ":" << __LINE__ 
+      << ":WARN invalie path " << path << " at location " << location
+      << std::endl;
 }
 
 

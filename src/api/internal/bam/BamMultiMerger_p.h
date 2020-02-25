@@ -53,11 +53,20 @@ struct MergeItem {
     ~MergeItem(void) { }
 };
 
+/**
+ * A subclass for the generic binary_function and specialized
+ * to compare two items and return true or false
+ */
 template<typename Compare>
-struct MergeItemSorter : public std::binary_function<MergeItem, MergeItem, bool> {
+struct MSortfunc : public std::binary_function<MergeItem, MergeItem, bool> {
 
     public:
-        MergeItemSorter(const Compare& comp = Compare())
+       /**
+        * Constructor for the sorting function
+        * @param comp the user can supply the comparison function
+        *    otherwise this function will use the deffault
+        */
+        MSortfunc(const Compare& comp = Compare())
             : m_comp(comp)
         { }
 
@@ -68,10 +77,16 @@ struct MergeItemSorter : public std::binary_function<MergeItem, MergeItem, bool>
         }
 
     private:
+        /**
+         * Member to store the comparision binary function
+         */
         Compare m_comp;
 };
 
-// pure ABC so we can just work polymorphically with any specific merger implementation
+/** 
+ * pure ABC so we can just work polymorphically with any specific merger implementation
+ * Pure base class not templated.
+ */
 class IMultiMerger {
 
     public:
@@ -88,17 +103,19 @@ class IMultiMerger {
 };
 
 // general merger
+/**
+ * Template is the compare function
+ */
 template<typename Compare>
 class MultiMerger : public IMultiMerger {
-
     public:
         typedef Compare                      CompareType;
-        typedef MergeItemSorter<CompareType> MergeType;
+        typedef MSortfunc<CompareType> MergeMethod;
 
     public:
         explicit MultiMerger(const Compare& comp = Compare())
             : IMultiMerger()
-            , m_data( MergeType(comp) )
+            , m_data( MergeMethod(comp) )
         { }
         ~MultiMerger(void) { }
 
@@ -113,9 +130,15 @@ class MultiMerger : public IMultiMerger {
 
     private:
         typedef MergeItem                              ValueType;
-        typedef std::multiset<ValueType, MergeType>    ContainerType;
+        typedef std::multiset<ValueType, MergeMethod>    ContainerType;
         typedef typename ContainerType::iterator       DataIterator;
         typedef typename ContainerType::const_iterator DataConstIterator;
+        /**
+         * The data will be stored as a multiset and sorted
+         * by container's self balancing act.
+         * The container uses the comparator provide to the
+         * constructor of this object.
+         */
         ContainerType m_data;
 };
 
@@ -179,13 +202,15 @@ inline MergeItem MultiMerger<Compare>::TakeFirst(void) {
     return firstItem;
 }
 
-// unsorted "merger"
+/**
+ * Template specialization for unsorted merge
+ * unsorted "merger"
+ */
 template<>
 class MultiMerger<Algorithms::Sort::Unsorted> : public IMultiMerger {
-
     public:
         explicit MultiMerger(const Algorithms::Sort::Unsorted& comp = Algorithms::Sort::Unsorted())
-            : IMultiMerger()
+            : IMultiMerger(), dummy(comp)
         { }
         ~MultiMerger(void) { }
 
@@ -203,7 +228,11 @@ class MultiMerger<Algorithms::Sort::Unsorted> : public IMultiMerger {
         typedef std::deque<ValueType>         ContainerType;
         typedef ContainerType::iterator       DataIterator;
         typedef ContainerType::const_iterator DataConstIterator;
+        /**
+         * The data is stored in a queue
+         */
         ContainerType m_data;
+        Algorithms::Sort::Unsorted dummy;
 };
 
 inline

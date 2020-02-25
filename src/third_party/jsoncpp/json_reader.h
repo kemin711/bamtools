@@ -13,6 +13,9 @@
 # include <string>
 # include <iostream>
 
+/**
+ * Badly written should never use these class
+ */
 namespace Json {
 
    /** \brief Unserialize a <a HREF="http://www.json.org">JSON</a> document into a Value.
@@ -94,26 +97,23 @@ namespace Json {
          tokenError
       };
 
-      class Token
-      {
-      public:
-         TokenType type_;
-         Location start_;
-         Location end_;
+      class Token {
+         public:
+            TokenType type_;
+            Location start_;
+            Location end_;
       };
 
-      class ErrorInfo
-      {
-      public:
-         Token token_;
-         std::string message_;
-         Location extra_;
+      class ErrorInfo {
+         public:
+            Token token_;
+            std::string message_;
+            Location extra_;
       };
 
       typedef std::deque<ErrorInfo> Errors;
 
       bool expectToken( TokenType type, Token &token, const char *message );
-      bool readToken( Token &token );
       void skipSpaces();
       bool match( Location pattern, 
                   int patternLength );
@@ -123,7 +123,14 @@ namespace Json {
       bool readString();
       void readNumber();
       bool readValue();
-      bool readObject( Token &token );
+      /**
+       * Read single token
+       */
+      bool readToken(Token &token);
+      /**
+       * Not sure what does this function do
+       */
+      bool readObject(Token &token);
       bool readArray( Token &token );
       bool decodeNumber( Token &token );
       bool decodeString( Token &token );

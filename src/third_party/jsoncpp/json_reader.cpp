@@ -446,17 +446,16 @@ Reader::readString()
 }
 
 
-bool 
-Reader::readObject( Token &tokenStart )
-{
-   Token tokenName;
+bool Reader::readObject(Token &tokenStart) {
+   //Token tokenName;
+   Token tokenName(tokenStart);
    std::string name;
-   currentValue() = Value( objectValue );
-   while ( readToken( tokenName ) )
+   currentValue() = Value(objectValue);
+   while (readToken(tokenName))
    {
       bool initialTokenOk = true;
-      while ( tokenName.type_ == tokenComment  &&  initialTokenOk )
-         initialTokenOk = readToken( tokenName );
+      while (tokenName.type_ == tokenComment  &&  initialTokenOk)
+         initialTokenOk = readToken(tokenName);
       if  ( !initialTokenOk )
          break;
       if ( tokenName.type_ == tokenObjectEnd  &&  name.empty() )  // empty object
@@ -505,15 +504,18 @@ Reader::readObject( Token &tokenStart )
 }
 
 
-bool 
-Reader::readArray( Token &tokenStart )
+bool Reader::readArray(Token &tokenStart)
 {
-   currentValue() = Value( arrayValue );
+   // tokenStart is unused parameter!
+   Token dummy=tokenStart;
+   std::cerr << __FILE__ << ":" << __LINE__ << ":WARN bad unused parameter "
+      << dummy.type_ << " " << *dummy.start_ << " " << *dummy.end_ << std::endl;
+   currentValue() = Value(arrayValue);
    skipSpaces();
    if ( *current_ == ']' ) // empty array
    {
       Token endArray;
-      readToken( endArray );
+      readToken(endArray);
       return true;
    }
    int index = 0;

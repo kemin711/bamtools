@@ -2743,7 +2743,8 @@ void BamAlignment::chopBack(size_t len, int numMismatch) {
          }
       }
       else { //if (CigarData.back().getLength() < len) 
-         unsigned int c=CigarData.size()-1;
+         //unsigned int c=CigarData.size()-1;
+         int c=CigarData.size()-1;
          size_t x=0;
          while (c >= 0) {
             if (CigarData[c].getType() == 'M') {
@@ -2780,7 +2781,8 @@ void BamAlignment::chopBack(size_t len, int numMismatch) {
       Qualities.resize(Length);
    }
    else {  // end with softclip
-      unsigned int c=CigarData.size()-2; // last M index
+      //unsigned int c=CigarData.size()-2; // last M index
+      int c=CigarData.size()-2; // last M index
       if (CigarData[c].getType() != 'M') { //such as 121M50S
          cerr << __FILE__ << ":" << __LINE__ << " write more code for "
             << getCigarString() << " Cigar modification\n" << *this << endl;

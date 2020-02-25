@@ -15,6 +15,7 @@ add_definitions( -fPIC ) # (attempt to force PIC compiling on CentOS, not being 
 
 # fetch all internal source files
 add_subdirectory( internal )
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # make list of all API source files
 set( BamToolsAPISources

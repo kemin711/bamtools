@@ -9,6 +9,7 @@
 # include "json_forwards.h"
 # include <string>
 # include <vector>
+#include <iostream>
 
 # ifndef JSON_USE_CPPTL_SMALLMAP
 #  include <map>
@@ -19,7 +20,10 @@
 #  include <cpptl/forwards.h>
 # endif
 
-/** \brief JSON (JavaScript Object Notation).
+/** 
+ * \brief JSON (JavaScript Object Notation).
+ * Looks like this is not a compledted project should never
+ * use this implementation.
  */
 namespace Json {
 
@@ -45,11 +49,6 @@ namespace Json {
       numberOfCommentPlacement
    };
 
-//# ifdef JSON_USE_CPPTL
-//   typedef CppTL::AnyEnumerator<const char *> EnumMemberNames;
-//   typedef CppTL::AnyEnumerator<const Value &> EnumValues;
-//# endif
-
    /** \brief Lightweight wrapper to tag static string.
     *
     * Value constructor and objectValue member assignement takes advantage of the
@@ -64,26 +63,25 @@ namespace Json {
     * object[code] = 1234;
     * \endcode
     */
-   class JSON_API StaticString
-   {
-   public:
-      explicit StaticString( const char *czstring )
-         : str_( czstring )
-      {
-      }
+   class JSON_API StaticString {
+      public:
+         explicit StaticString( const char *czstring )
+            : str_( czstring )
+         {
+         }
 
-      operator const char *() const
-      {
-         return str_;
-      }
+         operator const char *() const
+         {
+            return str_;
+         }
 
-      const char *c_str() const
-      {
-         return str_;
-      }
+         const char *c_str() const
+         {
+            return str_;
+         }
 
-   private:
-      const char *str_;
+      private:
+         const char *str_;
    };
 
    /** \brief Represents a <a HREF="http://www.json.org">JSON</a> value.
@@ -113,8 +111,7 @@ namespace Json {
     * It is possible to iterate over the list of a #objectValue values using 
     * the getMemberNames() method.
     */
-   class JSON_API Value 
-   {
+   class JSON_API Value {
       friend class ValueIteratorBase;
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
       friend class ValueInternalLink;
@@ -136,29 +133,32 @@ namespace Json {
    private:
 #ifndef JSONCPP_DOC_EXCLUDE_IMPLEMENTATION
 # ifndef JSON_VALUE_USE_INTERNAL_MAP
-      class CZString 
-      {
-      public:
-         enum DuplicationPolicy 
-         {
-            noDuplication = 0,
-            duplicate,
-            duplicateOnCopy
-         };
-         CZString( ArrayIndex index );
-         CZString( const char *cstr, DuplicationPolicy allocate );
-         CZString( const CZString &other );
-         ~CZString();
-         CZString &operator =( const CZString &other );
-         bool operator<( const CZString &other ) const;
-         bool operator==( const CZString &other ) const;
-         ArrayIndex index() const;
-         const char *c_str() const;
-         bool isStaticString() const;
-      private:
-         void swap( CZString &other );
-         const char *cstr_;
-         ArrayIndex index_;
+      class CZString {
+         public:
+            enum DuplicationPolicy { noDuplication = 0, duplicate=1, duplicateOnCopy=2 };
+            CZString(ArrayIndex index);
+            CZString( const char *cstr, DuplicationPolicy allocate );
+            /**
+             * Copy constructor
+             */
+            CZString(const CZString &other);
+            ~CZString();
+            CZString &operator =( const CZString &other );
+            bool operator<( const CZString &other ) const;
+            bool operator==( const CZString &other ) const;
+            ArrayIndex index() const;
+            const char *c_str() const;
+            bool isStaticString() const;
+         private:
+            void swap( CZString &other );
+            /**
+             * Const cstring
+             */
+            const char *cstr_;
+            /**
+             * ArrayIndex is unsinged int
+             */
+            ArrayIndex index_;
       };
 
    public:
@@ -177,14 +177,14 @@ namespace Json {
         To create an empty array, pass arrayValue.
         To create an empty object, pass objectValue.
         Another Value can then be set to this one by assignment.
-	This is useful since clear() and resize() will not alter types.
+      This is useful since clear() and resize() will not alter types.
 
-        Examples:
-	\code
-	Json::Value null_value; // null
-	Json::Value arr_value(Json::arrayValue); // []
-	Json::Value obj_value(Json::objectValue); // {}
-	\endcode
+         Examples:
+      \code
+      Json::Value null_value; // null
+      Json::Value arr_value(Json::arrayValue); // []
+      Json::Value obj_value(Json::objectValue); // {}
+      \endcode
       */
       Value( ValueType type = nullValue );
 #if !defined(JSON_NO_INT64)
@@ -193,9 +193,12 @@ namespace Json {
 #endif // if !defined(JSON_NO_INT64)
       Value( Int value );
       Value( UInt value );
-      Value( double value );
-      Value( const char *value );
-      Value( const char *beginValue, const char *endValue );
+      Value(double value);
+      /**
+       * Constructor from a const char pointer
+       */
+      Value(const char *vvalue);
+      Value(const char *beginValue, const char *endValue);
       /** \brief Constructs a value from a static string.
 
        * Like other value string constructor but do not duplicate the string for
@@ -231,7 +234,11 @@ namespace Json {
       bool operator ==( const Value &other ) const;
       bool operator !=( const Value &other ) const;
 
-      int compare( const Value &other );
+      int compare( const Value &other ) {
+         if (*this < other) return -1;
+         if (*this > other) return 1;
+         return 0;
+      }
 
       const char *asCString() const;
       std::string asString() const;
@@ -362,11 +369,6 @@ namespace Json {
       /// \post if type() was nullValue, it remains nullValue
       Members getMemberNames() const;
 
-//# ifdef JSON_USE_CPPTL
-//      EnumMemberNames enumMemberNames() const;
-//      EnumValues enumValues() const;
-//# endif
-
       /// Comments must be //... or /* ... */
       void setComment( const char *comment,
                        CommentPlacement placement );
@@ -412,27 +414,14 @@ namespace Json {
 # endif // # ifdef JSON_VALUE_USE_INTERNAL_MAP
 
    private:
-      struct CommentInfo
-      {
+      struct CommentInfo {
          CommentInfo();
          ~CommentInfo();
-
          void setComment( const char *text );
-
          char *comment_;
       };
 
-      //struct MemberNamesTransform
-      //{
-      //   typedef const char *result_type;
-      //   const char *operator()( const CZString &name ) const
-      //   {
-      //      return name.c_str();
-      //   }
-      //};
-
-      union ValueHolder
-      {
+      union ValueHolder {
          Int int_;
          UInt uint_;
          double real_;
@@ -446,37 +435,37 @@ namespace Json {
 # endif
       } value_;
       ValueType type_ : 8;
-      int allocated_ : 1;     // Notes: if declared as bool, bitfield is useless.
-# ifdef JSON_VALUE_USE_INTERNAL_MAP
+      //int allocated_ : 1;     // Notes: if declared as bool, bitfield is useless.
+      bool allocated_;     // Notes: if declared as bool, bitfield is useless.
+#ifdef JSON_VALUE_USE_INTERNAL_MAP
       unsigned int itemIsUsed_ : 1;      // used by the ValueInternalMap container.
       int memberNameIsStatic_ : 1;       // used by the ValueInternalMap container.
-# endif
+#endif
       CommentInfo *comments_;
    };
 
 
    /** \brief Experimental and untested: represents an element of the "path" to access a node.
     */
-   class PathArgument
-   {
-   public:
-      friend class Path;
+   class PathArgument {
+      public:
+         friend class Path;
 
-      PathArgument();
-      PathArgument( ArrayIndex index );
-      PathArgument( const char *key );
-      PathArgument( const std::string &key );
+         PathArgument();
+         PathArgument( ArrayIndex index );
+         PathArgument( const char *key );
+         PathArgument( const std::string &key );
 
-   private:
-      enum Kind
-      {
-         kindNone = 0,
-         kindIndex,
-         kindKey
-      };
-      std::string key_;
-      ArrayIndex index_;
-      Kind kind_;
+      private:
+         enum Kind
+         {
+            kindNone = 0,
+            kindIndex,
+            kindKey
+         };
+         std::string key_;
+         ArrayIndex index_;
+         Kind kind_;
    };
 
    /** \brief Experimental and untested: represents a "path" to access a node.
@@ -490,39 +479,36 @@ namespace Json {
     * - ".%" => member name is provided as parameter
     * - ".[%]" => index is provied as parameter
     */
-   class Path
-   {
-   public:
-      Path( const std::string &path,
-            const PathArgument &a1 = PathArgument(),
-            const PathArgument &a2 = PathArgument(),
-            const PathArgument &a3 = PathArgument(),
-            const PathArgument &a4 = PathArgument(),
-            const PathArgument &a5 = PathArgument() );
+   class Path {
+      public:
+         Path( const std::string &path,
+               const PathArgument &a1 = PathArgument(),
+               const PathArgument &a2 = PathArgument(),
+               const PathArgument &a3 = PathArgument(),
+               const PathArgument &a4 = PathArgument(),
+               const PathArgument &a5 = PathArgument() );
 
-      const Value &resolve( const Value &root ) const;
-      Value resolve( const Value &root, 
-                     const Value &defaultValue ) const;
-      /// Creates the "path" to access the specified node and returns a reference on the node.
-      Value &make( Value &root ) const;
+         const Value &resolve( const Value &root ) const;
+         Value resolve( const Value &root, 
+                        const Value &defaultValue ) const;
+         /// Creates the "path" to access the specified node and returns a reference on the node.
+         Value &make( Value &root ) const;
 
-   private:
-      typedef std::vector<const PathArgument *> InArgs;
-      typedef std::vector<PathArgument> Args;
+      private:
+         typedef std::vector<const PathArgument *> InArgs;
+         typedef std::vector<PathArgument> Args;
 
-      void makePath( const std::string &path,
-                     const InArgs &in );
-      void addPathInArg( const std::string &path, 
-                         const InArgs &in, 
-                         InArgs::const_iterator &itInArg, 
-                         PathArgument::Kind kind );
-      void invalidPath( const std::string &path, 
-                        int location );
+         void makePath( const std::string &path,
+                        const InArgs &in );
+         void addPathInArg(const std::string &path, 
+                           const InArgs &in, 
+                           InArgs::const_iterator &itInArg, 
+                           PathArgument::Kind kind );
+         void invalidPath( const std::string &path, 
+                           int location );
 
-      Args args_;
+         Args args_;
    };
-
-
 
 #ifdef JSON_VALUE_USE_INTERNAL_MAP
    /** \brief Allocator to customize Value internal map.
@@ -569,39 +555,37 @@ namespace Json {
       };
     * \endcode
     */ 
-   class JSON_API ValueMapAllocator
-   {
-   public:
-      virtual ~ValueMapAllocator();
-      virtual ValueInternalMap *newMap() = 0;
-      virtual ValueInternalMap *newMapCopy( const ValueInternalMap &other ) = 0;
-      virtual void destructMap( ValueInternalMap *map ) = 0;
-      virtual ValueInternalLink *allocateMapBuckets( unsigned int size ) = 0;
-      virtual void releaseMapBuckets( ValueInternalLink *links ) = 0;
-      virtual ValueInternalLink *allocateMapLink() = 0;
-      virtual void releaseMapLink( ValueInternalLink *link ) = 0;
+   class JSON_API ValueMapAllocator {
+      public:
+         virtual ~ValueMapAllocator();
+         virtual ValueInternalMap *newMap() = 0;
+         virtual ValueInternalMap *newMapCopy( const ValueInternalMap &other ) = 0;
+         virtual void destructMap( ValueInternalMap *map ) = 0;
+         virtual ValueInternalLink *allocateMapBuckets( unsigned int size ) = 0;
+         virtual void releaseMapBuckets( ValueInternalLink *links ) = 0;
+         virtual ValueInternalLink *allocateMapLink() = 0;
+         virtual void releaseMapLink( ValueInternalLink *link ) = 0;
    };
 
    /** \brief ValueInternalMap hash-map bucket chain link (for internal use only).
     * \internal previous_ & next_ allows for bidirectional traversal.
     */
-   class JSON_API ValueInternalLink
-   {
-   public:
-      enum { itemPerLink = 6 };  // sizeof(ValueInternalLink) = 128 on 32 bits architecture.
-      enum InternalFlags { 
-         flagAvailable = 0,
-         flagUsed = 1
-      };
+   class JSON_API ValueInternalLink {
+      public:
+         enum { itemPerLink = 6 };  // sizeof(ValueInternalLink) = 128 on 32 bits architecture.
+         enum InternalFlags { 
+            flagAvailable = 0,
+            flagUsed = 1
+         };
 
-      ValueInternalLink();
+         ValueInternalLink();
 
-      ~ValueInternalLink();
+         ~ValueInternalLink();
 
-      Value items_[itemPerLink];
-      char *keys_[itemPerLink];
-      ValueInternalLink *previous_;
-      ValueInternalLink *next_;
+         Value items_[itemPerLink];
+         char *keys_[itemPerLink];
+         ValueInternalLink *previous_;
+         ValueInternalLink *next_;
    };
 
 
