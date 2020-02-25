@@ -251,9 +251,8 @@ void BamRandomAccessController::SetIndex(BamIndex* index) {
 }
 
 bool BamRandomAccessController::SetRegion(const BamRegion& region, const int& referenceCount) {
-
     // store region
-    m_region = region;
+    m_region=region;
 
     // cannot jump when no index is available
     if ( !HasIndex() ) {

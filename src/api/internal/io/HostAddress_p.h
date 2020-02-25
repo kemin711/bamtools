@@ -56,7 +56,6 @@ struct IPv6Address {
 };
 
 class HostAddress {
-
     // enums
     public:
         enum NetworkProtocol { UnknownNetworkProtocol = -1
@@ -72,6 +71,7 @@ class HostAddress {
         explicit HostAddress(const IPv6Address& ip6Address);
         explicit HostAddress(const std::string& address);
         HostAddress(const HostAddress& other);
+HostAddress& operator=(const HostAddress& ha);
         ~HostAddress(void);
 
     // HostAddress interface
@@ -102,7 +102,7 @@ class HostAddress {
 
     // data members
     private:
-        HostAddress::NetworkProtocol m_protocol;
+        HostAddress::NetworkProtocol m_protocol; // enum
         uint32_t    m_ip4Address;
         IPv6Address m_ip6Address;
         std::string m_ipString;

@@ -38,7 +38,18 @@ class HostInfo {
     // ctors & dtor
     public:
         HostInfo(void);
-        HostInfo(const HostInfo& other);
+        HostInfo(const HostInfo& other)
+	    : m_hostName(other.m_hostName), m_addresses(other.m_addresses), 
+              m_error(other.m_error), m_errorString(other.m_errorString)
+	{ }
+        HostInfo(HostInfo&& other) 
+	    : m_hostName(std::move(other.m_hostName)), 
+              m_addresses(std::move(other.m_addresses))
+	      ,m_error(other.m_error), 
+              m_errorString(std::move(other.m_errorString))
+	{}
+        HostInfo& operator=(const HostInfo& other);
+        HostInfo& operator=(HostInfo&& other);
         ~HostInfo(void);
 
     // HostInfo interface

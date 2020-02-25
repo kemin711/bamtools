@@ -32,12 +32,32 @@ HostInfo::HostInfo(void)
     : m_error(HostInfo::NoError)
 { }
 
-HostInfo::HostInfo(const HostInfo& other)
-    : m_hostName(other.m_hostName)
-    , m_addresses(other.m_addresses)
-    , m_error(other.m_error)
-    , m_errorString(other.m_errorString)
-{ }
+/*
+ *
+        std::string m_hostName;
+        std::vector<HostAddress> m_addresses;
+        HostInfo::ErrorType m_error; // enum
+        std::string m_errorString;
+*/
+HostInfo& HostInfo::operator=(const HostInfo& other) {
+    if (this != &other) {
+       m_hostName=other.m_hostName;
+       m_addresses = other.m_addresses;
+       m_error = other.m_error;
+       m_errorString = other.m_errorString;
+    }
+    return *this;
+}
+
+HostInfo& HostInfo::operator=(HostInfo&& other) {
+    if (this != &other) {
+        m_hostName = std::move(other.m_hostName);
+        m_addresses = std::move(other.m_addresses);
+        m_error = other.m_error;
+        m_errorString = std::move(other.m_errorString);
+    }
+    return *this;
+}
 
 HostInfo::~HostInfo(void) { }
 

@@ -236,6 +236,17 @@ HostAddress::HostAddress(const HostAddress& other)
     , m_hasIpAddress(other.m_hasIpAddress)
 { }
 
+HostAddress& HostAddress::operator=(const HostAddress& ha) {
+    if (this != &ha) {
+        m_protocol=ha.m_protocol; // HostAddress::NetworkProtocol
+        m_ip4Address = ha.m_ip4Address; // uint32_t
+        m_ip6Address = ha.m_ip6Address;  // IPv6Address
+        m_ipString = ha.m_ipString; // std::string
+        m_hasIpAddress = ha.m_hasIpAddress; // bool
+    }
+    return *this;
+}
+
 HostAddress::~HostAddress(void) { }
 
 bool HostAddress::operator==(const HostAddress& other) const {

@@ -149,16 +149,30 @@ struct API_EXPORT BamRegion {
     { }
     /**
      * Constructor for only one reference
+     * @param refid reference id, chr1 is 1, chrm is 0, chrX is 23
+     * @param leftp left position
+     * @param rightp right position
      */
     BamRegion(int refid, int leftp, int rightp) 
        : LeftRefID(refid), LeftPosition(leftp), RightRefID(refid), RightPosition(rightp)
     { }
     
-    //! copy constructor
+    /** 
+      * copy constructor
+    */
     BamRegion(const BamRegion& other)
         : LeftRefID(other.LeftRefID), LeftPosition(other.LeftPosition)
         , RightRefID(other.RightRefID), RightPosition(other.RightPosition)
     { }
+    BamRegion& operator=(const BamRegion& o) {
+	if (this != &o) {
+	LeftRefID=o.LeftRefID;
+	LeftPosition=o.LeftPosition;
+	RightRefID=o.RightRefID;
+	RightPosition=o.RightPosition;
+	}
+	return *this;
+   }
     
     //! Clears region boundaries
     void clear(void) {
