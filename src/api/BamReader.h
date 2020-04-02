@@ -325,7 +325,8 @@ class API_EXPORT BamReader {
          *  This method will be useful for interacting with the
          *  stdandard library of C++.
          */
-        vector<pair<string,int> > getReferenceMetaData() const;
+        const vector<pair<string,int>>& getReferenceMetaData() const;
+        vector<pair<string,int> > getReferenceMetaData();
         /** 
          *  @return the ID of the reference with this name.
          *

@@ -809,8 +809,9 @@ class API_EXPORT BamAlignment {
          * use this id and RefVector to get reference name.
          * The RefVector is only available in BamReader's
          * header section.
-         * RefVector <= vector<RefData>, RefData { RefName, RefLength }
+         * RefVector is vector<RefData>, RefData is { RefName, RefLength }
          * unnecessary typedef, more confusing than help.
+         * RefID -> index of the RefVector
          */
         int32_t getReferenceId() const { return RefID; }
         /**
@@ -1208,7 +1209,8 @@ class API_EXPORT BamAlignment {
          * TODO: rewrite this part.
          */
         std::string TagData;            
-        /** ID number for reference sequence
+        /** 
+         * ID number for reference sequence
          *  -1 for unmapped reads
          */
         int32_t     RefID;              
