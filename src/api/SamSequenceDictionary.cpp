@@ -32,6 +32,14 @@ SamSequenceDictionary::SamSequenceDictionary(const SamSequenceDictionary& other)
     , m_lookupData(other.m_lookupData)
 { }
 
+SamSequenceDictionary& SamSequenceDictionary::operator=(const SamSequenceDictionary& other) {
+   if (this != &other) {
+      m_data = other.m_data;
+      m_lookupData = other.m_lookupData;
+   }
+   return *this;
+}
+
 /*! \fn SamSequenceDictionary::~SamSequenceDictionary(void)
     \brief destructor
 */

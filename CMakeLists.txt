@@ -52,16 +52,16 @@ set( LIBRARY_OUTPUT_PATH    "${CMAKE_SOURCE_DIR}/lib" )
 # cmake . -DCMAKE_BUILD_TYPE=Release
 
 # define compiler flags for all code
-#set( CMAKE_BUILD_TYPE Release )
-set(CMAKE_BUILD_TYPE RelWithDebInfo)
+set(CMAKE_BUILD_TYPE Release)
+#set(CMAKE_BUILD_TYPE RelWithDebInfo)
 #set( CMAKE_BUILD_TYPE Debug )
 #set(CMAKE_CXX_FLAGS "-g -std=c++11 -Wall")
 #set(CMAKE_CXX_FLAGS "-O3 -std=c++11 -Wall")
 # not sure O3 causes crash or not
-set(CMAKE_CXX_FLAGS "-g -O2 -std=c++11 -Wall ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "-O3 -std=c++11 -Wall ${CMAKE_CXX_FLAGS}")
 # cmake -DCMAKE_BUILD_TYPE=Debug .. in the build subdirectory
 # old setting std=c++98
-set( CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -Wall ${CMAKE_CXX_FLAGS_RELEASE}" )
+set( CMAKE_CXX_FLAGS_RELEASE "-O3 -std=c++11 -Wall ${CMAKE_CXX_FLAGS_RELEASE}" )
 set( CMAKE_CXX_FLAGS_DEBUG "-g -std=c++11 -Wall ${CMAKE_CXX_FLAGS_DEBUG}" )
 # add additional compiler flags use add_definitions()
 add_definitions( -D_FILE_OFFSET_BITS=64 )

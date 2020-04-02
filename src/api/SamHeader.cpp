@@ -77,6 +77,21 @@ SamHeader::SamHeader(const SamHeader& other)
     , m_errorString(other.GetErrorString())
 { }
 
+SamHeader& SamHeader::operator=(const SamHeader& other) {
+   if (this != &other) {
+       Version=other.Version;
+       SortOrder = other.SortOrder;
+       GroupOrder = other.GroupOrder;
+       CustomTags = other.CustomTags;
+       Sequences = other.Sequences;
+       ReadGroups = other.ReadGroups;
+       Programs = other.Programs;
+       Comments = other.Comments;
+       m_errorString = other.GetErrorString();
+   }
+   return *this;
+} 
+
 /*! \fn SamHeader::~SamHeader(void)
     \brief destructor
 */

@@ -29,6 +29,7 @@ class API_EXPORT SamProgramChain {
     public:
         SamProgramChain(void);
         SamProgramChain(const SamProgramChain& other);
+        SamProgramChain& operator=(const SamProgramChain& other);
         ~SamProgramChain(void);
 
     // query/modify program data

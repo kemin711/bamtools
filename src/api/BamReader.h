@@ -308,7 +308,6 @@ class API_EXPORT BamReader {
          * The number after 24 is unreliable.
          *
          * Note: this is a bad design using std vector
-         * would be more portable and more readable.
          */
         const RefVector& GetReferenceData(void) const;
 
@@ -324,9 +323,12 @@ class API_EXPORT BamReader {
          *
          *  This method will be useful for interacting with the
          *  stdandard library of C++.
+         *  Can only return a new object, there is no reference
+         *  in this object.
+         * would be more portable and more readable.
+         * convert the d->GetReferenceData() into RefVector;
          */
-        const vector<pair<string,int>>& getReferenceMetaData() const;
-        vector<pair<string,int> > getReferenceMetaData();
+        vector<pair<string,int>> getReferenceMetaData() const;
         /** 
          *  @return the ID of the reference with this name.
          *

@@ -38,6 +38,13 @@ SamProgramChain::SamProgramChain(const SamProgramChain& other)
     : m_data(other.m_data)
 { }
 
+SamProgramChain& SamProgramChain::operator=(const SamProgramChain& other) {
+   if (this != &other) {
+       m_data = other.m_data;
+   }
+   return *this;
+}
+
 /*! \fn SamProgramChain::~SamProgramChain(void)
     \brief destructor
 */

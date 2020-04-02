@@ -32,6 +32,14 @@ SamReadGroupDictionary::SamReadGroupDictionary(const SamReadGroupDictionary& oth
     , m_lookupData(other.m_lookupData)
 { }
 
+SamReadGroupDictionary& SamReadGroupDictionary::operator=(const SamReadGroupDictionary& other) {
+    if (this != &other) {
+       m_data = other.m_data;
+       m_lookupData = other.m_lookupData;
+    }
+    return *this;
+}
+
 /*! \fn SamReadGroupDictionary::~SamReadGroupDictionary(void)
     \brief destructor
 */

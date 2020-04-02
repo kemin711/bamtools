@@ -26,6 +26,7 @@ struct API_EXPORT SamHeader {
     // ctor & dtor
     SamHeader(const std::string& headerText = "");
     SamHeader(const SamHeader& other);
+    SamHeader& operator=(const SamHeader& other);
     ~SamHeader(void);
 
     // query/modify entire SamHeader

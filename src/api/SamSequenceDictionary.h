@@ -28,6 +28,7 @@ class API_EXPORT SamSequenceDictionary {
     public:
         SamSequenceDictionary(void);
         SamSequenceDictionary(const SamSequenceDictionary& other);
+        SamSequenceDictionary& operator=(const SamSequenceDictionary& other);
         ~SamSequenceDictionary(void);
 
     // query/modify sequence data
