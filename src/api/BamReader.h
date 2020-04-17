@@ -320,6 +320,9 @@ class API_EXPORT BamReader {
          *  the vector returned. refid of zero is the mitochrondria,
          *  ref 1 is the first human chromosome.
          *  ref 24 is the Y chromosome.
+         *  BUT the above is not all the case, for a different
+         *  refgenoem. 0 is (chr)1, 1 is (chr)2,  ....
+         *  So could not assume anything.
          *
          *  This method will be useful for interacting with the
          *  stdandard library of C++.
