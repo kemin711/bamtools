@@ -94,6 +94,9 @@ class API_EXPORT BamAlignment {
          * Move constructor
          */
         BamAlignment(BamAlignment&& other);
+        /**
+         * Destructor
+         */
         ~BamAlignment(void);
         /**
          * Test version for looking at the critical information about the
@@ -109,39 +112,19 @@ class API_EXPORT BamAlignment {
          * move assignment operator
          */
         BamAlignment& operator=(BamAlignment&& other);
+        /**
+         * First compare by [begin,end], then first mate < second mate
+         * Mainly used for sorting out alignments on the reference.
+         */
+        bool operator<(const BamAlignment& other) const;
+        bool operator>(const BamAlignment& other) const;
+        /**
+         * Two objects are considered identical if
+         * same name, same mate. Mainly using this to sort out
+         * same query mapped to multiple locations.
+         */
+        bool operator==(const BamAlignment& other) const;
 
-    // queries against alignment flags
-    // // BAM alignment flags Designe problem, replaced with in class static constant
-    // const int BAM_ALIGNMENT_PAIRED              = 0x0001;
-    // const int BAM_ALIGNMENT_PROPER_PAIR         = 0x0002;
-    // const int BAM_ALIGNMENT_UNMAPPED            = 0x0004;
-    // const int BAM_ALIGNMENT_MATE_UNMAPPED       = 0x0008;
-    // const int BAM_ALIGNMENT_REVERSE_STRAND      = 0x0010;
-    // const int BAM_ALIGNMENT_MATE_REVERSE_STRAND = 0x0020;
-    // const int BAM_ALIGNMENT_READ_1              = 0x0040;
-    // const int BAM_ALIGNMENT_READ_2              = 0x0080;
-    // const int BAM_ALIGNMENT_SECONDARY           = 0x0100;
-    // const int BAM_ALIGNMENT_QC_FAILED           = 0x0200;
-    // const int BAM_ALIGNMENT_DUPLICATE           = 0x0400;
-    //
-    // The naming in this is different from the Bam documentation
-    //                     Description
-    // 1    0x1   template having multiple segments in sequencing (paired)
-    // 2    0x2   each segment properly aligned according to the aligner
-    // 4    0x4   segment unmapped
-    // 8    0x8   next segment in the template unmapped
-    // 16   0x10  SEQ being reverse complemented
-    // 32   0x20  SEQ of the next segment in the template being reverse complemented
-    // 64   0x40  the first segment in the template (first mate or read)
-    //             This is determined by the order in the input file (READ1)
-    // 128  0x80  the last segment in the template (second mate or read)
-    //             Appears after READ1 in the input order.
-    // 256  0x100 secondary alignment
-    // 512  0x200 not passing filters, such as platform/vendor quality controls
-    // 1024 0x400 PCR or optical duplicate
-    // 2048 0x800 supplementary alignment
-    // the following tests the flag field against different bits
-    public:        
         bool empty() const {
            return Length == 0;
         }
@@ -166,6 +149,9 @@ class API_EXPORT BamAlignment {
          * @see isFirstRead
          */
         bool isFirstMate(void) const { return (AlignmentFlag & READ_1) != 0; }
+        /**
+         * Alias for isFirstMate()
+         */
         bool isFirstRead(void) const { return (AlignmentFlag & READ_1) != 0; }
         /** 
          * @returns true if alignment is second mate on paired-end read
@@ -742,6 +728,9 @@ class API_EXPORT BamAlignment {
          * get the name of the query squence
          */
         const std::string& getQueryName() const { return Name; }
+        /**
+         * @return the name of the query.
+         */
         const std::string& getName() const { return Name; }
         /**
          * getter method for the length of the query (read)
@@ -1173,7 +1162,8 @@ class API_EXPORT BamAlignment {
 
     // public data fields, these fileds should all become private in the future
     public:
-        /** read or query name 
+        /** 
+         * read or query name 
          * Use getName() to read this one
          * */
         std::string Name;    

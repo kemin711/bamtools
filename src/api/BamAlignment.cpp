@@ -311,6 +311,27 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    return ous;
 }}
 
+bool BamAlignment::operator<(const BamAlignment& other) const {
+   if (getPosition() < other.getPosition()) return true;
+   if (getPosition() > other.getPosition()) return false;
+   if (getEndPosition() < other.getEndPosition()) return true;
+   if (getEndPosition() > other.getEndPosition()) return false;
+   return getMate() < other.getMate();
+}
+
+bool BamAlignment::operator>(const BamAlignment& other) const {
+   if (getPosition() > other.getPosition()) return true;
+   if (getPosition() < other.getPosition()) return false;
+   if (getEndPosition() > other.getEndPosition()) return true;
+   if (getEndPosition() < other.getEndPosition()) return false;
+   return getMate() > other.getMate();
+}
+
+bool BamAlignment::operator==(const BamAlignment& other) const {
+   return getQueryName() == other.getQueryName()
+      && getMate() == other.getMate();
+}
+
 vector<pair<char,int> > BamAlignment::getCigarOperation() const {
    vector<pair<char,int> > tmp(CigarData.size());
    transform(CigarData.begin(), CigarData.end(), tmp.begin(), mem_fn(&CigarOp::topair));
