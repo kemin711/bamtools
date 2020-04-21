@@ -128,6 +128,18 @@ class API_EXPORT BamAlignment {
         bool empty() const {
            return Length == 0;
         }
+        /**
+         * Not sure the condition is sufficient, need some testing.
+         * The caller needs to make sure the query name is the same or 
+         * not. This function only cares about the reference location.
+         * @return true if two aligns have the same refid, strand, Postion, endPosition
+         */
+        bool sameHit(const BamAlignment& other) const {
+           return getReferenceId() == other.getReferenceId()
+              && getStrand() == other.getStrand()
+              && getPosition() == other.getPosition()
+              && getEndPosition() == other.getEndPosition();
+        }
          /** 
           * This cannot be relied on.
           * @return true if this read is a PCR duplicate
@@ -257,6 +269,10 @@ class API_EXPORT BamAlignment {
         /** @returns true if alignment part of paired-end read
          */
         bool IsPaired(void) const; 
+        /**
+         * If is not paired then READ1 or READ2 is meaningless
+         * @return this alignment is paired or single.
+         */
         bool isPaired() const { 
             return (AlignmentFlag & PAIRED) != 0;
         }
@@ -342,18 +358,18 @@ class API_EXPORT BamAlignment {
         void SetIsSecondMate(bool ok);        // sets value of "alignment is second mate on read" flag
 
         // convenient constants octal number
-       static const int PAIRED              = 0x0001;
-       static const int PROPER_PAIR         = 0x0002;
-       static const int UNMAPPED            = 0x0004;
-       static const int MATE_UNMAPPED       = 0x0008;
-       static const int REVERSE_STRAND      = 0x0010;
-       static const int MATE_REVERSE_STRAND = 0x0020;
-       static const int READ_1              = 0x0040;
-       static const int READ_2              = 0x0080;
-       static const int SECONDARY           = 0x0100;
-       static const int QC_FAILED           = 0x0200;
-       static const int DUPLICATE           = 0x0400;
-       static const int SUPPLEMENTARY       = 0x0800; 
+         static const int PAIRED              = 0x0001;
+         static const int PROPER_PAIR         = 0x0002;
+         static const int UNMAPPED            = 0x0004;
+         static const int MATE_UNMAPPED       = 0x0008;
+         static const int REVERSE_STRAND      = 0x0010;
+         static const int MATE_REVERSE_STRAND = 0x0020;
+         static const int READ_1              = 0x0040;
+         static const int READ_2              = 0x0080;
+         static const int SECONDARY           = 0x0100;
+         static const int QC_FAILED           = 0x0200;
+         static const int DUPLICATE           = 0x0400;
+         static const int SUPPLEMENTARY       = 0x0800; 
 
     // tag data access methods
     public:
