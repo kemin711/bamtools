@@ -707,6 +707,13 @@ class API_EXPORT BamAlignment {
          */
         std::pair<int,int> getInterval() const;
         /**
+         * @return the interval including soft-clipped region if they
+         *   exist. A more generic version of getInterval() but 
+         *   more costly. So only in special situation you need
+         *   to use this version.
+         */
+        std::pair<int,int> getSoftInterval() const;
+        /**
          * The distance coverted by the alignment on the reference.
          */
         int getReferenceWidth() const {
@@ -970,13 +977,18 @@ class API_EXPORT BamAlignment {
          */
         string getFirstSoftclip() const;
         /**
-         * @return the length of the first softclip
+         * @return the length of the first softclip.
+         *   if not start with softclip, then return 0.
          */
         int getFirstSoftclipLength() const;
         /**
          * @return the last soft clip in query sequence.
          */
         string getLastSoftclip() const;
+        /**
+         * @return the length of the last softclip
+         *   if no softclip return 0.
+         */
         int getLastSoftclipLength() const;
         /**
          * @return sum of softclip length if both are present.

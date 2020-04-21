@@ -1490,6 +1490,20 @@ std::pair<int,int> BamAlignment::getInterval() const {
    return tmp;
 }
 
+std::pair<int,int> BamAlignment::getSoftInterval() const {
+   auto res = getInterval();
+   int tmp = getFirstSoftclipLength();
+   if (tmp > 0) {
+      assert(res.first > tmp);
+      res.first -= tmp;
+   }
+   tmp = getLastSoftclipLength();
+   if (tmp > 0) {
+      res.second += tmp;
+   }
+   return res;
+}
+
 std::pair<int,int> BamAlignment::getPairedRange() const {
    if (!mateOnSameReference()) {
       //return getRange();
