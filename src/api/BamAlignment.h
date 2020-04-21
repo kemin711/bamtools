@@ -151,6 +151,9 @@ class API_EXPORT BamAlignment {
          *  First mate is also first read: Two words meaning the same thing.
          */
         bool IsFirstMate(void) const;         
+         uint32_t getAlignmentFlag() const {
+            return AlignmentFlag;
+         }
         void setAlignmentFlag(uint32_t flag) {
            AlignmentFlag = flag;
         }
