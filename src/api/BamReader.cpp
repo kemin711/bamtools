@@ -116,7 +116,7 @@ std::string BamReader::GetErrorString(void) const {
    return d->GetErrorString();
 }
         
-vector<pair<string,int> > BamReader::getReferenceMetaData() const {
+vector<pair<string,int>> BamReader::getReferenceMetaData() const {
    RefVector tmp = GetReferenceData();
    vector<pair<string, int> > res(tmp.size());
    for (size_t i=0; i<tmp.size(); ++i) {

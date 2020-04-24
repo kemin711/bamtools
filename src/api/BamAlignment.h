@@ -180,11 +180,21 @@ class API_EXPORT BamAlignment {
         bool isSecondRead(void) const { return AlignmentFlag & READ_2; }
         /**
          * @return 1 for first mate, 2 for second mate, 
-         *     and 0 for unknown mate.
+         *     and 0 for unknown mate or not pair-end read.
          */
-        int getMate() const { if (isFirstMate()) return 1; 
+        int getMate() const { 
+           if (isFirstMate()) return 1; 
            else if (isSecondMate()) return 2;
            else return 0;
+        }
+        /**
+         * @return 0 if is unpaired or one of the mate is unmapped
+         *    otherwise return 1 for read (mate) 1, 2 for read (mate) 2
+         */
+        int getMappingStatus() const {
+           if (!isPaired() || isMateUnmapped() || isUnmapped()
+                 || !mateOnSameReference()) return 0;
+           return getMate();
         }
         /**
          * @return true if query is mapped to references
@@ -228,24 +238,27 @@ class API_EXPORT BamAlignment {
          * @return true if alignment mapped to reverse strand of refseq.
          */
         bool isReverseStrand(void) const {
-           return (AlignmentFlag & REVERSE_STRAND) != 0; 
+           return (AlignmentFlag & REVERSE_STRAND) == REVERSE_STRAND; 
         }
         bool isForwardStrand() const {
            return (AlignmentFlag & REVERSE_STRAND) == 0; 
         }
         /**
+         * There is only two state, cannot be zero.
          * @return -1 reverse strand, +1 for forward strand, and
          *      0 for both strand or strand unknown.
          */
         int getStrand() const {
            if (isReverseStrand()) return -1;
-           if (isForwardStrand()) return 1;
-           return 0;
+           return 1;
+           //if (isForwardStrand()) return 1;
+           //return 0; // never reach this line
         }
         char getStrandChar() const {
            if (isReverseStrand()) return '-';
-           if (isForwardStrand()) return '+';
-           return '?';
+           return '+';
+           //if (isForwardStrand()) return '+';
+           //return '?'; // nover reach this line
         }
         /** 
          * @return true if alignment's mate mapped to reverse strand
@@ -361,18 +374,18 @@ class API_EXPORT BamAlignment {
         void SetIsSecondMate(bool ok);        // sets value of "alignment is second mate on read" flag
 
         // convenient constants octal number
-         static const int PAIRED              = 0x0001;
-         static const int PROPER_PAIR         = 0x0002;
-         static const int UNMAPPED            = 0x0004;
-         static const int MATE_UNMAPPED       = 0x0008;
-         static const int REVERSE_STRAND      = 0x0010;
-         static const int MATE_REVERSE_STRAND = 0x0020;
-         static const int READ_1              = 0x0040;
-         static const int READ_2              = 0x0080;
-         static const int SECONDARY           = 0x0100;
-         static const int QC_FAILED           = 0x0200;
-         static const int DUPLICATE           = 0x0400;
-         static const int SUPPLEMENTARY       = 0x0800; 
+         static const uint32_t PAIRED              = 0x0001;
+         static const uint32_t PROPER_PAIR         = 0x0002;
+         static const uint32_t UNMAPPED            = 0x0004;
+         static const uint32_t MATE_UNMAPPED       = 0x0008;
+         static const uint32_t REVERSE_STRAND      = 0x0010;
+         static const uint32_t MATE_REVERSE_STRAND = 0x0020;
+         static const uint32_t READ_1              = 0x0040;
+         static const uint32_t READ_2              = 0x0080;
+         static const uint32_t SECONDARY           = 0x0100;
+         static const uint32_t QC_FAILED           = 0x0200;
+         static const uint32_t DUPLICATE           = 0x0400;
+         static const uint32_t SUPPLEMENTARY       = 0x0800; 
 
     // tag data access methods
     public:
