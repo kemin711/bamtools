@@ -132,7 +132,7 @@ bool CountTool::CountToolPrivate::Run(void) {
             // find overlapping alignments
             else {
                 while ( reader.GetNextAlignmentCore(al) ) {
-                    if ( (al.RefID >= region.LeftRefID)  && ( (al.Position + al.Length) >= region.LeftPosition ) &&
+                    if ( (al.RefID >= region.LeftRefID)  && ( (al.Position + al.getLength()) >= region.LeftPosition ) &&
                           (al.RefID <= region.RightRefID) && ( al.Position <= region.RightPosition) )
                     {
                         ++alignmentCount;

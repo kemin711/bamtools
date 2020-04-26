@@ -164,7 +164,7 @@ bool MergeTool::MergeToolPrivate::Run(void) {
             else {
                 BamAlignment al;
                 while ( reader.GetNextAlignmentCore(al) ) {
-                    if ( (al.RefID >= region.LeftRefID)  && ( (al.Position + al.Length) >= region.LeftPosition ) &&
+                    if ( (al.RefID >= region.LeftRefID)  && ( (al.Position + al.getLength()) >= region.LeftPosition ) &&
                          (al.RefID <= region.RightRefID) && ( al.Position <= region.RightPosition) )
                     {
                         writer.SaveAlignment(al);

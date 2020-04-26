@@ -423,7 +423,9 @@ void ConvertTool::ConvertToolPrivate::PrintJson(const BamAlignment& a) {
     }
     
     // write alignment's source BAM file
-    m_out << "\"filename\":\"" << a.Filename << "\",";
+    //m_out << "\"filename\":\"" << a.Filename << "\",";
+    //it is not econimical to store filename in every alignment
+    //in a large datafile, this could mean billions of duplicated data
 
     // write tag data
     const char* tagData = a.TagData.c_str();
@@ -654,7 +656,7 @@ void ConvertTool::ConvertToolPrivate::PrintYaml(const BamAlignment& a) {
     m_out << "   " << "AlndBases: "     << a.AlignedBases << endl;
     m_out << "   " << "Qualities: "     << a.Qualities << endl;
     m_out << "   " << "Name: "          << a.Name << endl;
-    m_out << "   " << "Length: "        << a.Length << endl;
+    m_out << "   " << "Length: "        << a.getLength() << endl;
     m_out << "   " << "TagData: "       << a.TagData << endl;
     m_out << "   " << "RefID: "         << a.RefID << endl;
     m_out << "   " << "RefName: "       << m_references[a.RefID].RefName << endl;
@@ -665,7 +667,7 @@ void ConvertTool::ConvertToolPrivate::PrintYaml(const BamAlignment& a) {
     m_out << "   " << "MateRefID: "     << a.MateRefID << endl;
     m_out << "   " << "MatePosition: "  << a.MatePosition << endl;
     m_out << "   " << "InsertSize: "    << a.InsertSize << endl;
-    m_out << "   " << "Filename: "      << a.Filename << endl;
+    //m_out << "   " << "Filename: "      << a.Filename << endl;
 
     // write Cigar data
     const vector<CigarOp>& cigarData = a.CigarData;

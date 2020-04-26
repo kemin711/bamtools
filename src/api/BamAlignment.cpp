@@ -23,80 +23,12 @@ using namespace std;
 int BamAlignment::TRIMLEN_MAX = 6;
 int BamAlignment::GAP_CUT = 3;
 
-//mutex BamAlignment::gmtx;
-/*! \class BamTools::BamAlignment
-    \brief The main BAM alignment data structure.
-
-    Provides methods to query/modify BAM alignment data fields.
-*/
-/*! \var BamAlignment::Name
-    \brief read name
-*/
-/*! \var BamAlignment::Length
-    \brief length of query sequence
-*/
-/*! \var BamAlignment::QueryBases
-    \brief 'original' sequence (as reported from sequencing machine)
-
-    \note Setting this field to "*" indicates that the sequence is not to be stored on output.
-    In this case, the contents of the Qualities field should be invalidated as well (cleared or marked as "*").
-*/
-/*! \var BamAlignment::Qualities
-    \brief FASTQ qualities (ASCII characters, not numeric values)
-
-    \note Setting this field to "*" indicates to BamWriter that the quality scores are not to be stored,
-    but instead will be output as a sequence of '0xFF'. Otherwise, QueryBases must not be a "*" and
-    the length of this field should equal the length of QueryBases.
-*/
-/*! \var BamAlignment::TagData
-    \brief tag data (use the provided methods to query/modify)
-*/
-/*! \var BamAlignment::RefID
-    \brief ID number for reference sequence
-*/
-/*! \var BamAlignment::Position
-    \brief position (0-based) where alignment starts
-*/
-/*! \var BamAlignment::Bin
-    \brief BAM (standard) index bin number for this alignment
-*/
-/*! \var BamAlignment::MapQuality
-    \brief mapping quality score
-*/
-/*! \var BamAlignment::CigarData
-    \brief CIGAR operations for this alignment
-*/
-/*! \var BamAlignment::MateRefID
-    \brief ID number for reference sequence where alignment's mate was aligned
-*/
-/*! \var BamAlignment::MatePosition
-    \brief position (0-based) where alignment's mate starts
-*/
-/*! \var BamAlignment::Filename
-    \brief name of BAM file which this alignment comes from
-*/
-
-/*! \fn BamAlignment::BamAlignment(void)
-    \brief constructor
-*/
-BamAlignment::BamAlignment(void)
-    : Length(0)
-    , RefID(-1)
-    , Position(-1)
-    , Bin(0)
-    , MapQuality(0)
-    , AlignmentFlag(0)
-    , MateRefID(-1)
-    , MatePosition(-1)
-    , InsertSize(0)
-{ }
 
 /*! \fn BamAlignment::BamAlignment(const BamAlignment& other)
     \brief copy constructor
 */
 BamAlignment::BamAlignment(const BamAlignment& other)
     : Name(other.Name)
-    , Length(other.Length)
     , QueryBases(other.QueryBases)
     , AlignedBases(other.AlignedBases)
     , Qualities(other.Qualities)
@@ -110,13 +42,11 @@ BamAlignment::BamAlignment(const BamAlignment& other)
     , MateRefID(other.MateRefID)
     , MatePosition(other.MatePosition)
     , InsertSize(other.InsertSize)
-    , Filename(other.Filename)
     , SupportData(other.SupportData)
 { }
 
 BamAlignment::BamAlignment(BamAlignment&& other)
     : Name(std::move(other.Name)), 
-      Length(other.Length), 
       QueryBases(std::move(other.QueryBases)),
       AlignedBases(std::move(other.AlignedBases)),
       Qualities(std::move(other.Qualities)),
@@ -125,14 +55,13 @@ BamAlignment::BamAlignment(BamAlignment&& other)
       MapQuality(other.MapQuality), AlignmentFlag(other.AlignmentFlag), 
       CigarData(std::move(other.CigarData)), 
       MateRefID(other.MateRefID), MatePosition(other.MatePosition), 
-      InsertSize(other.InsertSize),  Filename(other.Filename), 
+      InsertSize(other.InsertSize),  
       SupportData(std::move(other.SupportData))
 { }
 
 BamAlignment& BamAlignment::operator=(const BamAlignment& other) {
    if (this != &other) {
       Name=other.Name;
-      Length=other.Length;
       QueryBases=other.QueryBases;
       AlignedBases=other.AlignedBases;
       Qualities=other.Qualities;
@@ -146,9 +75,7 @@ BamAlignment& BamAlignment::operator=(const BamAlignment& other) {
       MateRefID=other.MateRefID;
       MatePosition=other.MatePosition;
       InsertSize=other.InsertSize;
-      Filename=other.Filename;
       SupportData=other.SupportData;
-      // ErrorString is not copied
    }
    return *this;
 }
@@ -156,7 +83,6 @@ BamAlignment& BamAlignment::operator=(const BamAlignment& other) {
 BamAlignment& BamAlignment::operator=(BamAlignment&& other) {
    if (this != &other) {
       Name=std::move(other.Name);
-      Length=other.Length;
       QueryBases=std::move(other.QueryBases);
       AlignedBases=std::move(other.AlignedBases);
       Qualities=std::move(other.Qualities);
@@ -170,9 +96,8 @@ BamAlignment& BamAlignment::operator=(BamAlignment&& other) {
       MateRefID=other.MateRefID;
       MatePosition=other.MatePosition;
       InsertSize=other.InsertSize;
-      Filename=std::move(other.Filename);
+      //Filename=std::move(other.Filename);
       SupportData=std::move(other.SupportData);
-      // ErrorString is not copied
    }
    return *this;
 }
@@ -246,12 +171,6 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
          ba.GetTag(t, intval);
          ous << t << ":" << tagtype << ":" << intval << "; ";
       }
-      // actually C is also type int32_t!, using int8_t results in wrong results
-      //else if (tagtype == 'C') {
-      //   int8_t intval; // must use this type, int is wrong
-      //   ba.GetTag(t, intval);
-      //   ous << t << ":" << tagtype << ":" << intval << "; ";
-      //}
       else if (tagtype == 'Z') {
          string tagval;
          ba.GetTag(t, tagval);
@@ -262,51 +181,6 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
             << " not considered yet\n";
       }
    }
-   // the following is fine
-   /*
-   string val;
-   if (ba.HasTag("BC")) {
-      ba.GetTag("BC", val);
-      ous << "BC: " << val << sep;
-   }
-   int ival=0;
-   //int32_t ival=0;
-   if (ba.HasTag("NM")) {
-      if (ba.GetTag("NM", ival)) {
-         ous << "NM: " << ival << sep;
-      }
-      else {
-         ous << "NM: FAIL" << sep;
-      }
-   }
-   else {
-      cerr << "there is no NM tag!\n";
-   }
-   if (ba.HasTag("AS")) {
-      if (ba.GetTag("AS", ival)) {
-         ous << "AS: " << ival << sep;
-      }
-      else {
-         ous << "AS: FAIL" << sep;
-      }
-   }
-   if (ba.HasTag("XS")) {
-      if (ba.GetTag("XS", ival)) {
-         ous << "XS: " << ival << sep;
-      }
-      else {
-         ous << "XS: FAIL" << sep;
-      }
-   }
-   if (ba.HasTag("MD")) {
-      ba.GetTag("MD", val);
-      ous << "MD: " << val << sep;
-   }
-   if (ba.HasTag("SA")) {
-      ba.GetTag("SA", val);
-      ous << "SA: " << val << sep;
-   }
-   */
 
    return ous;
 }}
@@ -557,7 +431,6 @@ bool BamAlignment::BuildCharData(void) {
     // skip if char data already parsed
     if ( !SupportData.HasCoreOnly )
         return true; // already parsed, no repeat work
-
     // check system endianness
     bool IsBigEndian = BamTools::SystemIsBigEndian();
     // calculate character lengths/offsets
@@ -626,36 +499,30 @@ bool BamAlignment::BuildCharData(void) {
                 case (Constants::BAM_CIGAR_MISMATCH_CHAR) :
                     AlignedBases.append(QueryBases.substr(k, op.Length));
                     // fall through
-
                 // for 'S' - soft clip, do not write bases
                 // but increment placeholder 'k'
                 case (Constants::BAM_CIGAR_SOFTCLIP_CHAR) :
                     k += op.Length;
                     break;
-
                 // for 'D' - write gap character
                 case (Constants::BAM_CIGAR_DEL_CHAR) :
                     AlignedBases.append(op.Length, Constants::BAM_DNA_DEL);
                     break;
-
                 // for 'P' - write padding character
                 case (Constants::BAM_CIGAR_PAD_CHAR) :
                     AlignedBases.append( op.Length, Constants::BAM_DNA_PAD );
                     break;
-
                 // for 'N' - write N's, skip bases in original query sequence
                 case (Constants::BAM_CIGAR_REFSKIP_CHAR) :
                     AlignedBases.append( op.Length, Constants::BAM_DNA_N );
                     break;
-
                 // for 'H' - hard clip, do nothing to AlignedBases, move to next op
                 case (Constants::BAM_CIGAR_HARDCLIP_CHAR) :
                     break;
-
                 // invalid CIGAR op-code
                 default:
-                    const string message = string("invalid CIGAR operation type: ") + op.Type;
-                    SetErrorString("BamAlignment::BuildCharData", message);
+                    cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid CIGAR operation type: "
+                       << op.Type << endl;
                     return false;
             }
         }
@@ -741,8 +608,8 @@ bool BamAlignment::BuildCharData(void) {
                                     i += sizeof(uint32_t);
                                     break;
                                 default:
-                                    const string message = string("invalid binary array type: ") + arrayType;
-                                    SetErrorString("BamAlignment::BuildCharData", message);
+                                    cerr << __FILE__ << ":" << __LINE__ << ":WARN invalid binary array type : "
+                                       << arrayType << endl;
                                     return false;
                             }
                         }
@@ -752,8 +619,7 @@ bool BamAlignment::BuildCharData(void) {
 
                     // invalid tag type-code
                     default :
-                        const string message = string("invalid tag type: ") + type;
-                        SetErrorString("BamAlignment::BuildCharData", message);
+                        cerr << __FILE__ << ":" << __LINE__ << "ERROR: invalid tag type: " << type << endl;
                         return false;
                 }
             }
@@ -911,9 +777,9 @@ int BamAlignment::GetEndPosition(bool usePadded, bool closedInterval) const {
 
     \return error description
 */
-std::string BamAlignment::GetErrorString(void) const {
-    return ErrorString;
-}
+//std::string BamAlignment::GetErrorString(void) const {
+//    return ErrorString;
+//}
 
 /*! \fn bool BamAlignment::GetSoftClips(std::vector<int>& clipSizes, std::vector<int>& readPositions, std::vector<int>& genomePositions, bool usePadded = false) const
     \brief Identifies if an alignment has a soft clip. If so, identifies the
@@ -1094,8 +960,7 @@ bool BamAlignment::GetTagType(const std::string& tag, char& type) const {
 
         // unknown tag type
         default:
-            const string message = string("invalid tag type: ") + type;
-            SetErrorString("BamAlignment::GetTagType", message);
+            cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid tag type: " << type << endl;
             return false;
     }
 }
@@ -1267,11 +1132,6 @@ void BamAlignment::RemoveTag(const std::string& tag) {
         // save modified tag data in alignment
         TagData.assign(newTagData.Buffer, beginningTagDataLength + endTagDataLength);
     }
-}
-
-void BamAlignment::SetErrorString(const std::string& where, const std::string& what) const {
-    static const string SEPARATOR = ": ";
-    ErrorString = where + SEPARATOR + what;
 }
 
 /*! \fn void BamAlignment::SetIsDuplicate(bool ok)
@@ -1446,8 +1306,7 @@ bool BamAlignment::SkipToNextTag(const char storageType,
                     bytesToSkip = numElements*sizeof(uint32_t);
                     break;
                 default:
-                    const string message = string("invalid binary array type: ") + arrayType;
-                    SetErrorString("BamAlignment::SkipToNextTag", message);
+                    cerr << __FILE__ << ":" << __LINE__ << ":WARN invalid binary array type: " << arrayType;
                     return false;
             }
 
@@ -1458,8 +1317,8 @@ bool BamAlignment::SkipToNextTag(const char storageType,
         }
 
         default:
-            const string message = string("invalid tag type: ") + storageType;
-            SetErrorString("BamAlignment::SkipToNextTag", message);
+            cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid tag type: "
+               << storageType << endl;
             return false;
     }
 
@@ -2492,9 +2351,9 @@ void BamAlignment::chopFirstSoftclip() {
    if (CigarData.front().Type == 'S') {
       int tmplen = CigarData.front().getLength();
       QueryBases=QueryBases.substr(tmplen);
-      Length -= tmplen;
+      SupportData.QuerySequenceLength -= tmplen;
       Qualities=Qualities.substr(tmplen);
-      SupportData.QuerySequenceLength = Length;
+      //SupportData.QuerySequenceLength = Length;
       SupportData.NumCigarOperations = CigarData.size()-1;
       CigarData.erase(CigarData.begin());
    }
@@ -2504,10 +2363,10 @@ void BamAlignment::chopLastSoftclip() {
    //assert(CigarData.back().getType() == 'S');
    if (CigarData.back().getType() == 'S') {
       int tmplen = CigarData.back().getLength();
-      Length -= tmplen;
-      QueryBases.resize(Length);
-      Qualities.resize(Length);
-      SupportData.QuerySequenceLength = Length;
+      SupportData.QuerySequenceLength -= tmplen;
+      QueryBases.resize(getLength());
+      Qualities.resize(getLength());
+      //SupportData.QuerySequenceLength = Length;
       SupportData.NumCigarOperations = CigarData.size()-1;
       CigarData.resize(CigarData.size()-1);
    }
@@ -2639,8 +2498,7 @@ void BamAlignment::chopFront(size_t len, int numMismatch) {
          }
          CigarData.erase(CigarData.begin(), CigarData.begin()+c);
       }
-      Length -= querychop;
-      SupportData.QuerySequenceLength = Length;
+      SupportData.QuerySequenceLength -= querychop;
       QueryBases = QueryBases.substr(querychop);         
       Qualities = Qualities.substr(querychop);          
    }
@@ -2810,10 +2668,9 @@ void BamAlignment::chopBack(size_t len, int numMismatch) {
          }
          CigarData.erase(CigarData.begin()+c+1, CigarData.end());
       }
-      Length -= chopQuery;
-      SupportData.QuerySequenceLength = Length;
-      QueryBases.resize(Length);
-      Qualities.resize(Length);
+      SupportData.QuerySequenceLength -= chopQuery;
+      QueryBases.resize(getLength());
+      Qualities.resize(getLength());
    }
    else {  // end with softclip
       //unsigned int c=CigarData.size()-2; // last M index
@@ -3034,7 +2891,7 @@ void BamAlignment::patchEnd() {
    if (mdvec.first.size() <= 1) { return; }
    trimlen=0;
    m=mdvec.first.size()-1;
-   qi=Length-1;
+   qi=getLength()-1;
    c=CigarData.size()-1;
    if (CigarData[c].getType() == 'S') {
       qi -= CigarData[c].getLength();
@@ -3114,18 +2971,6 @@ void BamAlignment::updateNMTag(const string& refseq) {
    }
    //cout << "recalculated edit distance: " << edit << endl;
    if (HasTag("NM")) {
-      //int tmp;
-      //if (!GetTag("NM", tmp)) {
-      //   cerr << "Failed to get NM tag!\n";
-      //   exit(1);
-      //}
-      //cout << "Old edit distance: " << tmp << endl;
-      //if (abs(tmp - edit) > 50) {
-      //   cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
-      //      << " old " << tmp << " and  new " << edit << " edit distance too big check logic\n"
-      //      << *this << endl;
-      //   exit(1);
-      //}
       EditTag("NM", "i", edit);
    }
    else {

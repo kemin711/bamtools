@@ -214,6 +214,10 @@ class API_EXPORT BamReader {
          */
         bool GetNextAlignment(BamAlignment& alignment);
         /**
+         * TODO: implement other typs of BamAlighment such as
+         * a derived calss for MultimappedAlign, or ChimeraAlign.
+         * This method could be a factory method.
+         *
          * @return next BamAlignment pointer if exists
          *  otherwise return nullptr
          */
@@ -411,7 +415,7 @@ class API_EXPORT BamReader {
         // error handling
         // ----------------------
 
-        /** 
+        /* 
          *  Returns a human-readable description of the last error that occurred
          *
          *  This method allows elimination of STDERR pollution. Developers of client code
@@ -419,7 +423,7 @@ class API_EXPORT BamReader {
          *
          *  @return error description
         */
-        std::string GetErrorString(void) const;
+        //std::string GetErrorString(void) const;
         
     // private implementation
     private:

@@ -56,10 +56,10 @@ bool BamReaderPrivate::Close(void) {
     if ( IsOpen() ) {
         try {
             m_stream.Close();
-        } catch ( BamException& e ) {
-            const string streamError = e.what();
-            const string message = string("encountered error closing BAM file: \n\t") + streamError;
-            SetErrorString("BamReader::Close", message);
+        } 
+        catch (BamException& e ) {
+            cerr << __FILE__ << ":" << __LINE__ << ":ERROR encountered error closing BAM file: "
+               << e.what() << endl;
             return false;
         }
     }
@@ -72,7 +72,7 @@ bool BamReaderPrivate::Close(void) {
 bool BamReaderPrivate::CreateIndex(const BamIndex::IndexType& type) {
     // skip if BAM file not open
     if ( !IsOpen() ) {
-        SetErrorString("BamReader::CreateIndex", "cannot create index on unopened BAM file");
+        cerr << __FILE__ << ":" << __LINE__ << ":ERROR cannot create index on unopened BAM file\n";
         return false;
     }
 
@@ -81,8 +81,8 @@ bool BamReaderPrivate::CreateIndex(const BamIndex::IndexType& type) {
         return true;
     else {
         const string bracError = m_randomAccessController.GetErrorString();
-        const string message = string("could not create index: \n\t") + bracError;
-        SetErrorString("BamReader::CreateIndex", message);
+        cerr << __FILE__ << ":" << __LINE__ << ":ERROR could not create index: "
+           << bracError << endl;
         return false;
     }
 }
@@ -113,13 +113,10 @@ bool BamReaderPrivate::GetNextAlignment(BamAlignment& alignment) {
     // if valid alignment found
     if ( GetNextAlignmentCore(alignment) ) {
         // store alignment's "source" filename
-        alignment.Filename = m_filename;
+        //alignment.Filename = m_filename; // TODO: remove this is too costly
         // return success/failure of parsing char data
-        if ( alignment.BuildCharData() )
-            return true;
-         const string alError = alignment.GetErrorString();
-         const string message = string("could not populate alignment data: \n\t") + alError;
-         SetErrorString("BamReader::GetNextAlignment", message);
+        if ( alignment.BuildCharData() ) return true;
+         cerr << __FILE__ << ":" << __LINE__ << ":ERROR could not populate alignment datall\n";
          return false;
     }
     // no valid alignment found
@@ -174,9 +171,8 @@ bool BamReaderPrivate::GetNextAlignmentCore(BamAlignment& alignment) {
         return true;
 
     } catch ( BamException& e ) {
-        const string streamError = e.what();
-        const string message = string("encountered error reading BAM alignment: \n\t") + streamError;
-        SetErrorString("BamReader::GetNextAlignmentCore", message);
+        cerr << __FILE__ << ":" << __LINE__ << ":ERROR encountered error reading BAM alignment: "
+           << e.what() << endl;
         return false;
     }
 }
@@ -256,7 +252,7 @@ bool BamReaderPrivate::LoadNextAlignment(BamAlignment& alignment) {
     alignment.InsertSize   = BamTools::UnpackSignedInt(&x[28]);
 
     // set BamAlignment length
-    alignment.Length = alignment.SupportData.QuerySequenceLength;
+    //alignment.Length = alignment.SupportData.QuerySequenceLength;
 
     // read in character data - make sure proper data size was read
     bool readCharDataOK = false;
@@ -315,49 +311,41 @@ bool BamReaderPrivate::LoadReferenceData(void) {
         aReference.RefLength = refLength;
         m_references.push_back(aReference);
     }
-    // return success
     return true;
 }
 
 bool BamReaderPrivate::LocateIndex(const BamIndex::IndexType& preferredType) {
-
     if ( m_randomAccessController.LocateIndex(this, preferredType) )
         return true;
     else {
         const string bracError = m_randomAccessController.GetErrorString();
-        const string message = string("could not locate index: \n\t") + bracError;
-        SetErrorString("BamReader::LocateIndex", message);
+        //const string message = string("could not locate index: \n\t") + bracError;
+        //SetErrorString("BamReader::LocateIndex", message);
+        cerr << __FILE__ << ":" << __LINE__ << "ERROR: could not locate index: "
+           << bracError << endl;
         return false;
     }
 }
 
 // opens BAM file (and index)
 bool BamReaderPrivate::Open(const string& filename) {
-
     try {
-
         // make sure we're starting with fresh state
         Close();
-
         // open BgzfStream
         m_stream.Open(filename, IBamIODevice::ReadOnly);
-
         // load BAM metadata
         LoadHeaderData();
         LoadReferenceData();
-
         // store filename & offset of first alignment
         m_filename = filename;
         m_alignmentsBeginOffset = m_stream.Tell();
-
         // return success
         return true;
-
-    } catch ( BamException& e ) {
-        const string error = e.what();
-        const string message = string("could not open file: ") + filename +
-                               "\n\t" + error;
-        SetErrorString("BamReader::Open", message);
+    } 
+    catch (BamException& e ) {
+        cerr << __FILE__ << ":" << __LINE__ << ":ERROR could not open file: "
+           << filename << " " << e.what() << endl;
         return false;
     }
 }
@@ -368,8 +356,10 @@ bool BamReaderPrivate::OpenIndex(const std::string& indexFilename) {
         return true;
     else {
         const string bracError = m_randomAccessController.GetErrorString();
-        const string message = string("could not open index: \n\t") + bracError;
-        SetErrorString("BamReader::OpenIndex", message);
+        //const string message = string("could not open index: \n\t") + bracError;
+        //SetErrorString("BamReader::OpenIndex", message);
+        cerr << __FILE__ << ":" << __LINE__ << ":ERROR could not open index: "
+           << bracError << endl;
         return false;
     }
 }
@@ -384,9 +374,10 @@ bool BamReaderPrivate::Rewind(void) {
     if ( Seek(m_alignmentsBeginOffset) )
         return true;
     else {
-        const string currentError = m_errorString;
-        const string message = string("could not rewind: \n\t") + currentError;
-        SetErrorString("BamReader::Rewind", message);
+        //const string currentError = m_errorString;
+        //const string message = string("could not rewind: \n\t") + currentError;
+        //SetErrorString("BamReader::Rewind", message);
+        cerr << __FILE__ << ":" << __LINE__ << ":ERROR could not rewind: \n";
         return false;
     }
 }
@@ -395,7 +386,7 @@ bool BamReaderPrivate::Seek(const int64_t& position) {
 
     // skip if BAM file not open
     if ( !IsOpen() ) {
-        SetErrorString("BamReader::Seek", "cannot seek on unopened BAM file");
+        cerr << __FILE__ << ":" << __LINE__ << ":ERROR cannot seek on unopened BAM file\n";
         return false;
     }
 
@@ -403,10 +394,9 @@ bool BamReaderPrivate::Seek(const int64_t& position) {
         m_stream.Seek(position);
         return true;
     }
-    catch ( BamException& e ) {
-        const string streamError = e.what();
-        const string message = string("could not seek in BAM file: \n\t") + streamError;
-        SetErrorString("BamReader::Seek", message);
+    catch (BamException& e ) {
+        cerr << __FILE__ << ":" << __LINE__ << ":ERROR could not seek in BAM file: "
+           << e.what() << endl;
         return false;
     }
 }
@@ -423,8 +413,8 @@ bool BamReaderPrivate::SetRegion(const BamRegion& region) {
         return true;
     else {
         const string bracError = m_randomAccessController.GetErrorString();
-        const string message = string("could not set region: \n\t") + bracError;
-        SetErrorString("BamReader::SetRegion", message);
+        cerr << __FILE__ << ":" << __LINE__ << ":ERROR could not set region: "
+           << bracError << endl;
         return false;
     }
 }

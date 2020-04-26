@@ -38,6 +38,11 @@ using namespace BamTools;
 class BamReaderPrivate {
     // ctor & dtor
     public:
+       /**
+        * Hold a pointer to the BamReader parent
+        * So that BamReader could have multiple 
+        * objects such as random controller in addtion to this one?
+        */
         BamReaderPrivate(BamTools::BamReader* parent);
         ~BamReaderPrivate(void);
 
@@ -71,18 +76,18 @@ class BamReaderPrivate {
         bool OpenIndex(const std::string& indexFilename);
         void SetIndex(BamIndex* index);
 
-        /**
+        /*
          * TODO: should remove this old fashioned way of 
          * error handling. Use C++ exception
          */
-        string GetErrorString(void) const {
-            return m_errorString;
-        }
-        void SetErrorString(const std::string& where, const std::string& what) {
+        //string GetErrorString(void) const {
+        //    return m_errorString;
+        //}
+        //void SetErrorString(const std::string& where, const std::string& what) {
             //static const string SEPARATOR = ": ";
             //m_errorString = where + SEPARATOR + what;
-            m_errorString = where + ": " + what;
-        }
+        //    m_errorString = where + ": " + what;
+        //}
 
     // internal methods, but available as a BamReaderPrivate 'interface'
     //
@@ -127,7 +132,7 @@ class BamReaderPrivate {
         BgzfStream m_stream;
 
         // error handling
-        std::string m_errorString;
+        //std::string m_errorString;
 };
 
 } // namespace Internal

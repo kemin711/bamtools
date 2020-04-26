@@ -58,19 +58,28 @@ class API_EXPORT BamAlignment {
         /** 
          *   Default constructor
          */
-        BamAlignment(void);
+        BamAlignment()
+            : Name(), QueryBases(), AlignedBases(), Qualities(), 
+            TagData(), RefID(-1), Position(-1), Bin(0), MapQuality(0),
+            AlignmentFlag(0), CigarData(), MateRefID(-1), MatePosition(-1), 
+            InsertSize(0), 
+            SupportData()           
+         { }
 
         /**
          * Convenient constructor for testing
+         * No Cigar string thus no actual alignment information.
+         * Also Filename is not given.
          */
         BamAlignment(const std::string& qname, int32_t refid, int32_t refpos, uint32_t alnflag, 
               int32_t mrefid, int32_t mrefpos, const std::string& queryseq, const std::string& qstring)
-           : Name(qname), Length(queryseq.size()),
+           : 
+              Name(qname), 
              QueryBases(queryseq), AlignedBases(), Qualities(qstring),
              TagData(), RefID(refid), Position(refpos), Bin(0), MapQuality(0),
              AlignmentFlag(alnflag), CigarData(),
             MateRefID(mrefid), MatePosition(mrefpos), InsertSize(0),
-            Filename()
+            SupportData()
         {}
         /**
          * Convenient constructor with Cigar input for testing
@@ -78,12 +87,12 @@ class API_EXPORT BamAlignment {
         BamAlignment(const std::string& qname, int32_t refid, int32_t refpos, uint32_t alnflag, 
               int32_t mrefid, int32_t mrefpos, const std::string& queryseq, const std::string& qstring,
               const string& cigarstr)
-           : Name(qname), Length(queryseq.size()),
+           : Name(qname), 
              QueryBases(queryseq), AlignedBases(), Qualities(qstring),
              TagData(), RefID(refid), Position(refpos), Bin(0), MapQuality(0),
              AlignmentFlag(alnflag), CigarData(),
             MateRefID(mrefid), MatePosition(mrefpos), InsertSize(0),
-            Filename()
+            SupportData()
         { setCigar(cigarstr); }
 
         /** 
@@ -95,9 +104,10 @@ class API_EXPORT BamAlignment {
          */
         BamAlignment(BamAlignment&& other);
         /**
-         * Destructor
+         * Destructor plannng to derive from this class:
+         * MultiAln, ChimearAln
          */
-        ~BamAlignment(void);
+        virtual ~BamAlignment();
         /**
          * Test version for looking at the critical information about the
          * alignment.  Should output a human readable tab-dlimited forms with
@@ -126,7 +136,7 @@ class API_EXPORT BamAlignment {
         bool operator==(const BamAlignment& other) const;
 
         bool empty() const {
-           return Length == 0;
+           return getLength() == 0;
         }
         /**
          * Not sure the condition is sufficient, need some testing.
@@ -154,9 +164,6 @@ class API_EXPORT BamAlignment {
          uint32_t getAlignmentFlag() const {
             return AlignmentFlag;
          }
-        void setAlignmentFlag(uint32_t flag) {
-           AlignmentFlag = flag;
-        }
         /**
          * @return true if is the First Read in a paired end read.
          * Alias for IsFirstMate.
@@ -348,6 +355,9 @@ class API_EXPORT BamAlignment {
 
     // manipulate alignment flags
     public:        
+        void setAlignmentFlag(uint32_t flag) {
+           AlignmentFlag = flag;
+        }
         /** sets value of "PCR duplicate" flag
          */
         void SetIsDuplicate(bool ok);         
@@ -424,209 +434,13 @@ class API_EXPORT BamAlignment {
         // retrieves tag data
         /** 
          *  Retrieves the value associated with a BAM tag.
+         *  There is no excetion, when the function return false
+         *  it means no such tag.
          *
          *  @param tag[in]          2-character tag name
          *  @param destination[out] retrieved value
          *  @return true if found.
          *
-         *  Documents for TAGs
-         *
-         *  Type  | Regexp matching VALUE  |  Description
-         *  ------------------------------------------------------
-         *  A [!-~]                          Printable character
-         *  i [-+]?[0-9]+                    Signed integer
-         *  f [-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)? Single-precision 
-         *                                   floating number
-         *  Z [ !-~]*                        Printable string, including space
-         *  H ([0-9A-F][0-9A-F])*            Byte array in the Hex format
-         *  B [cCsSiIf](,[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)+ Integer or 
-         *                                   numeric array
-         *  ==============================================================
-         *
-         *  Standard tags
-         *  ----------------------------------------------
-         *  AM i The smallest template-independent mapping quality of segments in the rest
-         *  AS i Alignment score generated by aligner C type, int8_t
-         *  BC Z Barcode sequence
-         *  BQ Z Offset to base alignment quality (BAQ)
-         *  CC Z Reference name of the next hit
-         *  CM i Edit distance between the color sequence and the color reference (see also NM) 
-         *  CO Z Free-text comments
-         *  CP i Leftmost coordinate of the next hit
-         *  CT Z Complete read annotation tag, used for consensus annotation dummy features.
-         *  E2 Z The 2nd most likely base calls
-         *  FI i The index of segment in the template
-         *  FS Z Segment suffix
-         *  FZ B,S Flow signal intensities
-         *  GC ?  Reserved for backwards compatibility reasons
-         *  GQ ?  Reserved for backwards compatibility reasons
-         *  GS ?  Reserved for backwards compatibility reasons
-         *  H0 i Number of perfect hits
-         *  H1 i Number of 1-difference hits (see also NM)
-         *  H2 i Number of 2-difference hits
-         *  HI i Query hit index
-         *  IH i Number of stored alignments in SAM that contains the query in the current record
-         *  LB Z Library
-         *  MC Z CIGAR string for mate/next segment
-         *  MD Z String for mismatching positions
-         *  MF ? Reserved for backwards compatibility reasons
-         *  MQ i Mapping quality of the mate/next segment
-         *  NH i Number of reported alignments that contains the query in the current record
-         *  NM i Edit distance to the reference. This is use by BWA. MissMatch+Indel.
-         *  OC Z Original CIGAR
-         *  OP i Original mapping position
-         *  OQ Z Original base quality
-         *  PG Z Program
-         *  PQ i Phred likelihood of the template
-         *  PT Z Read annotations for parts of the padded read sequence
-         *  PU Z Platform unit
-         *  QT Z Barcode ( BC or RT) phred-scaled base qualities
-         *  Q2 Z Phred quality of the mate/next segment sequence in the R2 tag
-         *  R2 Z Sequence of the mate/next segment in the template
-         *  RG Z Read group
-         *  RT Z Barcode sequence (deprecated; use BC instead)
-         *  SA Z Other canonical alignments in a chimeric alignment
-         *  SM i Template-independent mapping quality
-         *  SQ ?  Reserved for backwards compatibility reasons
-         *  S2 ?  Reserved for backwards compatibility reasons
-         *  TC i The number of segments in the template
-         *  U2 Z Phred probility of the 2nd call being wrong conditional on the best being wrong
-         *  UQ i Phred likelihood of the segment, conditional on the mapping being correct
-         *  X?  ?  Reserved for end users
-         *  Y?  ?  Reserved for end users
-         *  Z?  ?  Reserved for end users
-         * ==========================================
-         *
-         * Additional tags
-         * -----------------------------------------------
-         *  1.1 Additional Template and Mapping data
-         *  ------------------------
-         * AM:i:int The smallest template-independent mapping quality of segments in the rest.
-         * AS:i:score Alignment score generated by aligner.
-         * BQ:Z:qualities Offset to base alignment quality (BAQ), of the same length as the read 
-         *    sequence. At the i-th read base, BAQi = Qi − (BQi−64) where Qi is the i-th base quality.
-         * CC:Z:rname Reference name of the next hit; ‘=’ for the same chromosome.
-         * CP:i:pos Leftmost coordinate of the next hit.
-         * E2:Z:qualities The 2nd most likely base calls.  Same encoding and same length as QUAL.
-         * FI:i:int The index of segment in the template.
-         * FS:Z:str Segment suffix.
-         * H0:i:count Number of perfect hits.
-         * H1:i:count Number of 1-difference hits (see also NM).
-         * H2:i:count Number of 2-difference hits.
-         * HI:i:i Query hit index, indicating the alignment record is the i-th one stored in SAM.
-         * IH:i:count Number of stored alignments in SAM that contains the query in the current record.
-         * MC:Z:cigar CIGAR string for mate/next segment.
-         * MD:Z:[0-9]+(([A-Z]|\^[A-Z]+)[0-9]+)* String for mismatching positions.
-         *    The MD field aims to achieve SNP/indel calling without looking at
-         *    the reference.  For example, a string ‘10A5^AC6’ means  from
-         *    the  leftmost reference  base in the  alignment,  there  are 10
-         *    matches followed by an A on the reference which is different from
-         *    the aligned read base; the next 5 reference bases are matches
-         *    followed by a 2bp deletion from the reference; the deleted
-         *    sequence is AC; the last 6 bases are matches.  The MD field ought
-         *    to match the CIGAR string.
-         * MQ:i: Mapping quality of the mate/next segment.
-         * NH:i: Number of reported alignments that contains the query in the 
-         *    current record.
-         * NM:i: Edit distance to the reference, including ambiguous bases but 
-         *    excluding clipping.
-         * PQ:i: Phred likelihood of the template, conditional on both the mapping 
-         *    being correct.
-         * Q2:Z: Phred quality of the mate/next segment sequence in the R2 tag.
-         *    Same encoding as QUAL.
-         * R2:Z: Sequence of the mate/next segment in the template.
-         * SA:Z: ( rname , pos , strand , CIGAR , mapQ , NM ;)+ Other
-         *     canonical alignments in a chimeric alignment, for- matted as a
-         *     semicolon-delimited list.  Each element in the list represents a
-         *     part of the chimeric align- ment.  Conventionally, at a
-         *     supplementary line, the first element points to the primary line.
-         * SM:i: Template-independent mapping quality.
-         * TC:i: The number of segments in the template.
-         * U2:Z: Phred probility of the 2nd call being wrong conditional on the best being wrong. 
-         *    The same encoding as QUAL.
-         * UQ:i: Phred likelihood of the segment, conditional on the mapping being correct.
-         * --------------------------------
-         * 1.2    Metadata
-         * ------------------------------
-         * RG:Z: readgroup The read group to which the read belongs.  If @RG headers are 
-         *    present,  then readgroup must match the RG-ID field of one of
-         *    the headers.
-         * LB:Z: library The library from which the read has been sequenced.
-         *    If @RG headers are present, then library must match the RG-LB
-         *    field of one of the headers.  
-         * PG:Z: Program.  Value matches the header PG-ID tag if @PG is present.
-         * PU:Z:platformunit The platform unit in which the read was
-         *    sequenced.  If @RG headers are present, then platformunit must
-         *    match the RG-PU field of one of the headers.
-         * CO:Z:text Free-text comments.
-         *  ----------------------------
-         *  1.3    Barcodes
-         * ----------------------------
-         * BC:Z:sequence Barcode sequence, with any quality scores stored in the
-         *    QT tag.
-         * QT:Z:qualities Phred quality of the barcode sequence in the BC (or RT) tag.  
-         *    Same encoding as QUAL .
-         * RT:Z:sequence Deprecated alternative to BC tag originally used at Sanger.
-         * ----------------------------
-         * 1.4    Original data
-         * ----------------------------
-         * OC:Z:cigar Original CIGAR, usually before realignment.
-         * OP:i:pos Original mapping position, usually before realignment.
-         * OQ:Z:qualities Original base quality, usually before recalibration. 
-         *    Same encoding as QUAL
-         * ----------------------------
-         * 1.5    Annotation and Padding
-         * ----------------------------
-         * CT:Z:strand;type(;key(=value))* Complete read annotation tag, used for consensus 
-         *    annotation dummy features.  The CT tag is intended primarily for
-         *    annotation dummy reads, and consists of a strand , type and zero
-         *    or more key=value pairs, each separated with semicolons.  The
-         *    strand field has four values as in GFF3, and supplements FLAG
-         *    bit 0x10 to allow unstranded (‘.’),  and stranded but unknown
-         *    strand (‘?’) annotation.  For these and annotation on the
-         *    forward strand (strand set to ‘+’), do not set FLAG bit 0x10.
-         *    For annotation on the reverse strand, set the strand to ‘-’ and
-         *    set FLAG bit 0x10.  The type and  any keys and  their optional
-         *    values are  all  percent  encoded  according  to RFC3986  to
-         *    escape meta-characters ‘=’,‘%’,‘;’,‘|’ or non-printable
-         *    characters not matched by the isprint() macro (with the C
-         *    locale).  For example a percent sign becomes ‘%2C’.
-         * PT:Z:start;end;strand;type(;key(=value))*(\|start;end;strand;type(;key(=value))*)*
-         *   Read annotations for parts of the padded read sequence.  The PT
-         *   tag value has the format of a series of tags separated by ‘|’,
-         *   each annotating a sub-region of the read.  Each tag consists
-         *   of start, end, strand , type and zero or more key = value pairs,
-         *   each separated with semicolons.  Start and end are 1-based
-         *   positions between one and the sum of the M/I/D/P/S/=/X CIGAR
-         *   operators, i.e.  SEQ length plus any pads.  Note any editing of
-         *   the CIGAR string may require updating the ‘PT’ tag coordinates,
-         *   or even invalidate them.  As in GFF3, strand is one of ‘+’ for
-         *   forward strand tags, ‘-’ for reverse strand, ‘.’  for unstranded
-         *   or ‘?’  for stranded but unknown strand.  The type and any keys
-         *   and their optional values are all percent encoded as in the CT
-         *   tag.  1.6 Technology-specific data FZ:B,S: intensities Flow
-         *   signal intensities  on  the original strand of  the  read, stored
-         *   as (uint16 t) round(value*100.0).
-         *   -------------------------
-         *       1.6.1  Color space
-         *   -------------------------
-         * CM:i:distance Edit distance between the color sequence and the
-         *    color reference (see also NM).
-         * CS:Z:sequence Color read sequence on the original strand of the
-         *    read.  The primer base must be included.
-         * CQ:Z:qualities Color  read  quality  on  the  original  strand
-         *    of  the  read.   Same  encoding  as QUAL ;  same length as CS .
-         * ----------------------------------
-         * 2    Locally-defined tags
-         * ----------------------------------
-         * You can freely add new tags.  Note that tags starting with ‘X’, ‘Y’,
-         * or ‘Z’ and tags containing lowercase letters in either position are
-         * reserved for local use and will not be formally defined in any
-         * future version of this specification.  If a new tag may be of
-         * general interest, it may be useful to have it added to this 
-         * specification.  Additions can be proposed by opening a new issue 
-         * at https://github.com/samtools/hts-specs/issues
-         * and/or by sending email to samtools-devel@lists.sourceforge.net.
         */
         template<typename T> bool GetTag(const std::string& tag, T& destination) const;
         template<typename T> bool GetTag(const std::string& tag, std::vector<T>& destination) const;
@@ -752,7 +566,7 @@ class API_EXPORT BamAlignment {
         std::pair<int,int> getPairedInterval() const;
 
         // returns a description of the last error that occurred
-        std::string GetErrorString(void) const;
+        //std::string GetErrorString(void) const;
 
         // retrieves the size, read locations and reference locations of soft-clip operations
         bool GetSoftClips(std::vector<int>& clipSizes,
@@ -772,9 +586,11 @@ class API_EXPORT BamAlignment {
          */
         const std::string& getName() const { return Name; }
         /**
-         * getter method for the length of the query (read)
+         * getter method for the length of the query sequence (read)
          */
-        int32_t getQueryLength() const { return Length; }
+        int32_t getQueryLength() const { 
+           return getLength(); 
+        }
         /**
          * @return the length of the matched part of the
          *    the reference.  This is the sum of cigar
@@ -1023,8 +839,11 @@ class API_EXPORT BamAlignment {
          * change the name of the query
          */
         void setQueryName(const std::string &qname) { Name = qname; }
-        void setQuerySequenceLength(int32_t qlen) {  Length = qlen; }
-        void setQueryLength(int32_t qlen) {  Length = qlen; }
+        void setQuerySequenceLength(int32_t qlen) {  
+           SupportData.QuerySequenceLength = qlen; 
+        }
+        void setQueryLength(int32_t qlen) {  
+           SupportData.QuerySequenceLength = qlen; }
         /**
          * Once query bases is changed the length will also
          * change. There is no need to call setQueryLength()
@@ -1204,7 +1023,7 @@ class API_EXPORT BamAlignment {
          // above new implementation did not pass test yet
          void advanceIndex(int &i, int &j, int &x, unsigned int &cigarIdx, unsigned int &ci, char &cigarState) const;
 
-    // public data fields, these fileds should all become private in the future
+    // public data fields, TODO: these fileds should all become private in the future
     public:
         /** 
          * read or query name 
@@ -1220,7 +1039,19 @@ class API_EXPORT BamAlignment {
          *
          *  TODO: consider redesign 
          */
-        int32_t     Length;             
+        //int32_t     Length;             
+        int32_t     Length() const {
+           return SupportData.QuerySequenceLength;
+        }             
+        /**
+         * @return the length of the query sequence.
+         */
+        int32_t getLength() const {
+           return SupportData.QuerySequenceLength;
+        }
+        void setLength(int32_t len) {
+           SupportData.QuerySequenceLength=len;
+        }
         /** 'original' sequence (contained in BAM file)
          */
         std::string QueryBases;         
@@ -1302,11 +1133,15 @@ class API_EXPORT BamAlignment {
          * Then you can get the range properly
          */
         int32_t InsertSize;        
-        // alignment should not store its file name
-        // information repetation, remove in future version
-        // TODO: remove in next release
-        // this is used in multiple file input operations
-        std::string Filename;           // name of BAM file which this alignment comes from
+        /*
+         * alignment should not store its file name
+         * information repetation, remove in future version
+         * TODO: remove in next release
+         * this is used in multiple file input operations
+         *
+         * name of BAM file which this alignment comes from
+         */
+        //std::string Filename;           
         //static mutex gmtx;
 
     //! \internal
@@ -1325,15 +1160,6 @@ class API_EXPORT BamAlignment {
         bool FindTag(const std::string& tag, char*& pTagData, 
               const unsigned int& tagDataLength, unsigned int& numBytesParsed) const;
         bool IsValidSize(const std::string& tag, const std::string& type) const;
-         /**
-          * Sets a formatted error string for this alignment.
-          *
-          * @param[in] where class/method where error occurred
-          * @param[in] what  description of error
-          * TODO: This type of error handling is ad hock, should use the
-          * C++ language exception handling. Should remove in future versions.
-          */
-        void SetErrorString(const std::string& where, const std::string& what) const;
         bool SkipToNextTag(const char storageType,
                            char*& pTagData,
                            unsigned int& numBytesParsed) const;
@@ -1349,7 +1175,7 @@ class API_EXPORT BamAlignment {
          static int GAP_CUT; // = 3;
 
 
-    // internal data
+    // internal data member
     private:
         // nested class TODO: simplify in future versions
         struct BamAlignmentSupportData {
@@ -1366,9 +1192,8 @@ class API_EXPORT BamAlignment {
             bool        HasCoreOnly;
             
             // constructor
-            BamAlignmentSupportData(void)
-                : BlockLength(0)
-                , NumCigarOperations(0)
+            BamAlignmentSupportData()
+                : BlockLength(0) , NumCigarOperations(0)
                 , QueryNameLength(0)
                 , QuerySequenceLength(0)
                 , HasCoreOnly(false)
@@ -1412,7 +1237,13 @@ class API_EXPORT BamAlignment {
         friend class Internal::BamReaderPrivate;
         friend class Internal::BamWriterPrivate;
 
-        mutable std::string ErrorString; // mutable to allow updates even in logically const methods
+        /*
+         * TODO: replace ERrorString with the C++
+         * exception handling mechanism to reduce the
+         * complexity of this class and reducde the memory 
+         * size of this class.
+         */
+        //mutable std::string ErrorString;
     //! \endinternal
 };
 
@@ -1624,8 +1455,6 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
     }
     // localize the tag data
     char* pTagData = (char*)TagData.data(); // string's low leve representation
-    //cout << __FILE__ << ":" << __LINE__ << ": pTagData: "
-    //   << pTagData << endl;
     const unsigned int tagDataLength = TagData.size();
     unsigned int numBytesParsed = 0;
     // return failure if tag not found
@@ -1633,36 +1462,12 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
         // TODO: set error string?
         return false;
     }
-    //cerr << __FILE__ << ":" << __LINE__ << ": after FindTag operation. pTagData-1: "
-    //   << pTagData-1 << endl;
-    // fetch data type
-    //const char type = *(pTagData - 1);
     char type = *(pTagData - 1);
     if (type == 'C')
-     //  && (tag == "NM" || tag == "AS" || tag == "XS" 
-     //        || tag == "XX" || tag == "YY" || tag == "XY"
-     //        || tag == "XC" || tag == "YM" || tag == "YG"
-     //        || tag == "XO")) 
-    { // patch a bug in bamtools thinking type i as C
-       //type = Constants::BAM_TAG_TYPE_INT32;
-      //cerr << __FILE__ << ":" << __LINE__ << ": pTagData: "
-       //  << pTagData << endl;
-      //cerr << "NM int val at pTagData: " << (int)(*pTagData) << " at 2 bytes later: "
-      //   << (int)(*(pTagData+2)) << endl;
-       // this is a short term patc for the bug
+    { 
       destination=(uint32_t)(*pTagData);
       return true;
     }
-    //else if (!TagTypeHelper<T>::CanConvertFrom(type)) {
-        // TODO: set error string ?
-   //    cerr << endl << __FILE__ << ":" << __LINE__ << ":"
-    //      << "Failed to convert to " << typeid(destination).name() 
-    //      << " from " << type << " tag: " << tag << endl
-    //      << endl << *this << endl << endl;
-    //    return false;
-    //}
-    // determine data length
-    //int destinationLength = 0;
     size_t destinationLength = 0;
     switch ( type ) { // TODO: replace case with object design
         // 1 byte data
@@ -1686,13 +1491,16 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
         case (Constants::BAM_TAG_TYPE_STRING) :
         case (Constants::BAM_TAG_TYPE_HEX)    :
         case (Constants::BAM_TAG_TYPE_ARRAY)  :
-            SetErrorString("BamAlignment::GetTag",
-                           "cannot store variable length tag data into a numeric destination");
+            //SetErrorString("BamAlignment::GetTag",
+            //              "cannot store variable length tag data into a numeric destination");
+            cerr << __FILE__ << ":" << __LINE__ 
+               << ":ERROR cannot store variable length tag data into a numeric destination\n";
             return false;
         // unrecognized tag type
         default:
-            const std::string message = std::string("invalid tag type: ") + type;
-            SetErrorString("BamAlignment::GetTag", message);
+            //const std::string message = std::string("invalid tag type: ") + type;
+            //SetErrorString("BamAlignment::GetTag", message);
+            cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid tag type: " << type << endl;
             return false;
     } // using a string specialization version for string data
     // store data in destination
@@ -1768,7 +1576,8 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
     // check that tag is array type
     const char tagType = *(pTagData - 1);
     if ( tagType != Constants::BAM_TAG_TYPE_ARRAY ) {
-        SetErrorString("BamAlignment::GetTag", "cannot store a non-array tag in array destination");
+        cerr << __FILE__ << ":" << __LINE__ << ":" << __func__ 
+           << ":ERROR cannot store a non-array tag in array destination\n";
         return false;
     }
     // fetch element type
@@ -1800,13 +1609,13 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
         case (Constants::BAM_TAG_TYPE_STRING) :
         case (Constants::BAM_TAG_TYPE_HEX)    :
         case (Constants::BAM_TAG_TYPE_ARRAY)  :
-            SetErrorString("BamAlignment::GetTag",
-                           "invalid array data, variable-length elements are not allowed");
+            cerr << __FILE__ << ":" << __LINE__ << ":" << __func__ 
+               << ":ERROR invalid array data, variable-length elements are not allowed\n";
             return false;
         // unknown tag type
         default:
-            const std::string message = std::string("invalid array element type: ") + elementType;
-            SetErrorString("BamAlignment::GetTag", message);
+            cerr << __FILE__ << ":" << __LINE__ << ":" << __func__ 
+               << ":ERROR invalid array element type: " << elementType << endl;
             return false;
     }
     // not using elementLength

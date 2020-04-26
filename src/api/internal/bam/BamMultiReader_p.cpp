@@ -88,14 +88,12 @@ bool BamMultiReaderPrivate::CloseFiles(const vector<string>& filenames) {
 
             // if reader matches requested filename
             if ( reader->GetFilename() == filename ) {
-
                 // remove reader's entry from alignment cache
                 m_alignmentCache->Remove(reader);
-
                 // clean up reader & its alignment
                 if ( !reader->Close() ) {
                     m_errorString.append(1, '\t');
-                    m_errorString.append(reader->GetErrorString());
+                    //m_errorString.append(reader->GetErrorString());
                     m_errorString.append(1, '\n');
                     errorsEncountered = true;
                 }
@@ -154,7 +152,7 @@ bool BamMultiReaderPrivate::CreateIndexes(const BamIndex::IndexType& type) {
         if ( !reader->HasIndex() ) {
             if ( !reader->CreateIndex(type) ) {
                 m_errorString.append(1, '\t');
-                m_errorString.append(reader->GetErrorString());
+                //m_errorString.append(reader->GetErrorString());
                 m_errorString.append(1, '\n');
                 errorsEncountered = true;
             }
@@ -436,7 +434,7 @@ bool BamMultiReaderPrivate::LocateIndexes(const BamIndex::IndexType& preferredTy
         if ( !reader->HasIndex() ) {
             if ( !reader->LocateIndex(preferredType) ) {
                 m_errorString.append(1, '\t');
-                m_errorString.append(reader->GetErrorString());
+                //m_errorString.append(reader->GetErrorString());
                 m_errorString.append(1, '\n');
                 errorsEncountered = true;
             }
@@ -556,7 +554,7 @@ bool BamMultiReaderPrivate::OpenIndexes(const vector<string>& indexFilenames) {
             const string& indexFilename = (*indexFilenameIter);
             if ( !reader->OpenIndex(indexFilename) ) {
                 m_errorString.append(1, '\t');
-                m_errorString += reader->GetErrorString();
+                //m_errorString += reader->GetErrorString();
                 m_errorString.append(1, '\n');
                 errorsEncountered = true;
             }
@@ -593,7 +591,7 @@ bool BamMultiReaderPrivate::PopNextCachedAlignment(BamAlignment& al, const bool 
     // set char data if requested
     if ( needCharData ) {
         alignment->BuildCharData();
-        alignment->Filename = reader->GetFilename();
+        //alignment->Filename = reader->GetFilename();
     }
 
     // store cached alignment into destination parameter (by copy)
@@ -640,7 +638,7 @@ bool BamMultiReaderPrivate::RewindReaders(void) {
         // attempt rewind on BamReader
         if ( !reader->Rewind() ) {
             m_errorString.append(1, '\t');
-            m_errorString.append( reader->GetErrorString() );
+            //m_errorString.append( reader->GetErrorString() );
             m_errorString.append(1, '\n');
             errorsEncountered = true;
         }

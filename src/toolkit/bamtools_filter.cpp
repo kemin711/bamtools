@@ -108,7 +108,8 @@ struct BamAlignmentChecker {
                 const bool isSingleton = al.IsPaired() && al.IsMapped() && !al.IsMateMapped();
                 keepAlignment &= valueFilter.check(isSingleton);
             }
-            else if ( propertyName == LENGTH_PROPERTY )               keepAlignment &= valueFilter.check(al.Length);
+            else if ( propertyName == LENGTH_PROPERTY )               
+               keepAlignment &= valueFilter.check(al.getLength());
             else if ( propertyName == MAPQUALITY_PROPERTY )           keepAlignment &= valueFilter.check(al.MapQuality);
             else if ( propertyName == MATEPOSITION_PROPERTY )         keepAlignment &= ( al.IsPaired() && al.IsMateMapped() && valueFilter.check(al.MateRefID) );
             else if ( propertyName == MATEREFERENCE_PROPERTY ) {
@@ -794,7 +795,8 @@ bool FilterTool::FilterToolPrivate::Run(void) {
             // find overlapping alignments
             else {
                 while ( reader.GetNextAlignment(al) ) {
-                    if ( (al.RefID >= region.LeftRefID)  && ((al.Position + al.Length) >= region.LeftPosition) &&
+                    if ( (al.RefID >= region.LeftRefID)  && 
+                          ((al.Position + al.getLength()) >= region.LeftPosition) &&
                          (al.RefID <= region.RightRefID) && ( al.Position <= region.RightPosition) ) 
                     {
                         if ( CheckAlignment(al) ) 

@@ -141,8 +141,8 @@ bool BamToolsIndex::Create(void) {
 
     // rewind BamReader
     if ( !m_reader->Rewind() ) {
-        const string readerError = m_reader->GetErrorString();
-        const string message = "could not create index: \n\t" + readerError;
+        //const string readerError = m_reader->GetErrorString();
+        const string message = "could not create index\n";
         SetErrorString("BamToolsIndex::Create", message);
         return false;
     }
@@ -264,8 +264,8 @@ bool BamToolsIndex::Create(void) {
 
     // rewind BamReader
     if ( !m_reader->Rewind() ) {
-        const string readerError = m_reader->GetErrorString();
-        const string message = "could not create index: \n\t" + readerError;
+        //const string readerError = m_reader->GetErrorString();
+        const string message = "could not create index\n";
         SetErrorString("BamToolsIndex::Create", message);
         return false;
     }

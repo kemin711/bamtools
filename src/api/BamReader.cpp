@@ -112,9 +112,9 @@ void BamReader::SetIndex(BamIndex* index) {
    d->SetIndex(index);
 }
 
-std::string BamReader::GetErrorString(void) const {
-   return d->GetErrorString();
-}
+//std::string BamReader::GetErrorString(void) const {
+//   return d->GetErrorString();
+//}
         
 vector<pair<string,int>> BamReader::getReferenceMetaData() const {
    RefVector tmp = GetReferenceData();

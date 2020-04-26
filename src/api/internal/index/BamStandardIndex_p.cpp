@@ -263,8 +263,8 @@ bool BamStandardIndex::Create(void) {
 
     // rewind BamReader
     if ( !m_reader->Rewind() ) {
-        const string readerError = m_reader->GetErrorString();
-        const string message = "could not create index: \n\t" + readerError;
+        //const string readerError = m_reader->GetErrorString();
+        const string message = "could not create index\n";
         SetErrorString("BamStandardIndex::Create", message);
         return false;
     }
@@ -400,8 +400,8 @@ bool BamStandardIndex::Create(void) {
 
     // rewind BamReader
     if ( !m_reader->Rewind() ) {
-        const string readerError = m_reader->GetErrorString();
-        const string message = "could not create index: \n\t" + readerError;
+        //const string readerError = m_reader->GetErrorString();
+        const string message = "could not create index\n";
         SetErrorString("BamStandardIndex::Create", message);
         return false;
     }
@@ -458,8 +458,8 @@ void BamStandardIndex::GetOffset(const BamRegion& region, int64_t& offset, bool*
         // attempt seek to candidate offset
         const int64_t& candidateOffset = (*offsetIter);
         if ( !m_reader->Seek(candidateOffset) ) {
-            const string readerError = m_reader->GetErrorString();
-            const string message = "could not seek in BAM file: \n\t" + readerError;
+            //const string readerError = m_reader->GetErrorString();
+            const string message = "could not seek in BAM file";
             throw BamException("BamToolsIndex::GetOffset", message);
         }
 
