@@ -517,11 +517,11 @@ API_EXPORT inline unsigned short UnpackUnsignedShort(char* buffer) {
 // ----------------------------------------------------------------
 // 'internal' helper structs
 
-/*! \struct RaiiBuffer
-    \internal
-*/
+/**
+ * struct RaiiBuffer
+ *   internal
+ */
 struct RaiiBuffer {
-
     // data members
     char* Buffer;
     const size_t NumBytes;
@@ -531,11 +531,9 @@ struct RaiiBuffer {
         : Buffer( new char[n]() )
         , NumBytes(n)
     { }
-
     ~RaiiBuffer(void) {
         delete[] Buffer;
     }
-
     // add'l methods
     void Clear(void) {
         memset(Buffer, 0, NumBytes);

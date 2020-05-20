@@ -20,6 +20,7 @@
 #include <iostream>
 #include <utility>
 #include <typeinfo>
+#include <map>
 //#include <mutex>
 
 // to turn off debug mode uncomment the following line
@@ -50,7 +51,11 @@ class BamAlignmentException : public exception {
 
 };
 
-// BamAlignment data structure
+/**
+ *  BamAlignment data structure to hold a single
+ *  Alignment data with summary information to it partner 
+ *  (mate or read2) alignment data.
+ */
 class API_EXPORT BamAlignment {
    // API_EXPORT are constructed used for Window DDL
     // constructors & destructor
@@ -62,8 +67,7 @@ class API_EXPORT BamAlignment {
             : Name(), QueryBases(), AlignedBases(), Qualities(), 
             TagData(), RefID(-1), Position(-1), Bin(0), MapQuality(0),
             AlignmentFlag(0), CigarData(), MateRefID(-1), MatePosition(-1), 
-            InsertSize(0), 
-            SupportData()           
+            InsertSize(0), SupportData()           
          { }
 
         /**
@@ -104,10 +108,11 @@ class API_EXPORT BamAlignment {
          */
         BamAlignment(BamAlignment&& other);
         /**
+         * This class does not have dynamicly allocated data.
          * Destructor plannng to derive from this class:
          * MultiAln, ChimearAln
          */
-        virtual ~BamAlignment();
+        virtual ~BamAlignment() { };
         /**
          * Test version for looking at the critical information about the
          * alignment.  Should output a human readable tab-dlimited forms with
@@ -134,10 +139,35 @@ class API_EXPORT BamAlignment {
          * same query mapped to multiple locations.
          */
         bool operator==(const BamAlignment& other) const;
+        /**
+         * interface function should never be used by this class
+         * Should be implemented by derived classes.
+         */
+        virtual bool operator()(BamAlignment* ba) { 
+           if (ba != nullptr) {
+              throw runtime_error("base class cannot add true pointer");
+           }
+            return true;
+        }
+        /**
+         * Should be derived by subclasses
+         */
+        virtual bool isFull() const {
+           return true;
+        }
+        /**
+         * Should be derived by subclasses
+         */
+        virtual void findBestLocation() {
+        }
 
+        /**
+         * This object has not been populated with real data.
+         */
         bool empty() const {
            return getLength() == 0;
         }
+        bool isEmpty() const { return getLength() == 0; }
         /**
          * Not sure the condition is sufficient, need some testing.
          * The caller needs to make sure the query name is the same or 
@@ -466,7 +496,7 @@ class API_EXPORT BamAlignment {
         // retrieves the SAM/BAM type-code for the data elements in an array tag
         bool GetArrayTagType(const std::string& tag, char& type) const;
         /** 
-         * returns true if alignment has a record for this tag name
+         * @returns true if alignment has a record for this tag name
          */
         bool HasTag(const std::string& tag) const;
         /** 
@@ -564,9 +594,6 @@ class API_EXPORT BamAlignment {
          * Should always be [small, large]
          */
         std::pair<int,int> getPairedInterval() const;
-
-        // returns a description of the last error that occurred
-        //std::string GetErrorString(void) const;
 
         // retrieves the size, read locations and reference locations of soft-clip operations
         bool GetSoftClips(std::vector<int>& clipSizes,
@@ -713,6 +740,7 @@ class API_EXPORT BamAlignment {
         /**
          * @return a const reference to the CIGAR operations for this alignment
          * CigarData is a typedef of vector<CigarOp>
+         * DigarOp: struc { char Type; uint32_t Length; }
          */
         const std::vector<CigarOp>& getCigar() const { return CigarData; } 
         /**
@@ -724,6 +752,7 @@ class API_EXPORT BamAlignment {
          * @return a string version of Cigar.
          */
         string getCigarString() const;
+        bool sameCigar(const vector<pair<char,int>>& cigar) const;
         /**
          * Some alignment's cigar entry is *
          * this is the same as no cigar. This function test this situation
@@ -756,6 +785,10 @@ class API_EXPORT BamAlignment {
         unsigned int getCigarOperationCount() const {
            return CigarData.size();
         }
+        /**
+         * Has indel near < 22 nt from the end
+         */
+        bool hasEndIndel() const;
         /**
          * To fix certain aligner's tendency to put two gap
          * when a small region of the sequence has more mismatches
@@ -883,6 +916,12 @@ class API_EXPORT BamAlignment {
          * */
         void setCigarOperation(const std::vector<pair<char,int> > &cd); 
         void setCigar(const string& cstr);
+        void setCigar(const std::vector<pair<char,int> > &cd) {
+           setCigarOperation(cd);
+        }
+        void setCigar(const std::vector<CigarOp> &cd) {
+           setCigarData(cd);
+        }
         /**
          * @param materefid Mate reference id, set to -1 if mate unmapped
          */
@@ -992,17 +1031,50 @@ class API_EXPORT BamAlignment {
          */
          int getASValue() const;
          /**
-         * @return -1 if not found NM tag
+         * @return the NM tag value or -1 if not found NM tag
          */
          int getNMValue() const;
+
+         //// static methods ////
          static void setPolishMax(int len) {
             TRIMLEN_MAX = len;
          }
          static void setPolishGap(int gap) {
             GAP_CUT = gap;
          }
+         static vector<pair<char,int>> parseCigar(const string& cigarstr);
+         static string cigarToString(const vector<pair<char,int>>& cg);
+         /**
+         * The header part of BamReader
+         * for indexing readname,readlength.
+         * Bam file refid, matid directly look up into this table
+         * and you can get REFNAME (first) and seqlen (second)
+         * You can swithc during BamAlignment processing to a different
+         * file header.
+         */
+         static void setRefvector(vector<pair<string,int>>&& refvec);
+         /**
+          * @name is the referece string name such as 1 or chr1 depends on 
+          * the version of reference genome used.
+          * @return the reference id given name for looking into 
+          *   the id used by Bamfile.
+          */
+         static int referenceIdFromName(const string& name) {
+            return refname2id[name];
+         }
+         /**
+          * Given a reference id, what's the string name.
+          * This is used to extract the genomic sequence
+          * from external sources.
+          */
+         static pair<string,int> getRefnameFromId(int refid) {
+            return rsname[refid];
+         }
 
     private:
+         //// static members to be shared by derived class ////
+         static vector<pair<string,int>> rsname;
+         static map<string,int> refname2id;
          /** 
           * Helper function apply to generic situation where
           * both Ref or Query may be advanced.
@@ -1133,16 +1205,6 @@ class API_EXPORT BamAlignment {
          * Then you can get the range properly
          */
         int32_t InsertSize;        
-        /*
-         * alignment should not store its file name
-         * information repetation, remove in future version
-         * TODO: remove in next release
-         * this is used in multiple file input operations
-         *
-         * name of BAM file which this alignment comes from
-         */
-        //std::string Filename;           
-        //static mutex gmtx;
 
     //! \internal
     // internal utility methods
@@ -1236,14 +1298,6 @@ class API_EXPORT BamAlignment {
         BamAlignmentSupportData SupportData;
         friend class Internal::BamReaderPrivate;
         friend class Internal::BamWriterPrivate;
-
-        /*
-         * TODO: replace ERrorString with the C++
-         * exception handling mechanism to reduce the
-         * complexity of this class and reducde the memory 
-         * size of this class.
-         */
-        //mutable std::string ErrorString;
     //! \endinternal
 };
 

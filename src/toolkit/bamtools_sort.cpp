@@ -34,8 +34,8 @@ namespace BamTools {
 //    I say 'optimized' because each system will naturally perform
 //    differently.  We will attempt to determine a sensible
 //    compromise that should perform well on average.
-const unsigned int SORT_DEFAULT_MAX_BUFFER_COUNT  = 1000000;  // max numberOfAlignments for buffer
-const unsigned int SORT_DEFAULT_MAX_BUFFER_MEMORY = 4096;    // Mb
+const unsigned int SORT_DEFAULT_MAX_BUFFER_COUNT  = 10000000;  // max numberOfAlignments for buffer
+const unsigned int SORT_DEFAULT_MAX_BUFFER_MEMORY = 409600;    // Mb
     
 } // namespace BamTools
 

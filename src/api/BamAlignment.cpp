@@ -20,9 +20,50 @@
 using namespace BamTools;
 using namespace std;
 
+///////// static member and functions /////////////////////
 int BamAlignment::TRIMLEN_MAX = 6;
 int BamAlignment::GAP_CUT = 3;
+vector<pair<string,int>> BamAlignment::rsname;
+map<string,int> BamAlignment::refname2id;
 
+void BamAlignment::setRefvector(vector<pair<string,int>>&& refvec) {
+   rsname=refvec;
+   for (size_t i=0; i<refvec.size(); ++i) {
+      refname2id[refvec[i].first] = i;
+   }
+}
+
+vector<pair<char,int>> BamAlignment::parseCigar(const string& cigarstr) {
+   string::size_type i=0, b;
+   int len;
+   char CO;
+   vector<pair<char,int>> res;
+   while (i < cigarstr.size()) {
+      b=i;
+      while (i < cigarstr.size()-1 && isdigit(cigarstr[i])) { ++i; }
+      len = stoi(cigarstr.substr(b,i-b));
+      CO = cigarstr[i];
+      if ( CO == 'M' || CO == 'I' || CO == 'D' || CO == 'S' || CO == 'H' || CO == 'N') {
+         res.push_back(make_pair(CO, len));
+      }
+      else {
+         throw runtime_error(string(__FILE__) + to_string(__LINE__) + ":ERROR Illigal cigar op: " + CO);
+      }
+      ++i;
+   }
+   return res;
+}
+
+string BamAlignment::cigarToString(const vector<pair<char,int>>& cg) {
+   ostringstream osr;
+   for (auto& p : cg) {
+      osr << p.second << p.first;
+   }
+   return osr.str();
+}
+
+
+/// Regular member function part /////
 
 /*! \fn BamAlignment::BamAlignment(const BamAlignment& other)
     \brief copy constructor
@@ -96,16 +137,11 @@ BamAlignment& BamAlignment::operator=(BamAlignment&& other) {
       MateRefID=other.MateRefID;
       MatePosition=other.MatePosition;
       InsertSize=other.InsertSize;
-      //Filename=std::move(other.Filename);
       SupportData=std::move(other.SupportData);
    }
    return *this;
 }
 
-/*! \fn BamAlignment::~BamAlignment(void)
-    \brief destructor
-*/
-BamAlignment::~BamAlignment(void) { }
 
 //std::ostream& BamTools::operator<<(std::ostream &ous, const BamTools::BamAlignment &ba) {
 // error: ‘std::ostream& BamTools::operator<<(std::ostream&, const BamTools::BamAlignment&)’ should have been declared inside ‘BamTools’
@@ -245,6 +281,34 @@ bool BamAlignment::hasICigar() const {
    for (auto& co : CigarData) {
       if (co.getType() == 'I') return true;
    }
+   return false;
+}
+
+bool BamAlignment::sameCigar(const vector<pair<char,int>>& cigar) const {
+   if (cigar.size() != CigarData.size()) 
+      return false;
+   for (size_t i=0; i<cigar.size(); ++i) {
+      if (cigar[i].first != CigarData[i].getType() 
+            || cigar[i].second != (int)CigarData[i].getLength()) 
+         return false;
+   }
+   return true;
+}
+
+bool BamAlignment::hasEndIndel() const {
+   if (CigarData.size() < 3 || CigarData.front().getType() == 'S' 
+         || CigarData.back().getType() == 'S') 
+   {
+      return false;
+   }
+   int i = 0;
+   while (i < (int)CigarData.size() && CigarData[i].getType() != 'M') ++i;
+   if (i < (int)CigarData.size()-1 && CigarData[i].getLength() < 22U && (CigarData[i+1].getType() == 'I' || CigarData[i+1].getType() == 'D'))
+      return true;
+   i = CigarData.size()-1;
+   while (i > 0 && CigarData[i].getType() != 'M') --i;
+   if (i > 0 && CigarData[i].getLength() < 22U && (CigarData[i-1].getType() == 'I' || CigarData[i-1].getType() == 'D'))
+      return true;
    return false;
 }
 

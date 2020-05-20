@@ -35,6 +35,11 @@ namespace Internal {
 
 using namespace BamTools;
 
+/**
+ * Should have a hiarchy of different readers
+ * Base: Sequential readers
+ * Random readers for different situations.
+ */
 class BamReaderPrivate {
     // ctor & dtor
     public:
@@ -57,8 +62,16 @@ class BamReaderPrivate {
         bool Rewind(void);
         bool SetRegion(const BamRegion& region);
 
-        // access alignment data
+        /**
+         * Take alignment data from file stream and 
+         * fill up the Alignment object.
+         * @return true if obtained the next valid alignment
+         *    false otherwise.
+         */
         bool GetNextAlignment(BamAlignment& alignment);
+        /**
+         * Collect only the core part of the alignment.
+         */
         bool GetNextAlignmentCore(BamAlignment& alignment);
 
         // access auxiliary data
@@ -76,19 +89,6 @@ class BamReaderPrivate {
         bool OpenIndex(const std::string& indexFilename);
         void SetIndex(BamIndex* index);
 
-        /*
-         * TODO: should remove this old fashioned way of 
-         * error handling. Use C++ exception
-         */
-        //string GetErrorString(void) const {
-        //    return m_errorString;
-        //}
-        //void SetErrorString(const std::string& where, const std::string& what) {
-            //static const string SEPARATOR = ": ";
-            //m_errorString = where + SEPARATOR + what;
-        //    m_errorString = where + ": " + what;
-        //}
-
     // internal methods, but available as a BamReaderPrivate 'interface'
     //
     // these methods should only be used by BamTools::Internal classes
@@ -96,8 +96,13 @@ class BamReaderPrivate {
     public:
         // retrieves header text from BAM file
         void LoadHeaderData(void);
-        // retrieves BAM alignment under file pointer
-        // (does no overlap checking or character data parsing)
+        /**
+         * retrieves BAM alignment under file pointer
+         * (does no overlap checking or character data parsing)
+         * Parse the Cigar data into CigarData field.
+         *
+         * @return true if success false if failure.
+         */
         bool LoadNextAlignment(BamAlignment& alignment);
         // builds reference data structure from BAM file
         bool LoadReferenceData(void);
@@ -108,7 +113,6 @@ class BamReaderPrivate {
 
     // data members
     public:
-
         // general BAM file data
         int64_t     m_alignmentsBeginOffset;
         std::string m_filename;
@@ -127,12 +131,18 @@ class BamReaderPrivate {
         BamReader* m_parent;
 
         // BamReaderPrivate components
+        /**
+         * Holds the BamFile header
+         */
         BamHeader m_header;
+        /**
+         * Random access controller
+         */
         BamRandomAccessController m_randomAccessController;
+        /**
+         * Bgzfile stream
+         */
         BgzfStream m_stream;
-
-        // error handling
-        //std::string m_errorString;
 };
 
 } // namespace Internal

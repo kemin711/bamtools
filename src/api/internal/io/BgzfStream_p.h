@@ -45,7 +45,9 @@ class BgzfStream {
         bool IsOpen(void) const;
         // opens the BGZF file
         void Open(const std::string& filename, const IBamIODevice::OpenMode mode);
-        // reads BGZF data into a byte buffer
+        /**
+         *  reads BGZF data into a byte buffer
+         */
         size_t Read(char* data, const size_t dataLength);
         // seek to position in BGZF file
         void Seek(const int64_t& position);

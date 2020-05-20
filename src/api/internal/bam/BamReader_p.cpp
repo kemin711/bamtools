@@ -110,16 +110,11 @@ SamHeader BamReaderPrivate::GetSamHeader(void) const {
 // doing its own error string, should use the standard 
 // try catch method
 bool BamReaderPrivate::GetNextAlignment(BamAlignment& alignment) {
-    // if valid alignment found
-    if ( GetNextAlignmentCore(alignment) ) {
-        // store alignment's "source" filename
-        //alignment.Filename = m_filename; // TODO: remove this is too costly
-        // return success/failure of parsing char data
-        if ( alignment.BuildCharData() ) return true;
+    if (GetNextAlignmentCore(alignment)) {
+         if (alignment.BuildCharData()) return true;
          cerr << __FILE__ << ":" << __LINE__ << ":ERROR could not populate alignment datall\n";
          return false;
     }
-    // no valid alignment found
     return false;
 }
 
@@ -128,9 +123,10 @@ bool BamReaderPrivate::GetNextAlignment(BamAlignment& alignment) {
 //    these can be accessed, if necessary, from the supportData
 // useful for operations requiring ONLY positional or other alignment-related information
 bool BamReaderPrivate::GetNextAlignmentCore(BamAlignment& alignment) {
-    // skip if stream not opened
-    if ( !m_stream.IsOpen() )
-        return false;
+    if (!m_stream.IsOpen()) {
+         cerr << __FILE__ << ":" << __LINE__ << ":ERROR BamFile is not open!\n";
+         return false;
+    }
     try {
         // skip if region is set but has no alignments
         if ( m_randomAccessController.HasRegion() &&
@@ -138,39 +134,31 @@ bool BamReaderPrivate::GetNextAlignmentCore(BamAlignment& alignment) {
         {
             return false;
         }
-
         // if can't read next alignment
-        if ( !LoadNextAlignment(alignment) )
+        if (!LoadNextAlignment(alignment))
             return false;
-
         // check alignment's region-overlap state
         BamRandomAccessController::RegionState state = m_randomAccessController.AlignmentState(alignment);
-
         // if alignment starts after region, no need to keep reading
         if ( state == BamRandomAccessController::AfterRegion )
             return false;
-
         // read until overlap is found
         while ( state != BamRandomAccessController::OverlapsRegion ) {
-
             // if can't read next alignment
             if ( !LoadNextAlignment(alignment) )
                 return false;
-
             // check alignment's region-overlap state
             state = m_randomAccessController.AlignmentState(alignment);
-
             // if alignment starts after region, no need to keep reading
             if ( state == BamRandomAccessController::AfterRegion )
                 return false;
         }
-
         // if we get here, we found the next 'valid' alignment
         // (e.g. overlaps current region if one was set, simply the next alignment if not)
         alignment.SupportData.HasCoreOnly = true;
         return true;
-
-    } catch ( BamException& e ) {
+    } 
+    catch ( BamException& e ) {
         cerr << __FILE__ << ":" << __LINE__ << ":ERROR encountered error reading BAM alignment: "
            << e.what() << endl;
         return false;
@@ -241,23 +229,21 @@ bool BamReaderPrivate::LoadNextAlignment(BamAlignment& alignment) {
     alignment.Bin        = tempValue >> 16; // 8 contains MapQ + Qnamelen
     alignment.MapQuality = tempValue >> 8 & 0xff;
     alignment.SupportData.QueryNameLength = tempValue & 0xff;
-
     tempValue = BamTools::UnpackUnsignedInt(&x[12]);
     alignment.AlignmentFlag = tempValue >> 16;
     alignment.SupportData.NumCigarOperations = tempValue & 0xffff;
-
     alignment.SupportData.QuerySequenceLength = BamTools::UnpackUnsignedInt(&x[16]);
     alignment.MateRefID    = BamTools::UnpackSignedInt(&x[20]);
     alignment.MatePosition = BamTools::UnpackSignedInt(&x[24]);
     alignment.InsertSize   = BamTools::UnpackSignedInt(&x[28]);
-
     // set BamAlignment length
     //alignment.Length = alignment.SupportData.QuerySequenceLength;
-
     // read in character data - make sure proper data size was read
     bool readCharDataOK = false;
     const unsigned int dataLength = alignment.SupportData.BlockLength - Constants::BAM_CORE_SIZE;
     RaiiBuffer allCharData(dataLength); // after the core data
+    // TODO: Remove this intermediate allCharData step will make 
+    // read operation faster
     if ( m_stream.Read(allCharData.Buffer, dataLength) == dataLength ) {
         // store 'allCharData' in supportData structure
         alignment.SupportData.AllCharData.assign((const char*)allCharData.Buffer, dataLength);
@@ -281,7 +267,6 @@ bool BamReaderPrivate::LoadNextAlignment(BamAlignment& alignment) {
             alignment.CigarData.push_back(op);
         }
     }
-    // return success/failure
     return readCharDataOK;
 }
 
