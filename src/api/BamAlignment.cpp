@@ -312,6 +312,16 @@ bool BamAlignment::hasEndIndel() const {
    return false;
 }
 
+bool BamAlignment::hasAmbiguousBase() const {
+   for (char b : getQuerySequence()) {
+      b = toupper(b);
+      if (b != 'A' && b != 'C' && b != 'G' && b != 'T') {
+         return true;
+      }
+   }
+   return false;
+}
+
 int BamAlignment::getMatchedReferenceLength() const {
    int sum = 0;
    for (auto& c : CigarData) {

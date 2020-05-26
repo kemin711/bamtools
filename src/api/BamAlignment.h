@@ -789,6 +789,7 @@ class API_EXPORT BamAlignment {
          * Has indel near < 22 nt from the end
          */
         bool hasEndIndel() const;
+        bool hasAmbiguousBase() const;
         /**
          * To fix certain aligner's tendency to put two gap
          * when a small region of the sequence has more mismatches
