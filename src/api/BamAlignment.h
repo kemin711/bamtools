@@ -641,6 +641,10 @@ class API_EXPORT BamAlignment {
          * returned.
          */
         const std::string& getQuerySequence() const { return QueryBases; }
+        std::string& getQueryBases() { return QueryBases; }
+        std::string& accessSequence() {
+           return QueryBases;
+        }
         /**
          * 'aligned' sequence (QueryBases plus deletion, padding, clipping chars)
          */
