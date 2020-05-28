@@ -43,6 +43,7 @@ BamWriter::BamWriter(void)
     \brief destructor
 */
 BamWriter::~BamWriter(void) {
+   d->Close();
     delete d;
     d = 0;
 }
