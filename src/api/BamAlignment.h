@@ -646,7 +646,7 @@ class API_EXPORT BamAlignment {
            return QueryBases;
         }
         /**
-         * 'aligned' sequence (QueryBases plus deletion, padding, clipping chars)
+         * aligned sequence (QueryBases plus deletion, padding, clipping chars)
          */
         const std::string& getAlignedQueryBases() const { 
            //if (AlignedBases.empty()) {
@@ -654,6 +654,12 @@ class API_EXPORT BamAlignment {
            //}
            return AlignedBases; 
         }
+        /**
+         * Will not depend on whether the AlignedBases has be formated or not.
+         * @return the portion of query sequences that matched the reference
+         *    without any deletion characters.
+         */
+        string getMatchedQuerySequence() const;
         void clearAlignedBases() {
            AlignedBases.clear();
         }

@@ -3085,3 +3085,14 @@ int BamAlignment::getTemplateLength() const {
    return abs(tlen);
 }
 
+string BamAlignment::getMatchedQuerySequence() const {
+   int b = 0;
+   if (CigarData.front().getType() == 'S') {
+      b = CigarData.front().getLength();
+   }
+   int e = getLength();
+   if (CigarData.back().getType() == 'S') {
+      e -= CigarData.back().getLength();
+   }
+   return QueryBases.substr(b, e-b);
+}
