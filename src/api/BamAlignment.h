@@ -1124,10 +1124,15 @@ class API_EXPORT BamAlignment {
          * @return the length of the query sequence.
          */
         int32_t getLength() const {
-           return SupportData.QuerySequenceLength;
+           //return SupportData.QuerySequenceLength;
+           return QueryBases.size();
         }
         void setLength(int32_t len) {
            SupportData.QuerySequenceLength=len;
+           if (QueryBases.size() != len) {
+              cerr << __FILE__ << ":" << __LINE__ << ":WARN QueryBase length being changed\n";
+              QueryBases.resize(len);
+           }
         }
         /** 'original' sequence (contained in BAM file)
          */
