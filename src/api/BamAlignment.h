@@ -1135,7 +1135,7 @@ class API_EXPORT BamAlignment {
         }
         void setLength(int32_t len) {
            SupportData.QuerySequenceLength=len;
-           if (QueryBases.size() != len) {
+           if ((int)QueryBases.size() != len) {
               cerr << __FILE__ << ":" << __LINE__ << ":WARN QueryBase length being changed\n";
               QueryBases.resize(len);
            }
