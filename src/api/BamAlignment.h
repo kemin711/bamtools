@@ -1053,7 +1053,16 @@ class API_EXPORT BamAlignment {
          static void setPolishGap(int gap) {
             GAP_CUT = gap;
          }
+         /**
+          * Helper function to be used by other functions to convert
+          * string version of cigar to vector version.
+          * @param cigarstr cigar string.
+          * @return vector of cigar operations [code,length]
+          */
          static vector<pair<char,int>> parseCigar(const string& cigarstr);
+         /**
+          * convert cigar data to string version.
+          */
          static string cigarToString(const vector<pair<char,int>>& cg);
          /**
          * The header part of BamReader
@@ -1062,9 +1071,14 @@ class API_EXPORT BamAlignment {
          * and you can get REFNAME (first) and seqlen (second)
          * You can swithc during BamAlignment processing to a different
          * file header.
+         * @param refvec is the refernece vector to be obtained from 
+         *    BamReader::getReferenceMetaData()
          */
          static void setRefvector(vector<pair<string,int>>&& refvec);
          /**
+          * Before using this function you must load the reference look up table
+          * with: setRefvector(BamReader::getReferenceMetaData())
+          * You need a specific object to use getReferenceMetaData().
           * @name is the referece string name such as 1 or chr1 depends on 
           * the version of reference genome used.
           * @return the reference id given name for looking into 
