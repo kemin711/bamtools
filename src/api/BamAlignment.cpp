@@ -409,6 +409,8 @@ void BamAlignment::fixStaggerGap() {
       }
    }
 }
+void fix1M() {
+}
 
 pair<int,int> BamAlignment::getMismatchCount() const {
    int num_mismatch = 0;
