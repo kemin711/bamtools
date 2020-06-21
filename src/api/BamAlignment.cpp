@@ -409,7 +409,33 @@ void BamAlignment::fixStaggerGap() {
       }
    }
 }
-void fix1M() {
+
+bool BamAlignment::fix1M() {
+   bool changed=false;
+   for (int i=0; i< (int)CigarData.size()-1; ++i) {
+      if (CigarData[i].getType() == 'M' && CigarData[i].getLength() == 1) {
+          cerr << __FILE__ << ":" << __LINE__ << ":DEBUG trying to fix 1M\n";
+          if (i-1 > -1 && i+1 < (int)CigarData.size() && CigarData[i-1].getType() == CigarData[i+1].getType()
+               && (CigarData[i-1].getType() == 'I' || CigarData[i-1].getType() == 'D')) {
+             if (i-2 > -1 && CigarData[i-2].getType() == 'M') { // merge 1M with previous M
+                CigarData[i-2].expand(1);
+                CigarData[i-1].expand(CigarData[i+1].getLength());
+                CigarData.erase(CigarData.begin()+i, CigarData.begin()+i+2);
+                changed=true;
+             }
+             else if (i+2 < (int)CigarData.size() && CigarData[i+2].getType() == 'M') {
+                CigarData[i+2].expand(1);
+                CigarData[i+1].expand(CigarData[i-1].getLength());
+                CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+1);
+                changed=true;
+             }
+             else {
+                cerr << __FILE__ << ":" << __LINE__ << ":WARN Cannot fix 1M somthing is wrong!\n";
+             }
+          }
+       }
+   }
+   return changed;
 }
 
 pair<int,int> BamAlignment::getMismatchCount() const {

@@ -805,6 +805,10 @@ class API_EXPORT BamAlignment {
          * when a small region of the sequence has more mismatches
          */
         void fixStaggerGap();
+        /**
+         * Fix cigar with pattern like 57M1I1M1I69M 1M flank I or D
+         */
+        bool fix1M();
 
         /**
          * @return true if start with softclip
