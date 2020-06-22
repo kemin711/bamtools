@@ -1030,6 +1030,7 @@ class API_EXPORT BamAlignment {
          * Only change the bases near the end < 7 nt
          * if the Query base is different from the reference base
          * on both ends. MD tag will also needs to be updated.
+         * This might be a bad idea and cause trouble.
          */
         void patchEnd();
         /**
@@ -1131,16 +1132,6 @@ class API_EXPORT BamAlignment {
          * Use getName() to read this one
          * */
         std::string Name;    
-        /** 
-         * length of query sequence
-         * Design flaw: This field is redundant with
-         *   SupporData::QuerySequenceLength. Both fields
-         *   needs to be updated!
-         *   This filed is also redundant with the QueryBases.size()
-         *
-         *  TODO: consider redesign 
-         */
-        //int32_t     Length;             
         int32_t     Length() const {
            return SupportData.QuerySequenceLength;
         }             
@@ -1148,9 +1139,13 @@ class API_EXPORT BamAlignment {
          * @return the length of the query sequence.
          */
         int32_t getLength() const {
-           //return SupportData.QuerySequenceLength;
-           return QueryBases.size();
+           return SupportData.QuerySequenceLength;
         }
+        /**
+         * length setter function.
+         * This should only be use in conjunction of query base 
+         * insertion and deletion.
+         */
         void setLength(int32_t len) {
            SupportData.QuerySequenceLength=len;
            if ((int)QueryBases.size() != len) {
@@ -1284,6 +1279,10 @@ class API_EXPORT BamAlignment {
             uint32_t    BlockLength;  // not sure what this is
             uint32_t    NumCigarOperations; // should be calculated on the fly
             uint32_t    QueryNameLength;  // duplicate data discard in the future
+            /**
+             * TODO: this is rudundant with QueryBases.size()
+             * consider remove this field in the future.
+             */
             uint32_t    QuerySequenceLength; // is this duplicate of QueryLength?
             bool        HasCoreOnly;
             

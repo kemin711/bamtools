@@ -2466,9 +2466,8 @@ void BamAlignment::chopLastSoftclip() {
    if (CigarData.back().getType() == 'S') {
       int tmplen = CigarData.back().getLength();
       SupportData.QuerySequenceLength -= tmplen;
-      QueryBases.resize(getLength());
-      Qualities.resize(getLength());
-      //SupportData.QuerySequenceLength = Length;
+      QueryBases.resize(SupportData.QuerySequenceLength);
+      Qualities.resize(SupportData.QuerySequenceLength);
       SupportData.NumCigarOperations = CigarData.size()-1;
       CigarData.resize(CigarData.size()-1);
    }
@@ -2946,13 +2945,8 @@ pair<bool,bool> BamAlignment::trim() {
 }
 
 // in case A tailing extra base could be add now
-// do patching, in the future will do trimming.
 void BamAlignment::patchEnd() {
    pair<vector<int>, vector<string>> mdvec = getMDArray();
-   //vector<int>& matchlen=mdvec.first;
-   //vector<string>& misbase=mdvec.second;
-   //vector<int>::iterator it1 = mdvec.first.begin();
-   //vector<string>::iterator it2 = mdvec.second.begin();
 
    static const int TRIMLEN_MAX = 6;
    static const int GAP_CUT = 3;
