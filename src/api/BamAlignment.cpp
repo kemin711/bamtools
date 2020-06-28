@@ -312,6 +312,16 @@ bool BamAlignment::hasEndIndel() const {
    return false;
 }
 
+bool BamAlignment::hasAmbiguousBase() const {
+   for (char b : getQuerySequence()) {
+      b = toupper(b);
+      if (b != 'A' && b != 'C' && b != 'G' && b != 'T') {
+         return true;
+      }
+   }
+   return false;
+}
+
 int BamAlignment::getMatchedReferenceLength() const {
    int sum = 0;
    for (auto& c : CigarData) {
@@ -398,6 +408,34 @@ void BamAlignment::fixStaggerGap() {
          return;
       }
    }
+}
+
+bool BamAlignment::fix1M() {
+   bool changed=false;
+   for (int i=0; i< (int)CigarData.size()-1; ++i) {
+      if (CigarData[i].getType() == 'M' && CigarData[i].getLength() == 1) {
+          cerr << __FILE__ << ":" << __LINE__ << ":DEBUG trying to fix 1M\n";
+          if (i-1 > -1 && i+1 < (int)CigarData.size() && CigarData[i-1].getType() == CigarData[i+1].getType()
+               && (CigarData[i-1].getType() == 'I' || CigarData[i-1].getType() == 'D')) {
+             if (i-2 > -1 && CigarData[i-2].getType() == 'M') { // merge 1M with previous M
+                CigarData[i-2].expand(1);
+                CigarData[i-1].expand(CigarData[i+1].getLength());
+                CigarData.erase(CigarData.begin()+i, CigarData.begin()+i+2);
+                changed=true;
+             }
+             else if (i+2 < (int)CigarData.size() && CigarData[i+2].getType() == 'M') {
+                CigarData[i+2].expand(1);
+                CigarData[i+1].expand(CigarData[i-1].getLength());
+                CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+1);
+                changed=true;
+             }
+             else {
+                cerr << __FILE__ << ":" << __LINE__ << ":WARN Cannot fix 1M somthing is wrong!\n";
+             }
+          }
+       }
+   }
+   return changed;
 }
 
 pair<int,int> BamAlignment::getMismatchCount() const {
@@ -3075,3 +3113,14 @@ int BamAlignment::getTemplateLength() const {
    return abs(tlen);
 }
 
+string BamAlignment::getMatchedQuerySequence() const {
+   int b = 0;
+   if (CigarData.front().getType() == 'S') {
+      b = CigarData.front().getLength();
+   }
+   int e = getLength();
+   if (CigarData.back().getType() == 'S') {
+      e -= CigarData.back().getLength();
+   }
+   return QueryBases.substr(b, e-b);
+}

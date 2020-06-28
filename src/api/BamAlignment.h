@@ -641,8 +641,12 @@ class API_EXPORT BamAlignment {
          * returned.
          */
         const std::string& getQuerySequence() const { return QueryBases; }
+        std::string& getQueryBases() { return QueryBases; }
+        std::string& accessSequence() {
+           return QueryBases;
+        }
         /**
-         * 'aligned' sequence (QueryBases plus deletion, padding, clipping chars)
+         * aligned sequence (QueryBases plus deletion, padding, clipping chars)
          */
         const std::string& getAlignedQueryBases() const { 
            //if (AlignedBases.empty()) {
@@ -650,6 +654,12 @@ class API_EXPORT BamAlignment {
            //}
            return AlignedBases; 
         }
+        /**
+         * Will not depend on whether the AlignedBases has be formated or not.
+         * @return the portion of query sequences that matched the reference
+         *    without any deletion characters.
+         */
+        string getMatchedQuerySequence() const;
         void clearAlignedBases() {
            AlignedBases.clear();
         }
@@ -789,11 +799,16 @@ class API_EXPORT BamAlignment {
          * Has indel near < 22 nt from the end
          */
         bool hasEndIndel() const;
+        bool hasAmbiguousBase() const;
         /**
          * To fix certain aligner's tendency to put two gap
          * when a small region of the sequence has more mismatches
          */
         void fixStaggerGap();
+        /**
+         * Fix cigar with pattern like 57M1I1M1I69M 1M flank I or D
+         */
+        bool fix1M();
 
         /**
          * @return true if start with softclip
@@ -1047,7 +1062,16 @@ class API_EXPORT BamAlignment {
          static void setPolishGap(int gap) {
             GAP_CUT = gap;
          }
+         /**
+          * Helper function to be used by other functions to convert
+          * string version of cigar to vector version.
+          * @param cigarstr cigar string.
+          * @return vector of cigar operations [code,length]
+          */
          static vector<pair<char,int>> parseCigar(const string& cigarstr);
+         /**
+          * convert cigar data to string version.
+          */
          static string cigarToString(const vector<pair<char,int>>& cg);
          /**
          * The header part of BamReader
@@ -1056,9 +1080,14 @@ class API_EXPORT BamAlignment {
          * and you can get REFNAME (first) and seqlen (second)
          * You can swithc during BamAlignment processing to a different
          * file header.
+         * @param refvec is the refernece vector to be obtained from 
+         *    BamReader::getReferenceMetaData()
          */
          static void setRefvector(vector<pair<string,int>>&& refvec);
          /**
+          * Before using this function you must load the reference look up table
+          * with: setRefvector(BamReader::getReferenceMetaData())
+          * You need a specific object to use getReferenceMetaData().
           * @name is the referece string name such as 1 or chr1 depends on 
           * the version of reference genome used.
           * @return the reference id given name for looking into 
@@ -1124,10 +1153,15 @@ class API_EXPORT BamAlignment {
          * @return the length of the query sequence.
          */
         int32_t getLength() const {
-           return SupportData.QuerySequenceLength;
+           //return SupportData.QuerySequenceLength;
+           return QueryBases.size();
         }
         void setLength(int32_t len) {
            SupportData.QuerySequenceLength=len;
+           if ((int)QueryBases.size() != len) {
+              cerr << __FILE__ << ":" << __LINE__ << ":WARN QueryBase length being changed\n";
+              QueryBases.resize(len);
+           }
         }
         /** 'original' sequence (contained in BAM file)
          */
