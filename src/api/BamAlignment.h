@@ -981,10 +981,15 @@ class API_EXPORT BamAlignment {
          *   plus the entire bases of I.
          */
         bool isInsertionAt(int ri, const string& seq) const;
-        /** even position number, odd position letter last 3 digits
+        /** 
+         * even position number, odd position letter last 3 digits
          * for bases 00 A, 01 C, 10 G, 11 T, 100 N, first bit del
          * MD:Z:20^A127
-         * MD:Z:108^TTCTAAGGCCAGCTCCTGCACC39
+         * MD:Z:108^TTCTAAGGCCAGCTCCTGCACC39 =>108 identical deletion of TT...ACC match of 39
+         * MD tag ^AC to represent deletion of AC in query
+         * But insertion in query is not recorded.
+         * Difference in base is represented by Base
+         * identical residues are represented by number.
         */ 
         pair<vector<int>, vector<string>> getMDArray();
         void updateMDTag(const pair<vector<int>, vector<string>>& mdvec);
