@@ -79,10 +79,16 @@ struct API_EXPORT CigarOp {
      * @param l new length.
      */
     void setLength(uint32_t l) { Length = l; }
+    /**
+     * Reduce the length by l
+     */
     void shrink(uint32_t l) { 
        if (Length <= l) throw logic_error("Length become zoer or negative");
        Length -= l; 
     }
+    /**
+     * Expand length by l
+     */
     void expand(uint32_t l) { Length += l; }
     void setType(char t) { Type = t; }
 };
