@@ -2448,14 +2448,11 @@ bool BamAlignment::isInsertionAt(int ri, const string& seq) const {
 // due to redundancy, extra work is needed
 // bad design
 void BamAlignment::chopFirstSoftclip() {
-   // remove the first cigar operation
-   //assert(CigarData.front().Type == 'S');
    if (CigarData.front().Type == 'S') {
       int tmplen = CigarData.front().getLength();
       QueryBases=QueryBases.substr(tmplen);
       SupportData.QuerySequenceLength -= tmplen;
       Qualities=Qualities.substr(tmplen);
-      //SupportData.QuerySequenceLength = Length;
       SupportData.NumCigarOperations = CigarData.size()-1;
       CigarData.erase(CigarData.begin());
    }
