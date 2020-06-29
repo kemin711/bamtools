@@ -753,6 +753,7 @@ class API_EXPORT BamAlignment {
          * DigarOp: struc { char Type; uint32_t Length; }
          */
         const std::vector<CigarOp>& getCigar() const { return CigarData; } 
+        std::vector<CigarOp>& getCigar() { return CigarData; } 
         /**
          * Provide a more user-friendly interface
          * for working with other applications.
