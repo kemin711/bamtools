@@ -823,6 +823,25 @@ class API_EXPORT BamAlignment {
         bool endWithSoftclip() const {
             return !CigarData.empty() && getCigar().back().Type == 'S';
         }
+        /**
+         * @param startR is the starting value for reference index.
+         *    default is 0.  Can be any value. But the alternative
+         *    meanful value is the absolute value of the genome
+         *    reference such as the postion value for the alignment.
+         * @return pair[cigar_index, bool]. The second value will be true
+         *    if reference deisredR index has an insertion (attached to the
+         *    last base of the previous M segment). The first value is the
+         *    cigar segment index (0-based). If is not insertion, then, the
+         *    cigar index is the one whose start index of the segment is
+         *    greater than desiedR.
+         */
+        pair<int,bool> isInsertionAtRefloc(int desiredR, int startR) const;
+        /**
+         * @return pair[cigar_idx, bool] when desiredR is a deletion then
+         *   the second value is true. The desiredR is the index of the 
+         *   first base of the D segment.
+         */
+        pair<int,bool> isDeletionAtRefloc(int desiredR, int startR) const;
 
         /**
          * Alignment has soft clip on either start
@@ -957,6 +976,18 @@ class API_EXPORT BamAlignment {
         //// end of setter methods ////
 
         // mutation functions
+        /**
+         * helper function to iterate over the cigar object
+         * @param i is the index on the reference. The index
+         *    can be based on any value: 0-based on the first
+         *    base of the subreference sequence, or the absolute
+         *    index for the full chromosome. This function will
+         *    make relative move.
+         * @param j index on the query. Usually starting from 0
+         *   for the first base of the query.
+         * @param ci is the index for the cigar segment. Start
+         *    from zero for the first cigar element.
+         */
         void nextCigar(int& i, int& j, unsigned int& ci) const;
         int indexRef2Query(int ri) const;
         /**

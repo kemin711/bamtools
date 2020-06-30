@@ -1873,6 +1873,72 @@ void BamAlignment::nextCigar(int& i, int& j, unsigned int& ci) const {
    ++ci;
 }
 
+// default starR=0
+// for M stop at the start of the segment
+// for I stop at the end of the Previous M segment
+// for D stop at the start of D segment
+pair<int,bool> BamAlignment::isInsertionAtRefloc(int desiredR, int startR) const {
+   int q=0, c=0; // q is only used for checking condition
+   int r=startR;
+   while (c < (int)CigarData.size() && (CigarData[c].getType() == 'S' || CigarData[c].getType() == 'H')) {
+      q += CigarData[c].getLength();
+      ++c;
+   }
+   while (c < (int)CigarData.size() && r < desiredR && q < getLength() && CigarData[c].getType() != 'S') {
+      if (CigarData[c].getType() == 'M') {
+         r += CigarData[c].getLength();
+         q += CigarData[c].getLength();
+      }
+      else if (CigarData[c].getType() == 'I') {
+         if (r-1 == desiredR) { // insert attach to the last base of previous M segment
+            return make_pair(c,true);
+         }
+         q += CigarData[c].getLength();
+      }
+      else if (CigarData[c].getType() == 'D') {
+         r += CigarData[c].getLength();
+      }
+      else {
+         cerr << "trying to find Insertion at " << oldloc << endl;
+         throw runtime_error(string("wrong CigarData state: ") + string(1, CigarData[c].getType()));
+      }
+      ++c;
+   }
+   //if (c >= CigarData.size()) c=CigarData.size()-1;
+   return make_pair(c, false);
+}
+
+pair<int,bool> BamAlignment::isDeletionAtRefloc(int desiredR, int startR) const {
+   int q=0, c=0; // don't need q yet, may need it later.
+   int r=startR;
+   while (c < (int)CigarData.size() && (CigarData[c].getType() == 'S' || CigarData[c].getType() == 'H')) {
+      q += CigarData[c].getLength();
+      ++c;
+   }
+   while (c < (int)CigarData.size() && r < desiredR && q < getLength() && CigarData[c].getType() != 'S') {
+      if (CigarData[c].getType() == 'M') {
+         r += CigarData[c].getLength();
+         q += CigarData[c].getLength();
+      }
+      else if (CigarData[c].getType() == 'I') {
+         q += CigarData[c].getLength();
+      }
+      else if (CigarData[c].getType() == 'D') {
+         if (r == desiredR) {
+            return make_pair(c, true);
+         }
+         r += CigarData[c].getLength();
+      }
+      else {
+         cerr << "trying to find Insertion at " << oldloc << endl;
+         throw runtime_error(string("wrong CigarData state: ") + string(1, CigarData[c].getType()));
+      }
+      ++c;
+   }
+   //if (c >= CigarData.size()) c=CigarData.size()-1;
+   return make_pair(c, false);
+}
+
 // if i is in any position inside D segment, then
 // j will be the first base index of the next M segment.
 // if i is in any insert segment, the j will be
