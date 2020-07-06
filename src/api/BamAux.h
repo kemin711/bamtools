@@ -83,7 +83,9 @@ struct API_EXPORT CigarOp {
      * Reduce the length by l
      */
     void shrink(uint32_t l) { 
-       if (Length <= l) throw logic_error("Length become zoer or negative");
+       if (Length <= l) 
+          throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Length "
+                + to_string(Length) + " shrink by " + to_string(l) + " will be zeor or negative");
        Length -= l; 
     }
     /**

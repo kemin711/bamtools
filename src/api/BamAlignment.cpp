@@ -284,6 +284,20 @@ bool BamAlignment::hasICigar() const {
    return false;
 }
 
+bool BamAlignment::validCigar() const {
+   int cigarQL=0;
+   for (auto& c : CigarData) {
+      if (c.getType() == 'S' || c.getType() == 'M' || c.getType() == 'I') {
+         cigarQL += c.getLength();
+      }
+   }
+   if (cigarQL != getLength()) {
+      cerr << "queryLength from cigar=" << cigarQL << " queryLength="
+         << getLength() << endl;
+   }
+   return cigarQL == getLength();
+}
+
 bool BamAlignment::sameCigar(const vector<pair<char,int>>& cigar) const {
    if (cigar.size() != CigarData.size()) 
       return false;
@@ -381,6 +395,8 @@ void BamAlignment::setCigarOperation(const std::vector<pair<char,int> > &cd) {
 }
 
 // only do one correction!
+// deprecated, use fix1M to fix 1 or 2 M flanked by indel
+// in all 4 possible combinations
 void BamAlignment::fixStaggerGap() {
    if (CigarData.size() < 5) return;
    for (size_t i=0; i+4 < CigarData.size(); ++i) {
@@ -410,33 +426,264 @@ void BamAlignment::fixStaggerGap() {
    }
 }
 
+// make this also fix stagger M left and right different
 bool BamAlignment::fix1M() {
+   if (CigarData.size() < 5) return false;
    bool changed=false;
-   for (int i=0; i< (int)CigarData.size()-1; ++i) {
-      if (CigarData[i].getType() == 'M' && CigarData[i].getLength() == 1) {
-          cerr << __FILE__ << ":" << __LINE__ << ":DEBUG trying to fix 1M\n";
-          if (i-1 > -1 && i+1 < (int)CigarData.size() && CigarData[i-1].getType() == CigarData[i+1].getType()
-               && (CigarData[i-1].getType() == 'I' || CigarData[i-1].getType() == 'D')) {
-             if (i-2 > -1 && CigarData[i-2].getType() == 'M') { // merge 1M with previous M
-                CigarData[i-2].expand(1);
-                CigarData[i-1].expand(CigarData[i+1].getLength());
-                CigarData.erase(CigarData.begin()+i, CigarData.begin()+i+2);
-                changed=true;
-             }
-             else if (i+2 < (int)CigarData.size() && CigarData[i+2].getType() == 'M') {
-                CigarData[i+2].expand(1);
-                CigarData[i+1].expand(CigarData[i-1].getLength());
-                CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+1);
-                changed=true;
-             }
-             else {
-                cerr << __FILE__ << ":" << __LINE__ << ":WARN Cannot fix 1M somthing is wrong!\n";
-             }
-          }
-       }
+   for (int i=2; i+2 < getCigarSize(); ++i) {
+      if (CigarData[i].getType() == 'M' && CigarData[i].getLength() < 3) 
+      { // candidate for doing fixing, imply i-2>-1 && i+2 < CigarData.size()
+         if (CigarData[i-1].getType() == CigarData[i+1].getType()) { // same ins or del
+            if (CigarData[i-1].getType() == 'I' || CigarData[i-1].getType() == 'D') {
+               int nmvalue = getNMValue();
+               if (getCigarType(i-2) == 'M') { // merge 1M with previous M
+                  // the last segment could be S  MD1MS is fine, last done no need M
+                  nmvalue += getCigarLength(i);
+                  CigarData[i-2].expand(getCigarLength(i));
+                  CigarData[i-1].expand(getCigarLength(i+1));
+                  CigarData.erase(CigarData.begin()+i, CigarData.begin()+i+2);
+                  changed=true;
+               }
+               else if (CigarData[i+2].getType() == 'M') {
+                  nmvalue += getCigarLength(i);
+                  CigarData[i+2].expand(getCigarLength(i));
+                  CigarData[i+1].expand(CigarData[i-1].getLength());
+                  CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+1);
+                  changed=true;
+               }
+               else {
+                  cerr << __FILE__ << ":" << __LINE__ << ":WARN Cannot fix 1M somthing is wrong!\n";
+                  throw runtime_error("failed to fix1M");
+               }
+               EditTag("NM", "i", nmvalue);
+               SupportData.NumCigarOperations = CigarData.size();
+            }
+            //cerr << "fixed 1M\n";
+         }
+         else if (((getCigarType(i-1) == 'I' && getCigarType(i+1) == 'D') ||
+                     (getCigarType(i-1) == 'D' && getCigarType(i+1) == 'I')) &&
+               getCigarType(i-2) == 'M' && getCigarType(i+2) == 'M')
+         { // M[DI]M[ID]M
+            //cerr << "old cigar: ";
+            //for (auto& c : CigarData) {
+            //   cerr << c.getLength() << c.getType();
+            //}
+            //cerr << endl;
+            int nmvalue = getNMValue();
+            if (getCigarLength(i-1) < getCigarLength(i+1)) {
+               CigarData[i-2].expand(getCigarLength(i-1) + getCigarLength(i));
+               CigarData[i+1].setLength(getCigarLength(i+1) - getCigarLength(i-1));
+               nmvalue += (getCigarLength(i) - getCigarLength(i-1));
+               CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+1);
+               // erase [DI]M 2 segments to the left of i
+               SupportData.NumCigarOperations -= 2;
+            }
+            else if (getCigarLength(i-1) > getCigarLength(i+1)) {
+               CigarData[i+2].expand(getCigarLength(i+1) + getCigarLength(i));
+               CigarData[i-1].setLength(getCigarLength(i-1) - getCigarLength(i+1));
+               nmvalue += (getCigarLength(i) - getCigarLength(i+1));
+               CigarData.erase(CigarData.begin()+i, CigarData.begin()+i+2);
+               // erase M[ID] 2 segments to the right of i
+               SupportData.NumCigarOperations -= 2;
+            }
+            else { // lengths of segment i-1 and i+1 are identical
+               CigarData[i-2].expand(getCigarLength(i) + getCigarLength(i+1) + getCigarLength(i+2));
+               nmvalue += getCigarLength(i) - getCigarLength(i+1);
+               SupportData.NumCigarOperations -= 4;
+               if ((int)CigarData.size() == i+3) {
+                  CigarData.resize(getCigarSize() - 4);
+               }
+               else if ((int)CigarData.size() > i+3) {
+                  CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+3);
+               }
+               else {
+                  throw logic_error("cigar segment too few");
+               }
+            }
+            EditTag("NM", "i", nmvalue); // approximate, exact computation too expensive
+            changed=true;
+            //cerr << "fixed stagger: ";
+            //for (auto& c : CigarData) {
+            //   cerr << c.getLength() << c.getType();
+            //}
+            //cerr << endl;
+         }
+      }
+   }
+   if (!validCigar()) {
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR CigarData and len mismatch\n" << *this << endl;
+      throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR CigarData and query sequence length does not match");
    }
    return changed;
 }
+
+void BamAlignment::moveDeletion(int oldloc, int newloc) {
+   assert(oldloc != newloc);
+   pair<int,bool> rtn = isDeletionAtRefloc(newloc);
+   if (rtn.second) {
+      //cerr << __FILE__ << ":" << __LINE__ << ":WARN there is already a deletion at "
+      //   << newloc << " skip deletion reloacation from " << oldloc << endl
+      //   << *ba << endl;
+      return;
+   }
+   //cerr << __LINE__ << ": no deletion at " << newloc << " c=" << rtn.first << endl;
+   rtn = isInsertionAtRefloc(newloc, 0);
+   if (rtn.second) {
+      cerr << "cannot move deletion to an insertion place\n";
+      throw runtime_error("cannot move deletion to location with insertion");
+   }
+   int c=0, r=0, q=0; 
+   while (c < getCigarSize() && (getCigarType(c) == 'S' || getCigarType(c) == 'H')) { 
+      q += getCigarLength(c);
+      ++c; 
+   }
+   while (c < getCigarSize() && r < oldloc && q < getLength()) {
+      if (getCigarType(c) == 'M') {
+         r += getCigarLength(c);
+         q += getCigarLength(c);
+      }    
+      else if (getCigarType(c) == 'I') {
+         q += getCigarLength(c);
+      }    
+      else if (getCigarType(c) == 'D') {
+         r += getCigarLength(c);
+      }    
+      else {
+         cerr << "trying to find Deletion at " << oldloc << endl;
+         throw runtime_error(
+               string("wrong CigarData state: ") + string(1, getCigarType(c))
+               );
+      }    
+      ++c; 
+   }
+   if (getCigarType(c) != 'D' || r != oldloc) {
+      cerr << *this << endl;
+      throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR cannot find Deletion at " + to_string(oldloc));
+   }
+   if (c < 1 || c+1 >= getCigarSize() || getCigarType(c+1) != 'M' || getCigarType(c-1) != 'M') {
+      throw runtime_error("D must be flanked by M on both sides");
+   }
+   if (newloc > oldloc) { // for newloc > oldloc
+      // actually newloc can be even in the delete segment
+      // now do the actual move
+      CigarData[c-1].expand(newloc - oldloc);
+      CigarData[c+1].shrink(newloc - oldloc);
+   }
+   else { // newloc < oldloc
+      if (newloc <= r- (int)CigarData[c-1].getLength()) {
+         return;
+      }
+      CigarData[c-1].shrink(oldloc - newloc);
+      CigarData[c+1].expand(oldloc - newloc);
+   }
+   if (!validCigar()) {
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR CigarData and len mismatch\n" << *this << endl;
+      throw logic_error("CigarData and query sequence length does not match");
+   }
+}
+
+// just silently do nothing if not feasible
+// need to limit only repeat regions
+void BamAlignment::moveInsertion(int oldloc, int newloc) {
+   if (oldloc < 0 || newloc < 0) {
+      throw logic_error(string(__FILE__) + ":" + string(__func__) + ":ERROR negative oldloc="
+           + to_string(oldloc) + " newloc=" + to_string(newloc));
+   }
+   assert(oldloc != newloc);
+   pair<int,bool> rtn = isInsertionAtRefloc(newloc);
+   if (rtn.second) {
+      //cerr << __FILE__ << ":" << __LINE__ << ":WARN " << newloc
+      //   << " already has insertion skip moving of insertion\n";
+      return;
+   }
+   rtn = isDeletionAtRefloc(newloc);
+   if (rtn.second) {
+      //cerr << __FILE__ << ":" << __LINE__ << ":WARN " << newloc
+      //   << " cannot move insertion into a deletion\n";
+      return;
+   }
+   rtn = isDeletionAtRefloc(newloc+1);
+   if (rtn.second) {
+      //cerr << __FILE__ << ":" << __LINE__ << ":WARN " << newloc+1
+      //   << " cannot move insertion to the sart of deletion\n";
+      return;
+   }
+   int c=0, r=0, q=0;
+   while (c < getCigarSize() && (getCigarType(c) == 'S' || getCigarType(c) == 'H')) {
+      q += getCigarLength(c); ++c;
+   }
+   while (c < getCigarSize() && r <= oldloc && q < getLength()) {
+      if (getCigarType(c) == 'M') {
+         r += getCigarLength(c);
+         q += getCigarLength(c);
+      }
+      else if (getCigarType(c) == 'I') {
+         if (r-1 == oldloc) { // never reach this sate
+            // TODO: remove after some testing
+            cerr << "?Unreachable code found insertion at " << oldloc << endl;
+            --r; // put r at last base of previous M
+            break;
+         }
+         q += getCigarLength(c);
+      }
+      else if (getCigarType(c) == 'D') {
+         r += getCigarLength(c);
+      }
+      else {
+         cerr << "trying to find Insertion at " << oldloc << endl;
+         throw runtime_error(string("wrong CigarData state: ") + string(1, getCigarType(c)));
+      }
+      ++c;
+   }
+   if (getCigarType(c) != 'I' || r-1 != oldloc) {
+      cerr << endl << *this << endl << " oldloc=" << oldloc << " newloc=" << newloc
+         << " r=" << r << " c=" << c << endl;
+      throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +
+            ":DEBUG cannot find Insertion at " + to_string(oldloc));
+   }
+   else --r;
+   if (c >= getCigarSize()-1 || c < 1 || getCigarType(c-1) != 'M' || getCigarType(c+1) != 'M') {
+      cerr << __LINE__ << ":DEBUG c=" << c << " r=" << r << " q=" << q << endl;
+      throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) + ":DEBUG I must be flanked by M on both sides");
+   }
+   if (newloc > oldloc) { // for newloc > oldloc
+      if (newloc < r+1 || newloc >= r+1 + (int)getCigarLength(c+1)) {
+         cerr << __FILE__ << ":" << __LINE__ << ":DEBUG newloc not in next M segment. oldloc=" << oldloc
+            << " newloc=" << newloc << " r=" << r << " q=" << q << " c=" << c << endl
+            << *this << endl;;
+         //throw logic_error(string(__func__) + ":ERROR newloc must be located in the right M segment");
+         return;
+      }
+      try {
+         // now do the actual move
+         CigarData[c-1].expand(newloc - oldloc);
+         CigarData[c+1].shrink(newloc - oldloc);
+      }
+      catch (exception& er) {
+         cerr << __LINE__ << ":DEBUG failed to move insertion from "
+            << oldloc << " to " << newloc << endl;
+         cerr << er.what() << endl << *this << endl;
+         exit(1);
+      }
+   }
+   else { // newloc < oldloc
+      if (newloc <= r - (int)getCigarLength(c-1)) {
+         cerr << __FILE__ << ":" << __LINE__ << ":DEBUG newloc outof range\n"
+            << " newloc=" << newloc << " oldloc=" << oldloc
+            << " q=" << q << " r=" << r << " c=" << c << endl
+            << *this << endl;
+         //throw logic_error(string(__func__) + ":ERROR newloc before start of left M segment");
+         return;
+      }
+      CigarData[c-1].shrink(oldloc - newloc);
+      CigarData[c+1].expand(oldloc - newloc);
+   }
+   if (!validCigar()) {
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR CigarData and len mismatch\n" << *this << endl;
+      throw logic_error("CigarData and query sequence length does not match");
+   }
+}
+
 
 pair<int,int> BamAlignment::getMismatchCount() const {
    int num_mismatch = 0;
@@ -1899,10 +2146,13 @@ pair<int,bool> BamAlignment::isInsertionAtRefloc(int desiredR, int startR) const
          r += CigarData[c].getLength();
       }
       else {
-         cerr << "trying to find Insertion at " << oldloc << endl;
+         cerr << "trying to find Insertion at " << desiredR << endl;
          throw runtime_error(string("wrong CigarData state: ") + string(1, CigarData[c].getType()));
       }
       ++c;
+   }
+   if (r-1 == desiredR && CigarData[c].getType() == 'I') {
+      return make_pair(c, true);
    }
    //if (c >= CigarData.size()) c=CigarData.size()-1;
    return make_pair(c, false);
@@ -1915,7 +2165,7 @@ pair<int,bool> BamAlignment::isDeletionAtRefloc(int desiredR, int startR) const 
       q += CigarData[c].getLength();
       ++c;
    }
-   while (c < (int)CigarData.size() && r < desiredR && q < getLength() && CigarData[c].getType() != 'S') {
+   while (c < (int)CigarData.size() && r <= desiredR && q < getLength() && CigarData[c].getType() != 'S') {
       if (CigarData[c].getType() == 'M') {
          r += CigarData[c].getLength();
          q += CigarData[c].getLength();
@@ -1924,17 +2174,24 @@ pair<int,bool> BamAlignment::isDeletionAtRefloc(int desiredR, int startR) const 
          q += CigarData[c].getLength();
       }
       else if (CigarData[c].getType() == 'D') {
-         if (r == desiredR) {
+         if (r == desiredR) { // r is the first base of the deleted Refseq
             return make_pair(c, true);
          }
          r += CigarData[c].getLength();
+         if (desiredR < r && desiredR > r-(int)getCigarLength(c)) {
+            cerr << __FILE__ << ":" << __LINE__ << ":DEBUG " << desiredR
+               << " is not the first base of the deletion\n";
+            return make_pair(c,true);
+         }
       }
       else {
-         cerr << "trying to find Insertion at " << oldloc << endl;
+         cerr << "trying to find Insertion at " << desiredR << endl;
          throw runtime_error(string("wrong CigarData state: ") + string(1, CigarData[c].getType()));
       }
       ++c;
    }
+   //cerr << __FILE__ << ":" << __LINE__ << ":DEBUG r=" << r << " q=" << q
+   //   << " c=" << c << " no deletion at " << desiredR << endl;
    //if (c >= CigarData.size()) c=CigarData.size()-1;
    return make_pair(c, false);
 }
@@ -2519,7 +2776,7 @@ void BamAlignment::chopFirstSoftclip() {
       QueryBases=QueryBases.substr(tmplen);
       SupportData.QuerySequenceLength -= tmplen;
       Qualities=Qualities.substr(tmplen);
-      SupportData.NumCigarOperations = CigarData.size()-1;
+      SupportData.NumCigarOperations = CigarData.size();
       CigarData.erase(CigarData.begin());
    }
 }
@@ -2531,7 +2788,7 @@ void BamAlignment::chopLastSoftclip() {
       SupportData.QuerySequenceLength -= tmplen;
       QueryBases.resize(SupportData.QuerySequenceLength);
       Qualities.resize(SupportData.QuerySequenceLength);
-      SupportData.NumCigarOperations = CigarData.size()-1;
+      SupportData.NumCigarOperations = CigarData.size();
       CigarData.resize(CigarData.size()-1);
    }
 }

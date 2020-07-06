@@ -572,6 +572,7 @@ class API_EXPORT BamAlignment {
         std::pair<int,int> getSoftInterval() const;
         /**
          * The distance coverted by the alignment on the reference.
+         * Should be the same as the sum of cigar M+D length.
          */
         int getReferenceWidth() const {
            return GetEndPosition(false,false) - getPosition();
@@ -780,6 +781,7 @@ class API_EXPORT BamAlignment {
          */
         bool lackICigar() const;
         bool hasICigar() const;
+        bool validCigar() const;
         /**
          * @return the  Cigar operation type as a single char
          *    at index i.
@@ -797,6 +799,12 @@ class API_EXPORT BamAlignment {
            return CigarData.size();
         }
         /**
+         * @return Number of cigar operations
+         */
+        int getCigarSize() const {
+           return CigarData.size();
+        }
+        /**
          * Has indel near < 22 nt from the end
          */
         bool hasEndIndel() const;
@@ -804,6 +812,7 @@ class API_EXPORT BamAlignment {
         /**
          * To fix certain aligner's tendency to put two gap
          * when a small region of the sequence has more mismatches
+         * @deprecated use fix1M.
          */
         void fixStaggerGap();
         /**
@@ -835,13 +844,13 @@ class API_EXPORT BamAlignment {
          *    cigar index is the one whose start index of the segment is
          *    greater than desiedR.
          */
-        pair<int,bool> isInsertionAtRefloc(int desiredR, int startR) const;
+        pair<int,bool> isInsertionAtRefloc(int desiredR, int startR=0) const;
         /**
          * @return pair[cigar_idx, bool] when desiredR is a deletion then
          *   the second value is true. The desiredR is the index of the 
          *   first base of the D segment.
          */
-        pair<int,bool> isDeletionAtRefloc(int desiredR, int startR) const;
+        pair<int,bool> isDeletionAtRefloc(int desiredR, int startR=0) const;
 
         /**
          * Alignment has soft clip on either start
@@ -939,6 +948,8 @@ class API_EXPORT BamAlignment {
         void setMapQuality(uint16_t mqual) { MapQuality = mqual; }
         /**
          * update CigarData with a new value.
+         * TODO: SupportData.NumCigarOperatons is redundant with
+         *       CigarData.size() need to remove
          */
         void setCigarData(const std::vector<CigarOp> &cd) { 
            CigarData = cd; 
@@ -1064,6 +1075,12 @@ class API_EXPORT BamAlignment {
          */
         pair<bool,bool> trim();
         /**
+         * Move deletion from oldloc to newloc
+         * the sequence in between must be repeat sequence.
+         */
+        void moveDeletion(int oldloc, int newloc);
+        void moveInsertion(int oldloc, int newloc);
+        /**
          * Only change the bases near the end < 7 nt
          * if the Query base is different from the reference base
          * on both ends. MD tag will also needs to be updated.
@@ -1176,6 +1193,7 @@ class API_EXPORT BamAlignment {
          * @return the length of the query sequence.
          */
         int32_t getLength() const {
+           assert(QueryBases.size() == SupportData.QuerySequenceLength);
            return SupportData.QuerySequenceLength;
         }
         /**
