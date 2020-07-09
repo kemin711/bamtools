@@ -430,6 +430,9 @@ void BamAlignment::fixStaggerGap() {
 bool BamAlignment::fix1M() {
    if (CigarData.size() < 5) return false;
    bool changed=false;
+   if (getName() == "26659378") {
+      cerr << "Need to debug this one\n" << *this << endl;
+   }
    for (int i=2; i+2 < getCigarSize(); ++i) {
       if (CigarData[i].getType() == 'M' && CigarData[i].getLength() < 3) 
       { // candidate for doing fixing, imply i-2>-1 && i+2 < CigarData.size()
@@ -529,8 +532,9 @@ void BamAlignment::moveDeletion(int oldloc, int newloc) {
    //cerr << __LINE__ << ": no deletion at " << newloc << " c=" << rtn.first << endl;
    rtn = isInsertionAtRefloc(newloc, 0);
    if (rtn.second) {
-      cerr << "cannot move deletion to an insertion place\n";
-      throw runtime_error("cannot move deletion to location with insertion");
+      //cerr << __FILE__ << ":" << __LINE__ << ":DEBUG cannot move deletion to an insertion place\n";
+      //throw runtime_error(string(__func__) + ":DEBUG cannot move deletion to location with insertion");
+      return;
    }
    int c=0, r=0, q=0; 
    while (c < getCigarSize() && (getCigarType(c) == 'S' || getCigarType(c) == 'H')) { 
@@ -549,10 +553,8 @@ void BamAlignment::moveDeletion(int oldloc, int newloc) {
          r += getCigarLength(c);
       }    
       else {
-         cerr << "trying to find Deletion at " << oldloc << endl;
-         throw runtime_error(
-               string("wrong CigarData state: ") + string(1, getCigarType(c))
-               );
+         cerr << __FILE__ << ":" << __LINE__ << ":ERROR trying to find Deletion at " << oldloc << endl;
+         throw runtime_error(string("wrong CigarData state: ") + string(1, getCigarType(c)));
       }    
       ++c; 
    }
@@ -564,6 +566,14 @@ void BamAlignment::moveDeletion(int oldloc, int newloc) {
       throw runtime_error("D must be flanked by M on both sides");
    }
    if (newloc > oldloc) { // for newloc > oldloc
+      // r is not first base of right M segment
+      if (r + (int)getCigarLength(c+1) - 1 < newloc + (int)getCigarLength(c)) {
+         //cerr << __FILE__ << ":" << __LINE__ << ":DEBUG new del ouside alignment\n"
+         //   << *this << endl << " r=" << r << " next M seglen=" << getCigarLength(c+1)
+         //   << " newloc=" << newloc << " dellen=" << getCigarLength(c) 
+         //   << " after adding deletion outside of alignment\n";
+         return;
+      }
       // actually newloc can be even in the delete segment
       // now do the actual move
       CigarData[c-1].expand(newloc - oldloc);
@@ -586,6 +596,18 @@ void BamAlignment::moveDeletion(int oldloc, int newloc) {
 // need to limit only repeat regions
 void BamAlignment::moveInsertion(int oldloc, int newloc) {
    if (oldloc < 0 || newloc < 0) {
+      if (oldloc == -1) {
+        if (newloc < (int)getCigarLength(1)-1 && getCigarType(0) == 'I') {
+            // special case 2I145M => 1M2I144M
+            // add new M at front
+            CigarData[1].shrink(newloc+1);
+            CigarData.insert(CigarData.begin(), CigarOp('M', newloc+1));
+            SupportData.NumCigarOperations += 1;
+            return;
+        }
+        return; // do nothing
+      }
+      cerr << *this << endl;
       throw logic_error(string(__FILE__) + ":" + string(__func__) + ":ERROR negative oldloc="
            + to_string(oldloc) + " newloc=" + to_string(newloc));
    }
@@ -648,9 +670,9 @@ void BamAlignment::moveInsertion(int oldloc, int newloc) {
    }
    if (newloc > oldloc) { // for newloc > oldloc
       if (newloc < r+1 || newloc >= r+1 + (int)getCigarLength(c+1)) {
-         cerr << __FILE__ << ":" << __LINE__ << ":DEBUG newloc not in next M segment. oldloc=" << oldloc
-            << " newloc=" << newloc << " r=" << r << " q=" << q << " c=" << c << endl
-            << *this << endl;;
+         //cerr << __FILE__ << ":" << __LINE__ << ":DEBUG newloc not in next M segment. oldloc=" << oldloc
+         //   << " newloc=" << newloc << " r=" << r << " q=" << q << " c=" << c << endl
+         //   << *this << endl;;
          //throw logic_error(string(__func__) + ":ERROR newloc must be located in the right M segment");
          return;
       }
@@ -668,10 +690,10 @@ void BamAlignment::moveInsertion(int oldloc, int newloc) {
    }
    else { // newloc < oldloc
       if (newloc <= r - (int)getCigarLength(c-1)) {
-         cerr << __FILE__ << ":" << __LINE__ << ":DEBUG newloc outof range\n"
-            << " newloc=" << newloc << " oldloc=" << oldloc
-            << " q=" << q << " r=" << r << " c=" << c << endl
-            << *this << endl;
+         //cerr << __FILE__ << ":" << __LINE__ << ":DEBUG newloc outof range\n"
+         //   << " newloc=" << newloc << " oldloc=" << oldloc
+         //   << " q=" << q << " r=" << r << " c=" << c << endl
+         //   << *this << endl;
          //throw logic_error(string(__func__) + ":ERROR newloc before start of left M segment");
          return;
       }
@@ -2179,8 +2201,8 @@ pair<int,bool> BamAlignment::isDeletionAtRefloc(int desiredR, int startR) const 
          }
          r += CigarData[c].getLength();
          if (desiredR < r && desiredR > r-(int)getCigarLength(c)) {
-            cerr << __FILE__ << ":" << __LINE__ << ":DEBUG " << desiredR
-               << " is not the first base of the deletion\n";
+            //cerr << __FILE__ << ":" << __LINE__ << ":DEBUG " << desiredR
+            //   << " is not the first base of the deletion\n";
             return make_pair(c,true);
          }
       }
