@@ -764,7 +764,6 @@ bool FilterTool::FilterToolPrivate::Run(void) {
                 writer.SaveAlignment(al);
         }
     }
-    
     // otherwise attempt to use region as constraint
     else {
         
@@ -809,7 +808,7 @@ bool FilterTool::FilterToolPrivate::Run(void) {
         // error parsing REGION string
         else {
             cerr << "bamtools filter ERROR: could not parse REGION: " << m_settings->Region << endl;
-            cerr << "Check that REGION is in valid format (see documentation) and that the coordinates are valid"
+            cerr << "Check that REGION is in valid format (see documentation) and that the coordinates are valid. chr3:50..100 or simply chrX or X for different versions of reference genomes."
                  << endl;
             reader.Close();
             return false;

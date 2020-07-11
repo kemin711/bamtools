@@ -595,6 +595,7 @@ void BamAlignment::moveDeletion(int oldloc, int newloc) {
 // just silently do nothing if not feasible
 // need to limit only repeat regions
 void BamAlignment::moveInsertion(int oldloc, int newloc) {
+   assert(oldloc != newloc);
    if (oldloc < 0 || newloc < 0) {
       if (oldloc == -1) {
         if (newloc < (int)getCigarLength(1)-1 && getCigarType(0) == 'I') {
@@ -611,7 +612,6 @@ void BamAlignment::moveInsertion(int oldloc, int newloc) {
       throw logic_error(string(__FILE__) + ":" + string(__func__) + ":ERROR negative oldloc="
            + to_string(oldloc) + " newloc=" + to_string(newloc));
    }
-   assert(oldloc != newloc);
    pair<int,bool> rtn = isInsertionAtRefloc(newloc);
    if (rtn.second) {
       //cerr << __FILE__ << ":" << __LINE__ << ":WARN " << newloc
@@ -669,7 +669,7 @@ void BamAlignment::moveInsertion(int oldloc, int newloc) {
       throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) + ":DEBUG I must be flanked by M on both sides");
    }
    if (newloc > oldloc) { // for newloc > oldloc
-      if (newloc < r+1 || newloc >= r+1 + (int)getCigarLength(c+1)) {
+      if (newloc < r+1 || newloc >= r + (int)getCigarLength(c+1)) {
          //cerr << __FILE__ << ":" << __LINE__ << ":DEBUG newloc not in next M segment. oldloc=" << oldloc
          //   << " newloc=" << newloc << " r=" << r << " q=" << q << " c=" << c << endl
          //   << *this << endl;;
@@ -682,14 +682,15 @@ void BamAlignment::moveInsertion(int oldloc, int newloc) {
          CigarData[c+1].shrink(newloc - oldloc);
       }
       catch (exception& er) {
-         cerr << __LINE__ << ":DEBUG failed to move insertion from "
+         cerr << __FILE__ << ":" << __LINE__ << ":DEBUG failed to move insertion from "
             << oldloc << " to " << newloc << endl;
          cerr << er.what() << endl << *this << endl;
-         exit(1);
+         throw;
+         //exit(1);
       }
    }
    else { // newloc < oldloc
-      if (newloc <= r - (int)getCigarLength(c-1)) {
+      if (newloc <= r - (int)getCigarLength(c-1) + 2) {
          //cerr << __FILE__ << ":" << __LINE__ << ":DEBUG newloc outof range\n"
          //   << " newloc=" << newloc << " oldloc=" << oldloc
          //   << " q=" << q << " r=" << r << " c=" << c << endl

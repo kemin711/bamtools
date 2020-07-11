@@ -66,7 +66,6 @@ bool Utilities::ParseRegionString(const string& regionString,
 {
     // -------------------------------
     // parse region string
-  
     // check first for empty string
     if ( regionString.empty() ) 
         return false;   
