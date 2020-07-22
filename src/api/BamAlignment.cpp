@@ -520,6 +520,14 @@ bool BamAlignment::fix1M() {
    return changed;
 }
 
+/* must be inline for performance
+void BamAlignment::fixCigarError() {
+   if (getCigarType(0) == 'I') {
+      CigarData[0].setType('S');
+   }
+}
+*/
+
 void BamAlignment::moveDeletion(int oldloc, int newloc) {
    assert(oldloc != newloc);
    pair<int,bool> rtn = isDeletionAtRefloc(newloc);

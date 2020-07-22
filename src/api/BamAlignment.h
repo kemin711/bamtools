@@ -658,7 +658,8 @@ class API_EXPORT BamAlignment {
         /**
          * Will not depend on whether the AlignedBases has be formated or not.
          * @return the portion of query sequences that matched the reference
-         *    without any deletion characters.
+         *    without any deletion characters. QueryBases excluding the 
+         *    softclip sequences if they exist.
          */
         string getMatchedQuerySequence() const;
         void clearAlignedBases() {
@@ -819,6 +820,18 @@ class API_EXPORT BamAlignment {
          * Fix cigar with pattern like 57M1I1M1I69M 1M flank I or D
          */
         bool fix1M();
+        /**
+         * will convert 12I135M into 12S135M
+         */
+        void fixCigarError() {
+            if (getCigarType(0) == 'I') {
+               CigarData[0].setType('S');
+            }
+            else if (getCigarType(0) == 'S' && getCigarType(1) == 'I') {
+               CigarData[0].expand(getCigarLength(1));
+               CigarData.erase(CigarData.begin()+1);
+            }
+         }
 
         /**
          * @return true if start with softclip
