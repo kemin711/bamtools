@@ -563,6 +563,7 @@ class API_EXPORT BamAlignment {
          *    on the genomic DNA. 0-based index. 
          */
         std::pair<int,int> getInterval() const;
+        bool sameInterval(const BamAlignment& ba) const;
         /**
          * @return the interval including soft-clipped region if they
          *   exist. A more generic version of getInterval() but 

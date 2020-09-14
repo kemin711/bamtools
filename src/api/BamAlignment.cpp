@@ -1729,6 +1729,12 @@ std::pair<int,int> BamAlignment::getInterval() const {
    return tmp;
 }
 
+bool BamAlignment::sameInterval(const BamAlignment& ba) const {
+   pair<int,int> itv1 = getInterval();
+   pair<int,int> itv2 = ba.getInterval();
+   return itv1.first == itv2.first && itv1.second == itv2.second;
+}
+
 std::pair<int,int> BamAlignment::getSoftInterval() const {
    auto res = getInterval();
    int tmp = getFirstSoftclipLength();
