@@ -647,6 +647,9 @@ class API_EXPORT BamAlignment {
         std::string& accessSequence() {
            return QueryBases;
         }
+        bool sameQuerySequence(const BamAlignment& ba) const {
+           return getQueryBases() == ba.getQueryBases();
+        }
         /**
          * aligned sequence (QueryBases plus deletion, padding, clipping chars)
          */
