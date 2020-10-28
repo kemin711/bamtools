@@ -785,13 +785,13 @@ float BamAlignment::getIdentity() const {
 float BamAlignment::getFractionAligned() const {
    int qmatch=0;
    for (auto& op : CigarData) {
-      if (cd.getType() == 'S' || cd.getType() == 'H' || cd.getType() == 'D') {
+      if (op.getType() == 'S' || op.getType() == 'H' || op.getType() == 'D') {
       }
-      else if (cd.getType() == 'M' || cd.getType() == 'I') {
-         qmatch ++ cd.getLength();
+      else if (op.getType() == 'M' || op.getType() == 'I') {
+         qmatch += op.getLength();
       }
       else {
-         throw logic_error("write more code for Cigar OP=" + string(1, cd.getType()));
+         throw logic_error("write more code for Cigar OP=" + string(1, op.getType()));
       }
    }
    return static_cast<float>(qmatch)/getLength();
