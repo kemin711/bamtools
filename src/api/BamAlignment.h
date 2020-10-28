@@ -671,6 +671,7 @@ class API_EXPORT BamAlignment {
          *    softclip sequences if they exist.
          */
         string getMatchedQuerySequence() const;
+        int getMatchedQueryLength() const;
         void clearAlignedBases() {
            AlignedBases.clear();
         }
@@ -902,7 +903,9 @@ class API_EXPORT BamAlignment {
         /**
          * @return the portion of aligned query sequence.
          */
-        float getFractionAligned() const;
+        float getFractionAligned() const {
+            return static_cast<float>(getMatchedQueryLength())/getLength();
+        }
         /**
          * @return the query sequence for the first soft clip.
          *    If there is no soft clip then an empty string is returned.
