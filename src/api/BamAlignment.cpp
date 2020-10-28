@@ -782,6 +782,21 @@ float BamAlignment::getIdentity() const {
    return (1-(num_mismatch)/(float)alnlen);
 }
 
+float BamAlignment::getFractionAligned() const {
+   int qmatch=0;
+   for (auto& op : CigarData) {
+      if (cd.getType() == 'S' || cd.getType() == 'H' || cd.getType() == 'D') {
+      }
+      else if (cd.getType() == 'M' || cd.getType() == 'I') {
+         qmatch ++ cd.getLength();
+      }
+      else {
+         throw logic_error("write more code for Cigar OP=" + string(1, cd.getType()));
+      }
+   }
+   return static_cast<float>(qmatch)/getLength();
+}
+
 void BamAlignment::setQuality(const vector<int> &qual) {
    if (!Qualities.empty()) Qualities.clear();
    //cout << "Quality values:\n";

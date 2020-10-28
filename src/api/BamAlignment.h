@@ -652,6 +652,11 @@ class API_EXPORT BamAlignment {
         }
         /**
          * aligned sequence (QueryBases plus deletion, padding, clipping chars)
+         * Not good for sequence analysis, need a separate method to 
+         * extract the aligned without indel symbols.
+         * @return the formated aligned query sequence.
+         *   if not present, could return empty string.
+         * see: getMatchedQuerySequence()
          */
         const std::string& getAlignedQueryBases() const { 
            //if (AlignedBases.empty()) {
@@ -894,6 +899,10 @@ class API_EXPORT BamAlignment {
          *   Soft clipped regions are not counted.
          */
         float getIdentity() const;
+        /**
+         * @return the portion of aligned query sequence.
+         */
+        float getFractionAligned() const;
         /**
          * @return the query sequence for the first soft clip.
          *    If there is no soft clip then an empty string is returned.
