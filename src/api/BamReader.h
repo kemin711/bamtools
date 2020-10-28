@@ -138,6 +138,7 @@ class API_EXPORT BamReader {
         /** 
          *  Sets a target region of interest
          *
+         *  Region in command option: chr1:20..999
          *  Requires that index data be available. Attempts a random-access
          *  jump in the BAM file, near \a region left boundary position.
          *
