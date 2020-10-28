@@ -1119,10 +1119,12 @@ int BamAlignment::GetEndPosition(bool usePadded, bool closedInterval) const {
     // initialize alignment end to starting position
     int alignEnd = Position;
     // iterate over cigar operations
-    vector<CigarOp>::const_iterator cigarIter = CigarData.begin();
-    vector<CigarOp>::const_iterator cigarEnd  = CigarData.end();
-    for ( ; cigarIter != cigarEnd; ++cigarIter) {
-        const CigarOp& op = (*cigarIter);
+    //vector<CigarOp>::const_iterator cigarIter = CigarData.begin();
+    //vector<CigarOp>::const_iterator cigarEnd  = CigarData.end();
+    //for ( ; cigarIter != cigarEnd; ++cigarIter) {
+    for (auto& op : CigarData) {
+        //const CigarOp& op = (*cigarIter);
+        //switch ( op.Type ) {
         switch ( op.Type ) {
             // increase end position on CIGAR chars [DMXN=]
             case Constants::BAM_CIGAR_DEL_CHAR      :
@@ -1143,8 +1145,7 @@ int BamAlignment::GetEndPosition(bool usePadded, bool closedInterval) const {
         }
     }
     // adjust for closedInterval, if requested
-    if ( closedInterval )
-        alignEnd -= 1;
+    if ( closedInterval ) alignEnd -= 1;
     // return result
     return alignEnd;
 }

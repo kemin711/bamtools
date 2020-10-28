@@ -1206,6 +1206,9 @@ class API_EXPORT BamAlignment {
         int32_t     Length() const {
            return SupportData.QuerySequenceLength;
         }             
+        int32_t     length() const {
+           return SupportData.QuerySequenceLength;
+        }             
         /**
          * @return the length of the query sequence.
          */
@@ -1622,7 +1625,7 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
         return false;
     }
     char type = *(pTagData - 1);
-    if (type == 'C')
+    if (type == 'C') // C is uint32_t
     { 
       destination=(uint32_t)(*pTagData);
       return true;
