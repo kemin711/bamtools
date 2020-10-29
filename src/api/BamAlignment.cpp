@@ -3478,13 +3478,12 @@ string BamAlignment::getMatchedQuerySequence() const {
 }
 
 int BamAlignment::getMatchedQueryLength() const {
-   int b = 0;
+   int len=getLength();
    if (CigarData.front().getType() == 'S') {
-      b = CigarData.front().getLength();
+      len -= CigarData.front().getLength();
    }
-   int e = getLength();
    if (CigarData.back().getType() == 'S') {
-      e -= CigarData.back().getLength();
+      len -= CigarData.back().getLength();
    }
-   return e-b+1;
+   return len;
 }
