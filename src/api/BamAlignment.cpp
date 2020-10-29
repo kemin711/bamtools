@@ -3467,22 +3467,34 @@ int BamAlignment::getTemplateLength() const {
 
 string BamAlignment::getMatchedQuerySequence() const {
    int b = 0;
-   if (CigarData.front().getType() == 'S') {
+   if (CigarData.front().getType() == 'S' || CigarData.front().getType() == 'H') {
       b = CigarData.front().getLength();
    }
    int e = getLength();
-   if (CigarData.back().getType() == 'S') {
+   if (CigarData.back().getType() == 'S' || CigarData.back().getType() == 'H') {
       e -= CigarData.back().getLength();
    }
    return QueryBases.substr(b, e-b);
 }
 
+pair<int,int> BamAlignment::getMatchBound() const {
+   int b = 0;
+   if (CigarData.front().getType() == 'S' || CigarData.front().getType() == 'H') {
+      b = CigarData.front().getLength();
+   }
+   int e = getLength();
+   if (CigarData.back().getType() == 'S' || CigarData.back().getType() == 'H') {
+      e -= CigarData.back().getLength();
+   }
+   return make_pair(b, e);
+}
+
 int BamAlignment::getMatchedQueryLength() const {
    int len=getLength();
-   if (CigarData.front().getType() == 'S') {
+   if (CigarData.front().getType() == 'S' || CigarData.front().getType() == 'H') {
       len -= CigarData.front().getLength();
    }
-   if (CigarData.back().getType() == 'S') {
+   if (CigarData.back().getType() == 'S' || CigarData.back().getType() == 'H') {
       len -= CigarData.back().getLength();
    }
    return len;

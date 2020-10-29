@@ -906,6 +906,19 @@ class API_EXPORT BamAlignment {
         float getFractionAligned() const {
             return static_cast<float>(getMatchedQueryLength())/getLength();
         }
+        pair<int,int> getMatchBound() const;
+        int getQueryMatchBegin() const {
+           if (CigarData.front().getType() == 'S' ||
+               CigarData.front().getType() == 'H')
+              return CigarData.front().getLength();
+           return 0;
+        }
+        int getQueryMatchEnd() const {
+           if (CigarData.back().getType() == 'S' ||
+               CigarData.back().getType() == 'H')
+              return getLength() - CigarData.front().getLength() - 1;
+           return getLength()-1;
+        }
         /**
          * @return the query sequence for the first soft clip.
          *    If there is no soft clip then an empty string is returned.
