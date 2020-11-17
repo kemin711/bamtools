@@ -972,9 +972,19 @@ class API_EXPORT BamAlignment {
            QueryBases = qseq; 
            setQueryLength(QueryBases.size());
         }
-        /** set quality from string data */
+        void setQueryBases(std::string &&qseq) { 
+           QueryBases = std::move(qseq); 
+           setQueryLength(QueryBases.size());
+        }
+        /** 
+         * set quality from string data 
+         * */
         void setQuality(const std::string &qual) { Qualities = qual; }
-        /** integer version
+        void setQuality(std::string &&qual) { Qualities = std::move(qual); }
+        /** 
+         * integer version.
+         * Since the internal representation is with char, you cannot
+         * user rreference.
          * @param qual is a vector of Phred scores from 0-63
          */
         void setQuality(const std::vector<int> &qual);
