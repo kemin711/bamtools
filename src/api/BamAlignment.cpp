@@ -292,8 +292,9 @@ bool BamAlignment::validCigar() const {
       }
    }
    if (cigarQL != getLength()) {
-      cerr << "queryLength from cigar=" << cigarQL << " queryLength="
-         << getLength() << endl;
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR Query Length inconsistent queryLength from cigar=" 
+         << cigarQL << " queryLength=" << getLength() << endl;
+      cerr << *this << endl;
    }
    return cigarQL == getLength();
 }
@@ -430,12 +431,17 @@ void BamAlignment::fixStaggerGap() {
 bool BamAlignment::fix1M() {
    if (CigarData.size() < 5) return false;
    bool changed=false;
-   if (getName() == "26659378") {
-      cerr << "Need to debug this one\n" << *this << endl;
-   }
+   //if (getName() == "S345182753") { // for debug particular read
+   //   cerr << "Need to debug this one\n" << *this << endl;
+   //   cerr << string(60, '-') << endl;
+   //   if (!validCigar()) {
+   //      cerr << "invalid Cigar before trying to fix1M!\n";
+   //   }
+   //}
    for (int i=2; i+2 < getCigarSize(); ++i) {
       if (CigarData[i].getType() == 'M' && CigarData[i].getLength() < 3) 
       { // candidate for doing fixing, imply i-2>-1 && i+2 < CigarData.size()
+         //cerr << " i=" << i << " id fix1M candidate\n";
          if (CigarData[i-1].getType() == CigarData[i+1].getType()) { // same ins or del
             if (CigarData[i-1].getType() == 'I' || CigarData[i-1].getType() == 'D') {
                int nmvalue = getNMValue();
@@ -513,7 +519,7 @@ bool BamAlignment::fix1M() {
          }
       }
    }
-   if (!validCigar()) {
+   if (changed && !validCigar()) { // only check if changed
       cerr << __FILE__ << ":" << __LINE__ << ":ERROR CigarData and len mismatch\n" << *this << endl;
       throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR CigarData and query sequence length does not match");
    }

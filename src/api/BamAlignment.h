@@ -841,6 +841,14 @@ class API_EXPORT BamAlignment {
                CigarData[0].expand(getCigarLength(1));
                CigarData.erase(CigarData.begin()+1);
             }
+            if (CigarData.back().getType() == 'I') {
+               CigarData.back().setType('S');
+            }
+            else if (CigarData.size() > 2 && CigarData.back().getType() == 'S'
+                  && getCigarType(CigarData.size()-2) == 'I') {
+               CigarData.back().expand(getCigarLength(CigarData.size()-2));
+               CigarData.erase(CigarData.begin()+CigarData.size()-2);
+            }
          }
 
         /**
