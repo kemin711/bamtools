@@ -350,6 +350,11 @@ string BamAlignment::getFirstSoftclip() const {
    return getQuerySequence().substr(0, getCigar().front().Length);
 }
 
+string BamAlignment::getFirstSoftquality() const {
+   if (!startWithSoftclip()) return "";
+   return getQuality().substr(0, getCigar().front().getLength());
+}
+
 int BamAlignment::getFirstSoftclipLength() const {
    if (!startWithSoftclip()) return 0;
    return getCigar().front().Length;
@@ -362,6 +367,10 @@ string BamAlignment::getLastSoftclip() const {
 int BamAlignment::getLastSoftclipLength() const {
    if (!endWithSoftclip()) return 0;
    return getCigar().back().Length;
+}
+string BamAlignment::getLastSoftquality() const {
+   if (!endWithSoftclip()) return "";
+   return getQuality().substr(getQueryLength() - getCigar().back().getLength());
 }
 
 int BamAlignment::getSoftclipLength() const {

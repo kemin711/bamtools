@@ -690,7 +690,8 @@ class API_EXPORT BamAlignment {
          * @return the FASTQ qualities (ASCII characters, not numeric values)
          * Values are ASCII 33-93
          */
-        std::string getQuality() const { return Qualities; }
+        const std::string& getQuality() const { return Qualities; }
+        std::string& getQuality() { return Qualities; }
         /**
          * @return the fastq quality as integer value from 0 to 63
          * This is the Phred score after ASCII - 33
@@ -932,6 +933,7 @@ class API_EXPORT BamAlignment {
          *    If there is no soft clip then an empty string is returned.
          */
         string getFirstSoftclip() const;
+        string getFirstSoftquality() const;
         /**
          * @return the length of the first softclip.
          *   if not start with softclip, then return 0.
@@ -941,6 +943,7 @@ class API_EXPORT BamAlignment {
          * @return the last soft clip in query sequence.
          */
         string getLastSoftclip() const;
+        string getLastSoftquality() const;
         /**
          * @return the length of the last softclip
          *   if no softclip return 0.
