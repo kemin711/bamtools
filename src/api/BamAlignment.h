@@ -1561,11 +1561,12 @@ inline bool BamAlignment::AddTag<std::string>(const std::string& tag,
 template<typename T>
 inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& values) {
     // if char data not populated, do that first
-    if ( SupportData.HasCoreOnly )
-        BuildCharData();
+    if (SupportData.HasCoreOnly) BuildCharData();
     // check for valid tag name length
-    if ( tag.size() != Constants::BAM_TAG_TAGSIZE )
+    if (tag.size() != Constants::BAM_TAG_TAGSIZE) {
+        cerr << __FILE__ << ":" << __LINE__ << ":WARN tag " + tag + " TAGSIZE wrong\n";
         return false;
+    }
     // localize the tag data
     char* pTagData = (char*)TagData.data();
     const unsigned int tagDataLength = TagData.size();
@@ -1573,29 +1574,30 @@ inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& v
 
     // if tag already exists, return false
     // use EditTag explicitly instead
-    if ( FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
+    if (FindTag(tag, pTagData, tagDataLength, numBytesParsed)) {
+        cerr << __FILE__ << ":" << __LINE__ << ":WARN tag " + tag + " already exists\n";
         // TODO: set error string?
         return false;
     }
     // build new tag's base information
     char newTagBase[Constants::BAM_TAG_ARRAYBASE_SIZE];
-    memcpy( newTagBase, tag.c_str(), Constants::BAM_TAG_TAGSIZE );
+    std::memcpy(newTagBase, tag.c_str(), Constants::BAM_TAG_TAGSIZE);
     newTagBase[2] = Constants::BAM_TAG_TYPE_ARRAY;
     newTagBase[3] = TagTypeHelper<T>::TypeCode();
 
     // add number of array elements to newTagBase
     const int32_t numElements  = values.size();
-    memcpy(newTagBase + 4, &numElements, sizeof(int32_t));
+    std::memcpy(newTagBase + 4, &numElements, sizeof(int32_t));
     // copy current TagData string to temp buffer, leaving room for new tag's contents
     const size_t newTagDataLength = 
        tagDataLength + Constants::BAM_TAG_ARRAYBASE_SIZE + numElements*sizeof(T);
     RaiiBuffer originalTagData(newTagDataLength);
-    memcpy(originalTagData.Buffer, TagData.c_str(), tagDataLength+1); // '+1' for TagData's null-term
+    std::memcpy(originalTagData.Buffer, TagData.c_str(), tagDataLength+1); // '+1' for TagData's null-term
     // write newTagBase (removes old null term)
-    strcat(originalTagData.Buffer + tagDataLength, (const char*)newTagBase);
+    std::strcat(originalTagData.Buffer + tagDataLength, (const char*)newTagBase);
     // add vector elements to tag
     int elementsBeginOffset = tagDataLength + Constants::BAM_TAG_ARRAYBASE_SIZE;
-    for ( int i = 0 ; i < numElements; ++i ) {
+    for (int i = 0 ; i < numElements; ++i) {
         const T& value = values.at(i);
         memcpy(originalTagData.Buffer + elementsBeginOffset + i*sizeof(T), &value, sizeof(T));
     }
@@ -1758,14 +1760,13 @@ inline bool BamAlignment::GetTag<std::string>(const std::string& tag,
 */
 template<typename T>
 inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destination) const {
-
     // skip if alignment is core-only
-    if ( SupportData.HasCoreOnly ) {
+    if (SupportData.HasCoreOnly ) {
         // TODO: set error string?
         return false;
     }
     // skip if no tags present
-    if ( TagData.empty() ) {
+    if (TagData.empty()) {
         // TODO: set error string?
         return false;
     }
@@ -1780,35 +1781,35 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
     }
     // check that tag is array type
     const char tagType = *(pTagData - 1);
-    if ( tagType != Constants::BAM_TAG_TYPE_ARRAY ) {
+    if (tagType != Constants::BAM_TAG_TYPE_ARRAY) {
         cerr << __FILE__ << ":" << __LINE__ << ":" << __func__ 
            << ":ERROR cannot store a non-array tag in array destination\n";
         return false;
     }
     // fetch element type
     const char elementType = *pTagData;
-    if ( !TagTypeHelper<T>::CanConvertFrom(elementType) ) {
+    if (!TagTypeHelper<T>::CanConvertFrom(elementType) ) {
         // TODO: set error string ?
         return false;
     }
     ++pTagData;
 
     // calculate length of each element in tag's array
-    int elementLength = 0;
-    switch ( elementType ) {
+    //int elementLength = 0;
+    switch (elementType ) {
         case (Constants::BAM_TAG_TYPE_ASCII) :
         case (Constants::BAM_TAG_TYPE_INT8)  :
         case (Constants::BAM_TAG_TYPE_UINT8) :
-            elementLength = sizeof(uint8_t);
+            //elementLength = sizeof(uint8_t);
             break;
         case (Constants::BAM_TAG_TYPE_INT16)  :
         case (Constants::BAM_TAG_TYPE_UINT16) :
-            elementLength = sizeof(uint16_t);
+            //elementLength = sizeof(uint16_t);
             break;
         case (Constants::BAM_TAG_TYPE_INT32)  :
         case (Constants::BAM_TAG_TYPE_UINT32) :
         case (Constants::BAM_TAG_TYPE_FLOAT)  :
-            elementLength = sizeof(uint32_t);
+            //elementLength = sizeof(uint32_t);
             break;
         // var-length types not supported for numeric destination
         case (Constants::BAM_TAG_TYPE_STRING) :
@@ -1825,7 +1826,7 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
     }
     // not using elementLength
     // TODO: remove above code block
-    std::cerr << "BamTagData arrary element data width (Byte): " << elementLength << std::endl;
+    //std::cerr << "BamTagData arrary element data width (Byte): " << elementLength << std::endl;
 
     // get number of elements
     int32_t numElements;
@@ -1836,7 +1837,7 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
 
     // read in elements
     T value;
-    for ( int i = 0 ; i < numElements; ++i ) {
+    for (int i = 0 ; i < numElements; ++i ) {
         memcpy(&value, pTagData, sizeof(T));
         pTagData += sizeof(T);
         destination.push_back(value);
