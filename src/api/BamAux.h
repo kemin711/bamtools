@@ -149,7 +149,11 @@ struct API_EXPORT BamRegion {
     int RightRefID;     //!< reference ID for region's right boundary
     int RightPosition;  //!< position for region's right boundary
     
-    //! constructor
+    /**
+     * constructor from full information.
+     * @param leftId left reference id, zero-based index
+     * @param leftPos left position zero-indexed position.
+     */
     BamRegion(const int& leftID   = -1, const int& leftPos  = -1,
               const int& rightID  = -1, const int& rightPos = -1)
         : LeftRefID(leftID), LeftPosition(leftPos)
@@ -158,6 +162,7 @@ struct API_EXPORT BamRegion {
     /**
      * Constructor for only one reference
      * @param refid reference id, chr1 is 1, chrm is 0, chrX is 23
+     *    Should use the refid from the header of the Bam file.
      * @param leftp left position
      * @param rightp right position
      */
@@ -172,14 +177,15 @@ struct API_EXPORT BamRegion {
         : LeftRefID(other.LeftRefID), LeftPosition(other.LeftPosition)
         , RightRefID(other.RightRefID), RightPosition(other.RightPosition)
     { }
+
     BamRegion& operator=(const BamRegion& o) {
-	if (this != &o) {
-	LeftRefID=o.LeftRefID;
-	LeftPosition=o.LeftPosition;
-	RightRefID=o.RightRefID;
-	RightPosition=o.RightPosition;
-	}
-	return *this;
+      if (this != &o) {
+         LeftRefID=o.LeftRefID;
+         LeftPosition=o.LeftPosition;
+         RightRefID=o.RightRefID;
+         RightPosition=o.RightPosition;
+      }
+      return *this;
    }
     
     //! Clears region boundaries
