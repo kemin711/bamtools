@@ -166,7 +166,7 @@ struct API_EXPORT BamRegion {
      * @param leftp left position
      * @param rightp right position
      */
-    explicit BamRegion(int refid=-1, int leftp=-1, int rightp=-1) 
+    explicit BamRegion(int refid, int leftp, int rightp) 
        : LeftRefID(refid), LeftPosition(leftp), RightRefID(refid), RightPosition(rightp)
     { }
     
