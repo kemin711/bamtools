@@ -30,6 +30,8 @@ namespace Internal {
  *
  *  It is exposed to the public API to allow advanced users to implement
  *  their own custom indexing schemes.
+ *
+ *  Uses BamReaderPrivate to do the reading.
 */
 class API_EXPORT BamIndex {
     // enums
