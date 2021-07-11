@@ -1378,7 +1378,7 @@ class API_EXPORT BamAlignment {
          *  @param  tag            requested 2-character tag name
          *  @param  pTagData       pointer to current position in BamAlignment::TagData
          *  @param  tagDataLength  length of BamAlignment::TagData
-         *  @param  numBytesParsed number of bytes parsed so far
+         *  @param  numBytesParsed number of bytes parsed so far before TAG
          *  @return true if found
          *  If tag is found, pTagData will point to the byte where the tag data begins.
          *        numBytesParsed will correspond to the position in the full TagData string.
@@ -1678,11 +1678,11 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
         return false;
     }
     // localize the tag data
-    char* pTagData = (char*)TagData.data(); // string's low leve representation
+    char* pTagData = (char*)TagData.data(); // string's low level representation
     const unsigned int tagDataLength = TagData.size();
     unsigned int numBytesParsed = 0;
     // return failure if tag not found
-    if (!FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
+    if (!FindTag(tag, pTagData, tagDataLength, numBytesParsed)) {
         // TODO: set error string?
         return false;
     }
@@ -1734,6 +1734,9 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
     return true;
 }
 
+/**
+ * Specialization for string
+ */
 template<>
 inline bool BamAlignment::GetTag<std::string>(const std::string& tag,
          std::string& destination) const
@@ -1767,6 +1770,35 @@ inline bool BamAlignment::GetTag<std::string>(const std::string& tag,
     // return success
     return true;
 }
+
+/**
+ * More convenient version return value directly. If not found
+ * for string then return empty string. For integer types
+ * will return the smallest integer.
+ * TODO: Need testing
+ */
+string BamAlignment::getStringTag(const std::string& tag) const {
+    if (TagData.empty() ||  SupportData.HasCoreOnly ) {
+        return string();
+    }
+    // localize the tag data
+    char* pTagData = (char*)TagData.data();
+    const unsigned int tagDataLength = TagData.size();
+    unsigned int numBytesParsed = 0;
+    // return failure if tag not found
+    if (!FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
+        throw runtime_error("Cannot fine tag: " + tag);
+    }
+    // otherwise copy data into destination
+    const unsigned int dataLength = strlen(pTagData);
+    //destination.clear();
+    //destination.resize(dataLength);
+    //memcpy( (char*)destination.data(), pTagData, dataLength );
+    // return success
+    //return true;
+    return TagData.substr(numBytesParsed, dataLength);
+}
+
 
 /*! \fn template<typename T> bool GetTag(const std::string& tag, std::vector<T>& destination) const
     \brief Retrieves the numeric array associated with a BAM tag.
