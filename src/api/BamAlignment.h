@@ -189,9 +189,10 @@ class API_EXPORT BamAlignment {
         /**
          *  @return true if alignment is first mate on paired-end read
          *  First mate is also first read: Two words meaning the same thing.
+         *  First read usually have better quality than second read.
          */
         bool IsFirstMate(void) const;         
-         uint32_t getAlignmentFlag() const {
+        uint32_t getAlignmentFlag() const {
             return AlignmentFlag;
          }
         /**
@@ -242,13 +243,13 @@ class API_EXPORT BamAlignment {
          * @return true if alignment is mapped
          */
         bool isMapped(void) const {
-           return !(AlignmentFlag & UNMAPPED);            
+           return (AlignmentFlag & UNMAPPED) != UNMAPPED;            
         }
         /** 
          * @return true if alignment is not mapped
          */
         bool isUnmapped() const {
-           return AlignmentFlag & UNMAPPED;
+           return (AlignmentFlag & UNMAPPED) == UNMAPPED;
         }
         /** 
          * Is a flag check
@@ -306,6 +307,14 @@ class API_EXPORT BamAlignment {
         }
         bool isMateForwardStrand() const {
             return (AlignmentFlag & MATE_REVERSE_STRAND) == 0;
+        }
+        bool isMateOppositeStrand() const {
+           return  (isForwardStrand() && isMateReverseStrand())
+              || (isReverseStrand() && isMateForwardStrand()); 
+        }
+        bool isMateSameStrand() const {
+           return  (isForwardStrand() && isMateForwardStrand())
+              || (isReverseStrand() && isMateReverseStrand()); 
         }
         /**
          * Get a value to represent the strand.
@@ -640,7 +649,7 @@ class API_EXPORT BamAlignment {
         /**
          * @return the query sequence same as getQueryBases.
          * If there is Hard-clip, the only the alignmed part will be 
-         * returned.
+         * returned. So should tell BWA never use hardclip.
          */
         const std::string& getQuerySequence() const { return QueryBases; }
         std::string& getQueryBases() { return QueryBases; }
@@ -724,7 +733,7 @@ class API_EXPORT BamAlignment {
          */
         int32_t getMateReferenceId() const { return MateRefID; }
         /**
-         * @return mape position
+         * @return mate mapped position
          */
         int32_t getMatePosition() const { return MatePosition; }
         /**
@@ -740,6 +749,7 @@ class API_EXPORT BamAlignment {
          *   If no mate or mate is not mapped will return false.
          */
         bool mateOnSameReference() const { return MateRefID == RefID; }
+        bool mateOnDifferentReference() const { return MateRefID != RefID; }
         /**
          * If read is unpaired, the insert size is also zero.
          * @return length of the template positive for
@@ -891,6 +901,10 @@ class API_EXPORT BamAlignment {
          *    then return false.
          */
         bool hasSoftclip() const;
+        bool noSoftclip() const {
+            if (CigarData.empty() || CigarData.size() == 1) return true;
+            return CigarData.front().Type != 'S' && CigarData.back().Type != 'S';
+        }
         /**
          * Calculate identity over the aligned part excluding
          * insert/delete and soft/hard clips.
