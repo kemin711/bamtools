@@ -142,11 +142,13 @@ BamAlignment& BamAlignment::operator=(BamAlignment&& other) {
    return *this;
 }
 
-
 //std::ostream& BamTools::operator<<(std::ostream &ous, const BamTools::BamAlignment &ba) {
 // error: ‘std::ostream& BamTools::operator<<(std::ostream&, const BamTools::BamAlignment&)’ should have been declared inside ‘BamTools’
 //  std::ostream& BamTools::operator<<(std::ostream &ous, const BamTools::BamAlignment &ba) {
 //
+/**
+ * For human to read
+ */
 namespace BamTools {
 std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    const string sep="\t";
@@ -737,7 +739,8 @@ pair<int,int> BamAlignment::getMismatchCount() const {
       GetTag("NM", num_mismatch);
    }
    else {
-      throw runtime_error("No NM tag in bam file");
+      cerr << *this << endl;
+      throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +  ":ERROR No NM tag in bam file");
    }
    int alnlen=0;
    int indel=0;
@@ -758,7 +761,8 @@ float BamAlignment::getNGIdentity() const {
       GetTag("NM", num_mismatch);
    }
    else {
-      throw runtime_error("No NM tag in bam file");
+      cerr << *this << endl;
+      throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +  ":ERROR No NM tag in bam file");
    }
    int alnlen=0;
    int indel=0;
@@ -779,7 +783,8 @@ float BamAlignment::getIdentity() const {
       GetTag("NM", num_mismatch);
    }
    else {
-      throw runtime_error("No NM tag in bam file");
+      cerr << *this << endl;
+      throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +  ":ERROR No NM tag in bam file");
    }
    int alnlen=0;
    for (auto& cd : CigarData) {
@@ -1265,6 +1270,29 @@ bool BamAlignment::GetSoftClips(vector<int>& clipSizes,
     return softClipFound;
 }
 
+string BamAlignment::getStringTag(const std::string& tag) const {
+    if (TagData.empty() ||  SupportData.HasCoreOnly ) {
+        return string();
+    }
+    // localize the tag data
+    char* pTagData = (char*)TagData.data();
+    const unsigned int tagDataLength = TagData.size();
+    unsigned int numBytesParsed = 0;
+    // return failure if tag not found
+    if (!FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
+        throw runtime_error("Cannot fine tag: " + tag);
+    }
+    // otherwise copy data into destination
+    const unsigned int dataLength = strlen(pTagData);
+    //destination.clear();
+    //destination.resize(dataLength);
+    //memcpy( (char*)destination.data(), pTagData, dataLength );
+    // return success
+    //return true;
+    return TagData.substr(numBytesParsed, dataLength);
+}
+
+
 /* \fn std::vector<std::string> BamAlignment::GetTagNames(void) const
     \brief Retrieves the BAM tag names.
 
@@ -1383,7 +1411,7 @@ bool BamAlignment::HasTag(const std::string& tag) const {
 }
 
 bool BamAlignment::IsDuplicate(void) const {
-    return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_DUPLICATE) != 0 );
+    return (AlignmentFlag & Constants::BAM_ALIGNMENT_DUPLICATE) == Constants::BAM_ALIGNMENT_DUPLICATE;
 }
 
 /*! \fn bool BamAlignment::IsFailedQC(void) const
@@ -1394,28 +1422,33 @@ bool BamAlignment::IsFailedQC(void) const {
 }
 
 bool BamAlignment::IsFirstMate(void) const {
-    return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_READ_1) != 0 );
+   //bool x = ((AlignmentFlag & Constants::BAM_ALIGNMENT_READ_1) != 0);
+   //if (x) {
+   //   cerr << " x is true\n";
+   //}
+   //else cerr << " x is false\n";
+    return (AlignmentFlag & Constants::BAM_ALIGNMENT_READ_1) == Constants::BAM_ALIGNMENT_READ_1;
 }
 
 /*! \fn bool BamAlignment::IsMapped(void) const
     \return \c true if alignment is mapped
 */
 bool BamAlignment::IsMapped(void) const {
-    return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_UNMAPPED) == 0 );
+    return !((AlignmentFlag & Constants::BAM_ALIGNMENT_UNMAPPED) == Constants::BAM_ALIGNMENT_UNMAPPED);
 }
 
 /*! \fn bool BamAlignment::IsMateMapped(void) const
     \return \c true if alignment's mate is mapped
 */
 bool BamAlignment::IsMateMapped(void) const {
-    return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_MATE_UNMAPPED) == 0 );
+    return !((AlignmentFlag & Constants::BAM_ALIGNMENT_MATE_UNMAPPED) == Constants::BAM_ALIGNMENT_MATE_UNMAPPED);
 }
 
 /*! \fn bool BamAlignment::IsMateReverseStrand(void) const
     \return \c true if alignment's mate mapped to reverse strand
 */
 bool BamAlignment::IsMateReverseStrand(void) const {
-    return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_MATE_REVERSE_STRAND) != 0 );
+    return (AlignmentFlag & Constants::BAM_ALIGNMENT_MATE_REVERSE_STRAND) == Constants::BAM_ALIGNMENT_MATE_REVERSE_STRAND;
 }
 
 double BamAlignment::getFractionStrand() const {
@@ -1439,14 +1472,14 @@ double BamAlignment::getFractionStrand() const {
     \return \c true if alignment part of paired-end read
 */
 bool BamAlignment::IsPaired(void) const {
-    return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_PAIRED) != 0 );
+    return (AlignmentFlag & Constants::BAM_ALIGNMENT_PAIRED) == Constants::BAM_ALIGNMENT_PAIRED;
 }
 
 /*! \fn bool BamAlignment::IsPrimaryAlignment(void) const
     \return \c true if reported position is primary alignment
 */
 bool BamAlignment::IsPrimaryAlignment(void) const  {
-    return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_SECONDARY) == 0 );
+    return !((AlignmentFlag & Constants::BAM_ALIGNMENT_SECONDARY) == Constants::BAM_ALIGNMENT_SECONDARY);
 }
 
 /*! \fn bool BamAlignment::IsProperPair(void) const
@@ -1454,18 +1487,18 @@ bool BamAlignment::IsPrimaryAlignment(void) const  {
 */
 bool BamAlignment::IsProperPair(void) const {
     //return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_PROPER_PAIR) != 0 );
-    return ( (AlignmentFlag & PROPER_PAIR) != 0 );
+    return (AlignmentFlag & PROPER_PAIR) == PROPER_PAIR;
 }
 
 bool BamAlignment::IsReverseStrand(void) const {
-    return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_REVERSE_STRAND) != 0 );
+    return (AlignmentFlag & Constants::BAM_ALIGNMENT_REVERSE_STRAND) == Constants::BAM_ALIGNMENT_REVERSE_STRAND;
 }
 
 /*! \fn bool BamAlignment::IsSecondMate(void) const
     \return \c true if alignment is second mate on read
 */
 bool BamAlignment::IsSecondMate(void) const {
-    return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_READ_2) != 0 );
+    return (AlignmentFlag & Constants::BAM_ALIGNMENT_READ_2) == Constants::BAM_ALIGNMENT_READ_2;
 }
 
 /*! \fn bool BamAlignment::IsValidSize(const std::string& tag, const std::string& type) const
@@ -3514,3 +3547,13 @@ int BamAlignment::getMatchedQueryLength() const {
    }
    return len;
 }
+
+int BamAlignment::numberBaseAligned() const {
+   int len=getLength();
+   for (auto& cd : CigarData) {
+      if (cd.getType() == 'H' || cd.getType() == 'S' || cd.getType() == 'D' || cd.getType() == 'I') 
+         len -= cd.getLength();
+   }
+   return len;
+}
+

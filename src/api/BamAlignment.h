@@ -180,6 +180,9 @@ class API_EXPORT BamAlignment {
               && getPosition() == other.getPosition()
               && getEndPosition() == other.getEndPosition();
         }
+        uint32_t getAlignmentFlag() const {
+            return AlignmentFlag;
+        }
          /** 
           * This cannot be relied on.
           * @return true if this read is a PCR duplicate
@@ -192,20 +195,21 @@ class API_EXPORT BamAlignment {
          *  First read usually have better quality than second read.
          */
         bool IsFirstMate(void) const;         
-        uint32_t getAlignmentFlag() const {
-            return AlignmentFlag;
-         }
         /**
          * @return true if is the First Read in a paired end read.
          * Alias for IsFirstMate.
          * Use this version for carmel casing.
          * @see isFirstRead
          */
-        bool isFirstMate(void) const { return (AlignmentFlag & READ_1) != 0; }
+        bool isFirstMate(void) const { 
+           return (AlignmentFlag & READ_1) == READ_1; 
+        }
         /**
          * Alias for isFirstMate()
          */
-        bool isFirstRead(void) const { return (AlignmentFlag & READ_1) != 0; }
+        bool isFirstRead(void) const { 
+           return (AlignmentFlag & READ_1) == READ_1; 
+        }
         /** 
          * @returns true if alignment is second mate on paired-end read
          */
@@ -213,9 +217,13 @@ class API_EXPORT BamAlignment {
         /**
          * @return true if it is the second read (mate)
          */
-        bool isSecondMate(void) const { return AlignmentFlag & READ_2; }
+        bool isSecondMate(void) const { 
+           return (AlignmentFlag & READ_2) == READ_2; 
+        }
         // in C++ true is 1 false is 0
-        bool isSecondRead(void) const { return AlignmentFlag & READ_2; }
+        bool isSecondRead(void) const { 
+           return (AlignmentFlag & READ_2) == READ_2; 
+        }
         /**
          * @return 1 for first mate, 2 for second mate, 
          *     and 0 for unknown mate or not pair-end read.
@@ -243,7 +251,7 @@ class API_EXPORT BamAlignment {
          * @return true if alignment is mapped
          */
         bool isMapped(void) const {
-           return (AlignmentFlag & UNMAPPED) != UNMAPPED;            
+           return !((AlignmentFlag & UNMAPPED) == UNMAPPED);            
         }
         /** 
          * @return true if alignment is not mapped
@@ -257,13 +265,13 @@ class API_EXPORT BamAlignment {
          */
         bool IsMateMapped(void) const;        
         bool isMateMapped(void) const {
-            return (AlignmentFlag & MATE_UNMAPPED) == 0;
+            return !((AlignmentFlag & MATE_UNMAPPED) == MATE_UNMAPPED);
         }
         /**
          * @return true if Mate is unmapped
          */
         bool isMateUnmapped() const {
-           return (AlignmentFlag & MATE_UNMAPPED) != 0;
+           return (AlignmentFlag & MATE_UNMAPPED) == MATE_UNMAPPED;
         }
         /** 
          *  If the read is mapped to the reference then there is
@@ -279,7 +287,7 @@ class API_EXPORT BamAlignment {
            return (AlignmentFlag & REVERSE_STRAND) == REVERSE_STRAND; 
         }
         bool isForwardStrand() const {
-           return (AlignmentFlag & REVERSE_STRAND) == 0; 
+           return !((AlignmentFlag & REVERSE_STRAND) == REVERSE_STRAND); 
         }
         /**
          * There is only two state, cannot be zero.
@@ -303,10 +311,10 @@ class API_EXPORT BamAlignment {
          */
         bool IsMateReverseStrand(void) const; 
         bool isMateReverseStrand() const {
-            return (AlignmentFlag & MATE_REVERSE_STRAND) != 0;
+            return (AlignmentFlag & MATE_REVERSE_STRAND) == MATE_REVERSE_STRAND;
         }
         bool isMateForwardStrand() const {
-            return (AlignmentFlag & MATE_REVERSE_STRAND) == 0;
+            return !((AlignmentFlag & MATE_REVERSE_STRAND) == MATE_REVERSE_STRAND);
         }
         bool isMateOppositeStrand() const {
            return  (isForwardStrand() && isMateReverseStrand())
@@ -336,7 +344,7 @@ class API_EXPORT BamAlignment {
          * @return this alignment is paired or single.
          */
         bool isPaired() const { 
-            return (AlignmentFlag & PAIRED) != 0;
+            return (AlignmentFlag & PAIRED) == PAIRED;
         }
         /** 
          * @return true if reported position is primary alignment
@@ -346,7 +354,7 @@ class API_EXPORT BamAlignment {
          * Test SECONDARY flag is not set.
          */
          bool isPrimaryAlignment(void) const  {
-            return !(AlignmentFlag & SECONDARY);
+            return !((AlignmentFlag & SECONDARY) == SECONDARY);
          }
         /**
          * @return true if is secondary alignment
@@ -355,19 +363,19 @@ class API_EXPORT BamAlignment {
          *    primary/secondary is usually arbitrary!
          */
         bool isSecondaryAlignment() const { 
-           return AlignmentFlag & SECONDARY; }
+           return (AlignmentFlag & SECONDARY) == SECONDARY; }
         /**
          * Alignment is part of a chimera. The choice
          * of representative/supplementary is arbitrary.
          */
         bool isSupplementaryAlignment() const { 
-           return AlignmentFlag & SUPPLEMENTARY; 
+           return (AlignmentFlag & SUPPLEMENTARY) == SUPPLEMENTARY; 
         }
         /**
          * Alias for isSupplementaryAlignment
          */
         bool isSupplementary() const { 
-           return AlignmentFlag & SUPPLEMENTARY; 
+           return (AlignmentFlag & SUPPLEMENTARY) == SUPPLEMENTARY; 
         }
         /** 
          * @return true if alignment is part of read that satisfied paired-end resolution
@@ -383,13 +391,13 @@ class API_EXPORT BamAlignment {
          *       all determined by the aligner.
          */
         bool isProperPair() const {
-            return (AlignmentFlag & PROPER_PAIR) != 0;
+            return (AlignmentFlag & PROPER_PAIR) == PROPER_PAIR;
         }
         bool isNotProperPair() const {
-            return (AlignmentFlag & PROPER_PAIR) == 0;
+            return !((AlignmentFlag & PROPER_PAIR) == PROPER_PAIR);
         }
         bool isImproperPair() const {
-            return (AlignmentFlag & PROPER_PAIR) == 0;
+            return !((AlignmentFlag & PROPER_PAIR) == PROPER_PAIR);
         }
 
     // manipulate alignment flags
@@ -483,6 +491,15 @@ class API_EXPORT BamAlignment {
         */
         template<typename T> bool GetTag(const std::string& tag, T& destination) const;
         template<typename T> bool GetTag(const std::string& tag, std::vector<T>& destination) const;
+        /**
+         * More convenient version return value directly. If not found
+         * for string then return empty string. For integer types
+         * will return the smallest integer.
+         * TODO: Need testing
+         * More convenient method than the reference version
+         * @return the tag string value if exists otherwise return empty string
+         */
+        string getStringTag(const std::string& tag) const;
         /** 
          * retrieves all current tag names
          *
@@ -674,13 +691,21 @@ class API_EXPORT BamAlignment {
            return AlignedBases; 
         }
         /**
-         * Will not depend on whether the AlignedBases has be formated or not.
+         * Will not depend on whether the AlignedBases has been formated or not.
          * @return the portion of query sequences that matched the reference
          *    without any deletion characters. QueryBases excluding the 
          *    softclip sequences if they exist.
          */
         string getMatchedQuerySequence() const;
+        /**
+         * alignment length - H or S
+         * did not exclude D, could measure entire aligned part
+         */
         int getMatchedQueryLength() const;
+        /**
+         * Query bases in alignment excluding S, H, I, and D segments.
+         */
+        int numberBaseAligned() const;
         void clearAlignedBases() {
            AlignedBases.clear();
         }
@@ -924,9 +949,13 @@ class API_EXPORT BamAlignment {
          */
         float getIdentity() const;
         /**
+         * Same as horizontal coverage of the query.
          * @return the portion of aligned query sequence.
          */
         float getFractionAligned() const {
+            return static_cast<float>(getMatchedQueryLength())/getLength();
+        }
+        float getQCoverage() const {
             return static_cast<float>(getMatchedQueryLength())/getLength();
         }
         pair<int,int> getMatchBound() const;
@@ -1769,34 +1798,6 @@ inline bool BamAlignment::GetTag<std::string>(const std::string& tag,
 
     // return success
     return true;
-}
-
-/**
- * More convenient version return value directly. If not found
- * for string then return empty string. For integer types
- * will return the smallest integer.
- * TODO: Need testing
- */
-string BamAlignment::getStringTag(const std::string& tag) const {
-    if (TagData.empty() ||  SupportData.HasCoreOnly ) {
-        return string();
-    }
-    // localize the tag data
-    char* pTagData = (char*)TagData.data();
-    const unsigned int tagDataLength = TagData.size();
-    unsigned int numBytesParsed = 0;
-    // return failure if tag not found
-    if (!FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
-        throw runtime_error("Cannot fine tag: " + tag);
-    }
-    // otherwise copy data into destination
-    const unsigned int dataLength = strlen(pTagData);
-    //destination.clear();
-    //destination.resize(dataLength);
-    //memcpy( (char*)destination.data(), pTagData, dataLength );
-    // return success
-    //return true;
-    return TagData.substr(numBytesParsed, dataLength);
 }
 
 
