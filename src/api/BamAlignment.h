@@ -220,7 +220,9 @@ class API_EXPORT BamAlignment {
         bool isSecondMate(void) const { 
            return (AlignmentFlag & READ_2) == READ_2; 
         }
-        // in C++ true is 1 false is 0
+        /**  in C++ true is 1 false is 0
+         * Alias for isSecondMate()
+         */
         bool isSecondRead(void) const { 
            return (AlignmentFlag & READ_2) == READ_2; 
         }
@@ -430,7 +432,7 @@ class API_EXPORT BamAlignment {
         void SetIsProperPair(bool ok);        
         void SetIsSecondMate(bool ok);        // sets value of "alignment is second mate on read" flag
 
-        // convenient constants octal number
+        // convenient constants octal number, first digit is 0
          static const uint32_t PAIRED              = 0x0001;
          static const uint32_t PROPER_PAIR         = 0x0002;
          static const uint32_t UNMAPPED            = 0x0004;
@@ -698,7 +700,7 @@ class API_EXPORT BamAlignment {
          */
         string getMatchedQuerySequence() const;
         /**
-         * alignment length - H or S
+         * alignment length - (H or S)
          * did not exclude D, could measure entire aligned part
          */
         int getMatchedQueryLength() const;
@@ -955,6 +957,9 @@ class API_EXPORT BamAlignment {
         float getFractionAligned() const {
             return static_cast<float>(getMatchedQueryLength())/getLength();
         }
+        /**
+         * @return horizontal coverage of the query between 0 and 1
+         */
         float getQCoverage() const {
             return static_cast<float>(getMatchedQueryLength())/getLength();
         }

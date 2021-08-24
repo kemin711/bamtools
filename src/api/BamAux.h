@@ -17,6 +17,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <array>
 
 using namespace std;
 
@@ -170,6 +171,12 @@ struct API_EXPORT BamRegion {
     explicit BamRegion(int refid, const pair<int,int>& reg) 
        : LeftRefID(refid), LeftPosition(reg.first), RightRefID(refid), RightPosition(reg.second)
     { }
+    BamRegion(const array<int,3>& refid_b_e) 
+       : LeftRefID(refid_b_e[0]), LeftPosition(refid_b_e[1]), RightRefID(refid_b_e[0]), RightPosition(refid_b_e[2])
+    { }
+    BamRegion(int refid, int b, int e) 
+       : LeftRefID(refid), LeftPosition(b), RightRefID(refid), RightPosition(e)
+    { }
     
     /** 
       * copy constructor
@@ -187,7 +194,14 @@ struct API_EXPORT BamRegion {
          RightPosition=o.RightPosition;
       }
       return *this;
-   }
+    }
+    /**
+     * Updating interval without changing the reference
+     */
+    void setInterval(const pair<int,int>& itv) {
+       LeftPosition = itv.first;
+       RightPosition = itv.second;
+    }
     
     //! Clears region boundaries
     void clear(void) {

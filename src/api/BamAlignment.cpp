@@ -762,7 +762,9 @@ float BamAlignment::getNGIdentity() const {
    }
    else {
       cerr << *this << endl;
-      throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +  ":ERROR No NM tag in bam file");
+      //throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +  ":ERROR No NM tag in bam file");
+      cerr  << __FILE__ << ":" << __LINE__  << ":ERROR No NM tag in bam file\n";
+      return 0;
    }
    int alnlen=0;
    int indel=0;
@@ -783,8 +785,9 @@ float BamAlignment::getIdentity() const {
       GetTag("NM", num_mismatch);
    }
    else {
-      cerr << *this << endl;
-      throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +  ":ERROR No NM tag in bam file");
+      // cerr << *this << endl << " has no NM tag assuming no aligned\n";
+      return 0;
+      //throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +  ":ERROR No NM tag in bam file");
    }
    int alnlen=0;
    for (auto& cd : CigarData) {
@@ -3538,6 +3541,7 @@ pair<int,int> BamAlignment::getMatchBound() const {
 }
 
 int BamAlignment::getMatchedQueryLength() const {
+   if (CigarData.empty() || !HasTag("NM")) return 0;
    int len=getLength();
    if (CigarData.front().getType() == 'S' || CigarData.front().getType() == 'H') {
       len -= CigarData.front().getLength();
