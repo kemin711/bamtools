@@ -376,6 +376,7 @@ string BamAlignment::getLastSoftquality() const {
 }
 
 int BamAlignment::getSoftclipLength() const {
+   if (CigarData.empty()) return 0;
    int res = 0;
    if (getCigar().front().getType() == 'S')
       res += getCigar().front().getLength();
@@ -1283,7 +1284,8 @@ string BamAlignment::getStringTag(const std::string& tag) const {
     unsigned int numBytesParsed = 0;
     // return failure if tag not found
     if (!FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
-        throw runtime_error("Cannot fine tag: " + tag);
+        throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +
+              ":ERROR Cannot find tag: " + tag);
     }
     // otherwise copy data into destination
     const unsigned int dataLength = strlen(pTagData);
