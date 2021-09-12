@@ -643,7 +643,9 @@ class API_EXPORT BamAlignment {
          */
         const std::string& getName() const { return Name; }
         /**
+         * Alias for shorter method getLength()
          * getter method for the length of the query sequence (read)
+         * @return the query sequence length
          */
         int32_t getQueryLength() const { 
            return getLength(); 
