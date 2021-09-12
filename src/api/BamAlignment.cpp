@@ -1289,11 +1289,6 @@ string BamAlignment::getStringTag(const std::string& tag) const {
     }
     // otherwise copy data into destination
     const unsigned int dataLength = strlen(pTagData);
-    //destination.clear();
-    //destination.resize(dataLength);
-    //memcpy( (char*)destination.data(), pTagData, dataLength );
-    // return success
-    //return true;
     return TagData.substr(numBytesParsed, dataLength);
 }
 
