@@ -291,6 +291,12 @@ class API_EXPORT BamAlignment {
         bool isForwardStrand() const {
            return !((AlignmentFlag & REVERSE_STRAND) == REVERSE_STRAND); 
         }
+        void setReverseStrand() {
+           AlignmentFlag |= REVERSE_STRAND;
+        }
+        void setForwardStrand() {
+           AlignmentFlat &= ~(REVERSE_STRAND);
+        }
         /**
          * There is only two state, cannot be zero.
          * @return -1 reverse strand, +1 for forward strand, and
@@ -822,6 +828,7 @@ class API_EXPORT BamAlignment {
          * @return true if no cigar
          */
         bool lackCigar() const { return CigarData.empty(); }
+        bool hasCigar() const { return !CigarData.empty(); }
         /**
          * There is no Deletion segment in the Cigar
          */

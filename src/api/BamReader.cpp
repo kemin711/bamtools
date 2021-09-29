@@ -71,7 +71,6 @@ BamAlignment* BamReader::next() {
    return nullptr;
 }
 
-
 bool BamReader::GetNextAlignmentCore(BamAlignment& alignment) {
    return d->GetNextAlignmentCore(alignment);
 }
