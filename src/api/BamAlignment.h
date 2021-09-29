@@ -1004,6 +1004,11 @@ class API_EXPORT BamAlignment {
          */
         int getSoftclipLength() const;
         /**
+         * @return the longer of the softclip length.
+         *   If no softlcip, the return 0
+         */
+        int getMaxSoftclipLength() const;
+        /**
          * Remove the first soft clip so that the alignment
          * appears to be better. The query sequence will also 
          * be changed.

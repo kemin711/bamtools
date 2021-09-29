@@ -385,6 +385,17 @@ int BamAlignment::getSoftclipLength() const {
    return res;
 }
 
+int BamAlignment::getMaxSoftclipLength() const {
+   if (CigarData.empty()) return 0;
+   int res = 0;
+   if (getCigar().front().getType() == 'S')
+      res = getCigar().front().getLength();
+   if (getCigar().back().getType() == 'S' &&
+         static_cast<int>(getCigar().back().getLength()) > res)
+      res = getCigar().back().getLength();
+   return res;
+}
+
 // 221M4I2M1D38M
 void BamAlignment::setCigar(const string& cstr) {
    if (!CigarData.empty()) CigarData.clear();
@@ -1746,8 +1757,8 @@ bool BamAlignment::SkipToNextTag(const char storageType,
         }
 
         default:
-            cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid tag type: "
-               << storageType << endl;
+            //cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid tag type: "
+            //   << storageType << endl;
             return false;
     }
 
