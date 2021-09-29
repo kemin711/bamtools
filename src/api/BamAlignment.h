@@ -295,7 +295,7 @@ class API_EXPORT BamAlignment {
            AlignmentFlag |= REVERSE_STRAND;
         }
         void setForwardStrand() {
-           AlignmentFlat &= ~(REVERSE_STRAND);
+           AlignmentFlag &= ~(REVERSE_STRAND);
         }
         /**
          * There is only two state, cannot be zero.
