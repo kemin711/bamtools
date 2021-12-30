@@ -291,6 +291,12 @@ class API_EXPORT BamAlignment {
         bool isForwardStrand() const {
            return !((AlignmentFlag & REVERSE_STRAND) == REVERSE_STRAND); 
         }
+        void setReverseStrand() {
+           AlignmentFlag |= REVERSE_STRAND;
+        }
+        void setForwardStrand() {
+           AlignmentFlag &= ~(REVERSE_STRAND);
+        }
         /**
          * There is only two state, cannot be zero.
          * @return -1 reverse strand, +1 for forward strand, and
@@ -647,7 +653,9 @@ class API_EXPORT BamAlignment {
          */
         const std::string& getName() const { return Name; }
         /**
+         * Alias for shorter method getLength()
          * getter method for the length of the query sequence (read)
+         * @return the query sequence length
          */
         int32_t getQueryLength() const { 
            return getLength(); 
@@ -827,6 +835,7 @@ class API_EXPORT BamAlignment {
          * @return true if no cigar
          */
         bool lackCigar() const { return CigarData.empty(); }
+        bool hasCigar() const { return !CigarData.empty(); }
         /**
          * There is no Deletion segment in the Cigar
          */
@@ -1008,6 +1017,11 @@ class API_EXPORT BamAlignment {
          * @return sum of softclip length if both are present.
          */
         int getSoftclipLength() const;
+        /**
+         * @return the longer of the softclip length.
+         *   If no softlcip, the return 0
+         */
+        int getMaxSoftclipLength() const;
         /**
          * Remove the first soft clip so that the alignment
          * appears to be better. The query sequence will also 

@@ -66,14 +66,16 @@ BamStandardIndex::~BamStandardIndex(void) {
 }
 
 void BamStandardIndex::AdjustRegion(const BamRegion& region, uint32_t& begin, uint32_t& end) {
-
     // retrieve references from reader
     const RefVector& references = m_reader->GetReferenceData();
-
     // LeftPosition cannot be greater than or equal to reference length
-    if ( region.LeftPosition >= references.at(region.LeftRefID).RefLength )
+    if (region.LeftPosition >= references.at(region.LeftRefID).RefLength) {
+        cerr << __FILE__ << ":" << __LINE__ << " reflength= "
+           << references.at(region.LeftRefID).RefLength << endl
+           << " region.LeftPos=" << region.LeftPosition << endl
+           << " refid left=" << region.LeftRefID << " right=" << region.RightRefID << endl;
         throw BamException("BamStandardIndex::AdjustRegion", "invalid region requested");
-
+    }
     // set region 'begin'
     begin = (unsigned int)region.LeftPosition;
 

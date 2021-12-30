@@ -376,11 +376,23 @@ string BamAlignment::getLastSoftquality() const {
 }
 
 int BamAlignment::getSoftclipLength() const {
+   if (CigarData.empty()) return 0;
    int res = 0;
    if (getCigar().front().getType() == 'S')
       res += getCigar().front().getLength();
    if (getCigar().back().getType() == 'S')
       res += getCigar().back().getLength();
+   return res;
+}
+
+int BamAlignment::getMaxSoftclipLength() const {
+   if (CigarData.empty()) return 0;
+   int res = 0;
+   if (getCigar().front().getType() == 'S')
+      res = getCigar().front().getLength();
+   if (getCigar().back().getType() == 'S' &&
+         static_cast<int>(getCigar().back().getLength()) > res)
+      res = getCigar().back().getLength();
    return res;
 }
 
@@ -1283,15 +1295,11 @@ string BamAlignment::getStringTag(const std::string& tag) const {
     unsigned int numBytesParsed = 0;
     // return failure if tag not found
     if (!FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
-        throw runtime_error("Cannot fine tag: " + tag);
+        throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +
+              ":ERROR Cannot find tag: " + tag);
     }
     // otherwise copy data into destination
     const unsigned int dataLength = strlen(pTagData);
-    //destination.clear();
-    //destination.resize(dataLength);
-    //memcpy( (char*)destination.data(), pTagData, dataLength );
-    // return success
-    //return true;
     return TagData.substr(numBytesParsed, dataLength);
 }
 
@@ -1749,8 +1757,8 @@ bool BamAlignment::SkipToNextTag(const char storageType,
         }
 
         default:
-            cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid tag type: "
-               << storageType << endl;
+            //cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid tag type: "
+            //   << storageType << endl;
             return false;
     }
 
