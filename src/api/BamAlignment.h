@@ -487,11 +487,15 @@ class API_EXPORT BamAlignment {
          *  it means no such tag.
          *
          *  @param tag[in]          2-character tag name
-         *  @param destination[out] retrieved value
+         *  @param destination[out] retrieved value, will clear previous values.
          *  @return true if found.
          *
         */
         template<typename T> bool GetTag(const std::string& tag, T& destination) const;
+	/**
+	 * @param destination will clear previous values and fill with tag value.
+	 * @return true if found
+	 */
         template<typename T> bool GetTag(const std::string& tag, std::vector<T>& destination) const;
         /**
          * More convenient version return value directly. If not found
@@ -790,6 +794,9 @@ class API_EXPORT BamAlignment {
            return InsertSize; 
         }
         /**
+         * The returned value is >= 0. not sure better
+         * to use unsigned int or not.
+         *
          * @return the length of the InsertSize if it is not zero
          *   otherwise return the length of the projected length
          *   of the read on the reference.
@@ -887,7 +894,7 @@ class API_EXPORT BamAlignment {
                CigarData.back().expand(getCigarLength(CigarData.size()-2));
                CigarData.erase(CigarData.begin()+CigarData.size()-2);
             }
-         }
+        }
 
         /**
          * @return true if start with softclip
