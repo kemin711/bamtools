@@ -239,6 +239,19 @@ bool BamAlignment::operator>(const BamAlignment& other) const {
    return getMate() > other.getMate();
 }
 
+void BamAlignment::setPosition(int32_t alnstart) { 
+   if (alnstart == getPosition()) return;
+   if (CigarData.front().getType() == 'S') {
+      CigarData.front().setLength(alnstart);
+      CigarData[1].setLength(CigarData[1].getLength() - alnstart + Position)
+   }
+   else {
+      CigarData[0].setLength(CigarData[0].getLength() - alnstart + Position);
+   }
+   Position = alnstart; 
+   AlignedBases.clear();
+}
+
 bool BamAlignment::operator==(const BamAlignment& other) const {
    return getQueryName() == other.getQueryName()
       && getMate() == other.getMate();

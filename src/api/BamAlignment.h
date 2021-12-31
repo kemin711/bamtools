@@ -1072,8 +1072,10 @@ class API_EXPORT BamAlignment {
         void setReferenceId(int32_t refid) { RefID = refid; }
         /**
          * Update the refgenome mapping start position
+	      * If Cigar string needs to be updated then also do that.
+         * Will also clear AlignedBases member.
          */
-        void setPosition(int32_t alnstart) { Position = alnstart; }
+        void setPosition(int32_t alnstart); 
         /** alias for setPosition */
         void setStart(int32_t alnstart) { Position = alnstart; }
         void setBin(uint16_t indexbin) { Bin = indexbin; }
