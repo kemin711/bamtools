@@ -243,7 +243,7 @@ void BamAlignment::setPosition(int32_t alnstart) {
    if (alnstart == getPosition()) return;
    if (CigarData.front().getType() == 'S') {
       CigarData.front().setLength(alnstart);
-      CigarData[1].setLength(CigarData[1].getLength() - alnstart + Position)
+      CigarData[1].setLength(CigarData[1].getLength() - alnstart + Position);
    }
    else {
       CigarData[0].setLength(CigarData[0].getLength() - alnstart + Position);

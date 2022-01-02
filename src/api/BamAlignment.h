@@ -454,18 +454,28 @@ class API_EXPORT BamAlignment {
 
     // tag data access methods
     public:
-      /** 
-       * \brief Adds a field to the BAM tags.
-       * Does NOT modify an existing tag - use \link BamAlignment::EditTag() 
-       *    \endlink instead.
-       * @param[in] tag   2-character tag name
-       * @param[in] type  1-character tag type such as Z, H, or i
-       * @param[in] value data to store
-       * @return \c true if the \b new tag was added successfully
-       * @see \samSpecURL for more details on reserved tag names, 
-       *     supported tag types, etc.
-      */
+        /** 
+         * Adds a field to the BAM tags.
+         * Does NOT modify an existing tag - use \link BamAlignment::EditTag() 
+         *    \endlink instead.
+         * @param[in] tag   2-character tag name
+         * @param[in] type  1-character tag type such as Z, H, or i
+         * @param[in] value data to store
+         * @return \c true if the \b new tag was added successfully
+         * @see \samSpecURL for more details on reserved tag names, 
+         *     supported tag types, etc.
+         */
         template<typename T> bool AddTag(const std::string& tag, const std::string& type, const T& value);
+        /**
+         * Adds a numeric array field to the BAM tags.
+         *
+         *  Does NOT modify an existing tag - use \link BamAlignment::EditTag() \endlink instead.
+         *
+         *  \param[in] tag    2-character tag name
+         *  \param[in] values vector of data values to store
+         *  \return \c true if the \b new tag was added successfully
+         *  \sa \samSpecURL for more details on reserved tag names, supported tag types, etc.
+         */
         template<typename T> bool AddTag(const std::string& tag, const std::vector<T>& values);
         /** 
          *  edit (or append) tag
@@ -484,6 +494,17 @@ class API_EXPORT BamAlignment {
          *  @see \samSpecURL for more details on reserved tag names, supported tag types, etc.
         */
         template<typename T> bool EditTag(const std::string& tag, const std::string& type, const T& value);
+        /**
+         *  Edits a BAM tag field containing a numeric array.
+         *
+         *  If \a tag does not exist, a new entry is created.
+         *
+         *  \param tag[in]   2-character tag name
+         *  \param value[in] vector of data values
+         *
+         *  \return \c true if the tag was modified/created successfully
+         *  \sa \samSpecURL for more details on reserved tag names, supported tag types, etc.
+         */
         template<typename T> bool EditTag(const std::string& tag, const std::vector<T>& values);
 
         // retrieves tag data
@@ -1622,16 +1643,6 @@ inline bool BamAlignment::AddTag<std::string>(const std::string& tag,
     return true;
 }
 
-/*! \fn template<typename T> bool AddTag(const std::string& tag, const std::vector<T>& values)
-    \brief Adds a numeric array field to the BAM tags.
-
-    Does NOT modify an existing tag - use \link BamAlignment::EditTag() \endlink instead.
-
-    \param[in] tag    2-character tag name
-    \param[in] values vector of data values to store
-    \return \c true if the \b new tag was added successfully
-    \sa \samSpecURL for more details on reserved tag names, supported tag types, etc.
-*/
 template<typename T>
 inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& values) {
     // if char data not populated, do that first
@@ -1693,24 +1704,11 @@ inline bool BamAlignment::EditTag(const std::string& tag, const std::string& typ
     return AddTag(tag, type, value);
 }
 
-/*! \fn template<typename T> bool EditTag(const std::string& tag, const std::vector<T>& values)
-    \brief Edits a BAM tag field containing a numeric array.
-
-    If \a tag does not exist, a new entry is created.
-
-    \param tag[in]   2-character tag name
-    \param value[in] vector of data values
-
-    \return \c true if the tag was modified/created successfully
-    \sa \samSpecURL for more details on reserved tag names, supported tag types, etc.
-*/
 template<typename T>
 inline bool BamAlignment::EditTag(const std::string& tag, const std::vector<T>& values) {
-
     // if char data not populated, do that first
     if ( SupportData.HasCoreOnly )
         BuildCharData();
-
     // remove existing tag if present, then append tag with new values
     if ( HasTag(tag) )
         RemoveTag(tag);
