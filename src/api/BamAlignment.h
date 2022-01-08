@@ -1096,7 +1096,14 @@ class API_EXPORT BamAlignment {
 	      * If Cigar string needs to be updated then also do that.
          * Will also clear AlignedBases member.
          */
-        void setPosition(int32_t alnstart); 
+        void changePosition(int32_t alnstart); 
+        /**
+         * Simply update the Position member without changing anything
+         * else.
+         */
+        void setPosition(int32_t alnstart) {
+            Position = alnstart; 
+        }
         /** alias for setPosition */
         void setStart(int32_t alnstart) { Position = alnstart; }
         void setBin(uint16_t indexbin) { Bin = indexbin; }
@@ -1664,11 +1671,11 @@ inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& v
         // TODO: set error string?
         return false;
     }
-    // build new tag's base information
+    // build new tag's base information, BAM_TAG_ARRAYBASE_SIZE=8
     char newTagBase[Constants::BAM_TAG_ARRAYBASE_SIZE];
-    std::memcpy(newTagBase, tag.c_str(), Constants::BAM_TAG_TAGSIZE);
-    newTagBase[2] = Constants::BAM_TAG_TYPE_ARRAY;
-    newTagBase[3] = TagTypeHelper<T>::TypeCode();
+    std::memcpy(newTagBase, tag.c_str(), Constants::BAM_TAG_TAGSIZE); // BAM_TAG_TAGSIZE=2
+    newTagBase[2] = Constants::BAM_TAG_TYPE_ARRAY; // 'B'
+    newTagBase[3] = TagTypeHelper<T>::TypeCode(); // uint32_t => 'I'
 
     // add number of array elements to newTagBase
     const int32_t numElements  = values.size();
@@ -1684,6 +1691,7 @@ inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& v
     int elementsBeginOffset = tagDataLength + Constants::BAM_TAG_ARRAYBASE_SIZE;
     for (int i = 0 ; i < numElements; ++i) {
         const T& value = values.at(i);
+        //cerr << "copying value: " << value << endl;
         memcpy(originalTagData.Buffer + elementsBeginOffset + i*sizeof(T), &value, sizeof(T));
     }
     // store temp buffer back in TagData
@@ -1838,12 +1846,14 @@ template<typename T>
 inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destination) const {
     // skip if alignment is core-only
     if (SupportData.HasCoreOnly ) {
+        cerr << __FILE__ << ":" << __LINE__ << ": bam has only core data failed to get tag: "
+            << tag << "\n";
         // TODO: set error string?
         return false;
     }
     // skip if no tags present
     if (TagData.empty()) {
-        // TODO: set error string?
+        cerr << __FILE__ << ":" << __LINE__ << ": empty tag data, failed to get tag value\n";
         return false;
     }
     // localize the tag data
@@ -1851,8 +1861,9 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
     const unsigned int tagDataLength = TagData.size();
     unsigned int numBytesParsed = 0;
     // return false if tag not found
-    if ( !FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
-        // TODO: set error string?
+    if (!FindTag(tag, pTagData, tagDataLength, numBytesParsed)) {
+        //cerr << __FILE__ << ":" << __LINE__ << ": cannot find tag: " << tag 
+        //   << ", failed to get tag value\n";
         return false;
     }
     // check that tag is array type
@@ -1865,7 +1876,8 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
     // fetch element type
     const char elementType = *pTagData;
     if (!TagTypeHelper<T>::CanConvertFrom(elementType) ) {
-        // TODO: set error string ?
+        cerr << __FILE__ << ":" << __LINE__ << ": cannot convert from "
+            << elementType << endl;
         return false;
     }
     ++pTagData;
@@ -1903,7 +1915,6 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
     // not using elementLength
     // TODO: remove above code block
     //std::cerr << "BamTagData arrary element data width (Byte): " << elementLength << std::endl;
-
     // get number of elements
     int32_t numElements;
     memcpy(&numElements, pTagData, sizeof(int32_t));

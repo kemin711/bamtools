@@ -239,7 +239,7 @@ bool BamAlignment::operator>(const BamAlignment& other) const {
    return getMate() > other.getMate();
 }
 
-void BamAlignment::setPosition(int32_t alnstart) { 
+void BamAlignment::changePosition(int32_t alnstart) { 
    if (alnstart == getPosition()) return;
    if (CigarData.front().getType() == 'S') {
       CigarData.front().setLength(alnstart);
