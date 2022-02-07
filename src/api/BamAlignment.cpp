@@ -2878,6 +2878,7 @@ bool BamAlignment::isInsertionAt(int ri, const string& seq) const {
    throw logic_error(string(__FILE__) + ":" + to_string(__LINE__)
          + ":ERROR coding error, cannot fine char at " + to_string(ri));
 }
+
 // due to redundancy, extra work is needed
 // bad design
 void BamAlignment::chopFirstSoftclip() {
@@ -2901,6 +2902,30 @@ void BamAlignment::chopLastSoftclip() {
       SupportData.NumCigarOperations = CigarData.size();
       CigarData.resize(CigarData.size()-1);
    }
+}
+// same operaton as chopFirstSoftclip except will make sure
+// the soft clip is dangling off the reference.
+void BamAlignment::chopDangleFrontSoft() {
+   assert(CigarData.front().getType() == 'S' && getPosition() == 0);
+   SupportData.QuerySequenceLength -= CigarData.front().getLength();
+   QueryBases = QueryBases.substr(CigarData.front().getLength());
+   Qualities = Qualities.substr(CigarData.front().getLength());
+   --SupportData.NumCigarOperations;
+   SupportData.QuerySequenceLength = QueryBases.size(); 
+   // update cigar last
+   CigarData.erase(CigarData.begin());
+}
+
+void BamAlignment::chopDangleBackSoft() {
+   pair<string,int> nl = getRefnameFromId(getReferenceid());
+   assert(CigarData.back().getType() == 'S' && getEndPosition() + CigarData.back().getLength() >= nl.second);
+   SupportData.QuerySequenceLength -= CigarData.back().getLength();
+   QueryBases.resize(QueryBases.size() - CigarData.back().getLength());
+   Qualities.resize(QueryBases.size());
+   --SupportData.NumCigarOperations;
+   SupportData.QuerySequenceLength = QueryBases.size(); 
+   // update cigar last
+   CigarData.resize(CigarData.size()-1);
 }
 
 // the read should not be longer than 255 nt

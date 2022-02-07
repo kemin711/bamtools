@@ -1032,6 +1032,12 @@ class API_EXPORT BamAlignment {
          * Remove the last soft clip
          */
         void chopLastSoftclip();
+        /**
+         * Same as chopFirstSoftclip() except for checking 
+         * that first soft is off the start of the reference.
+         */
+        void chopDangleFrontSoft();
+        void chopDangleBackSoft();
 
         ///// setter methods ////
         /**
@@ -1057,7 +1063,8 @@ class API_EXPORT BamAlignment {
            setQueryLength(QueryBases.size());
         }
         /** 
-         * set quality from string data 
+         * set quality from string data. Quality and Query sequence
+         * modification should always be done in sync.
          * */
         void setQuality(const std::string &qual) { Qualities = qual; }
         void setQuality(std::string &&qual) { Qualities = std::move(qual); }
@@ -1291,6 +1298,9 @@ class API_EXPORT BamAlignment {
 
     private:
          //// static members to be shared by derived class ////
+         /**
+          * [refname, reflength] indexed on refid
+          */
          static vector<pair<string,int>> rsname;
          static map<string,int> refname2id;
          /** 
@@ -1469,6 +1479,9 @@ class API_EXPORT BamAlignment {
              */
             std::string AllCharData;
             uint32_t    BlockLength;  // not sure what this is
+            /**
+             * TODO: make sure This is the same as Cigar.size()?
+             */
             uint32_t    NumCigarOperations; // should be calculated on the fly
             uint32_t    QueryNameLength;  // duplicate data discard in the future
             /**
