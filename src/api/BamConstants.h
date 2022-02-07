@@ -221,6 +221,8 @@ struct TagTypeHelper<int16_t> {
 template<>
 struct TagTypeHelper<uint32_t> {
     static bool CanConvertFrom(const char c) {
+        //cerr << __FILE__ << ":" << __LINE__ << ": can " << c 
+        //   << " be converted to uint32_t\n";
         return ( c == Constants::BAM_TAG_TYPE_ASCII  ||
                  c == Constants::BAM_TAG_TYPE_UINT8  ||
                  c == Constants::BAM_TAG_TYPE_UINT16 ||
