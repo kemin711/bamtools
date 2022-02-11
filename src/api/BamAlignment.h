@@ -849,7 +849,14 @@ class API_EXPORT BamAlignment {
          * @return a string version of Cigar.
          */
         string getCigarString() const;
+        /**
+         * @return true if the CigarData of this object is the same as 
+         *    the argument cigar
+         */
         bool sameCigar(const vector<pair<char,int>>& cigar) const;
+        bool sameCigar(const BamAlignment& ba) const {
+           return CigarData == ba.CigarData;
+        }
         /**
          * Some alignment's cigar entry is *
          * this is the same as no cigar. This function test this situation
