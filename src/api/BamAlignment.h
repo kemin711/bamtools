@@ -1280,8 +1280,17 @@ class API_EXPORT BamAlignment {
          * @return the NM tag value or -1 if not found NM tag
          */
          int getNMValue() const;
+         /**
+          * @return the length of the reference sequence for this alignment.
+          */
+         int getReferenceLength() const {
+            return rsname[getReferenceId()].second;
+         }
+         bool nearReferenceEnd(int d) const {
+            return abs(getReferenceLength() - getEndPosition()) < d;
+         }
 
-         //// static methods ////
+         ////// static methods ////
          static void setPolishMax(int len) {
             TRIMLEN_MAX = len;
          }
@@ -1304,8 +1313,9 @@ class API_EXPORT BamAlignment {
          * for indexing readname,readlength.
          * Bam file refid, matid directly look up into this table
          * and you can get REFNAME (first) and seqlen (second)
-         * You can swithc during BamAlignment processing to a different
+         * You can switch during BamAlignment processing to a different
          * file header.
+         * This method will load refname2id and rsname.
          * @param refvec is the refernece vector to be obtained from 
          *    BamReader::getReferenceMetaData()
          */
@@ -1320,6 +1330,7 @@ class API_EXPORT BamAlignment {
           *   the id used by Bamfile.
           */
          static int referenceIdFromName(const string& name) {
+            assert(!refname2id.empty());
             return refname2id[name];
          }
          /**
@@ -1337,6 +1348,9 @@ class API_EXPORT BamAlignment {
           * [refname, reflength] indexed on refid
           */
          static vector<pair<string,int>> rsname;
+         /**
+          * a quick look up table from refname to refid
+          */
          static map<string,int> refname2id;
          /** 
           * Helper function apply to generic situation where
