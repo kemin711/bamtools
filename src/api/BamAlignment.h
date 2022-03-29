@@ -58,7 +58,7 @@ class BamAlignmentException : public exception {
  */
 class API_EXPORT BamAlignment {
    // API_EXPORT are constructed used for Window DDL
-    // constructors & destructor
+    /////// constructors & destructor //////////
     public:
         /** 
          *   Default constructor
@@ -149,6 +149,8 @@ class API_EXPORT BamAlignment {
            }
             return true;
         }
+
+        //// informational methods //////
         /**
          * Should be derived by subclasses
          */
@@ -410,7 +412,7 @@ class API_EXPORT BamAlignment {
             return !((AlignmentFlag & PROPER_PAIR) == PROPER_PAIR);
         }
 
-    // manipulate alignment flags
+    ////// manipulate alignment flags ///////
     public:        
         void setAlignmentFlag(uint32_t flag) {
            AlignmentFlag = flag;
@@ -454,8 +456,14 @@ class API_EXPORT BamAlignment {
          static const uint32_t DUPLICATE           = 0x0400;
          static const uint32_t SUPPLEMENTARY       = 0x0800; 
 
-    // tag data access methods
+    //////// tag data access methods //////////
     public:
+        unsigned int getTagDataSize() const {
+           return TagData.size();
+        }
+        bool isTagDataEmpty() const {
+           return TagData.empty();
+        }
         /** 
          * Adds a field to the BAM tags.
          * Does NOT modify an existing tag - use \link BamAlignment::EditTag() 
@@ -473,10 +481,10 @@ class API_EXPORT BamAlignment {
          *
          *  Does NOT modify an existing tag - use \link BamAlignment::EditTag() \endlink instead.
          *
-         *  \param[in] tag    2-character tag name
-         *  \param[in] values vector of data values to store
-         *  \return \c true if the \b new tag was added successfully
-         *  \sa \samSpecURL for more details on reserved tag names, supported tag types, etc.
+         *  @param[in] tag    2-character tag name
+         *  @param[in] values vector of data values (type T) to store
+         *  @return true if the new tag was added successfully
+         *  @sa samSpecURL for more details on reserved tag names, supported tag types, etc.
          */
         template<typename T> bool AddTag(const std::string& tag, const std::vector<T>& values);
         /** 
@@ -521,10 +529,10 @@ class API_EXPORT BamAlignment {
          *
         */
         template<typename T> bool GetTag(const std::string& tag, T& destination) const;
-	/**
-	 * @param destination will clear previous values and fill with tag value.
-	 * @return true if found
-	 */
+         /**
+         * @param destination will clear previous values and fill with tag value.
+         * @return true if found
+         */
         template<typename T> bool GetTag(const std::string& tag, std::vector<T>& destination) const;
         /**
          * More convenient version return value directly. If not found
@@ -561,13 +569,17 @@ class API_EXPORT BamAlignment {
          */
         bool HasTag(const std::string& tag) const;
         /** 
-         * removes a tag
+         * removes a tag. So far this does not work with IGV
+         * After remove got unrecognized tag type error.
+         * Maybe need special coding for removing arrays.
          */
         void RemoveTag(const std::string& tag);
 
-    // additional methods
+    ////// additional methods /////////
     public:
-        // populates alignment string fields
+        /**
+         * populates alignment string fields
+         */
         bool BuildCharData(void);
         /** 
          *  Calculates alignment end position, based on its starting 
@@ -664,7 +676,8 @@ class API_EXPORT BamAlignment {
                           std::vector<int>& genomePositions,
                           bool usePadded = false) const;
 
-    // getter methods, adding these getter methods for security
+    //////// getter and informational methods //////
+    // adding these getter methods for security
     // using public member is a security issue and may not pass FDA
     // quality
         /**
@@ -1161,9 +1174,8 @@ class API_EXPORT BamAlignment {
         void setInsertSize(int32_t insize) { 
            InsertSize = insize; 
         }  
-
-        //// end of setter methods ////
-
+        /////// end of setter methods ///////
+        //
         // mutation functions
         /**
          * helper function to iterate over the cigar object
