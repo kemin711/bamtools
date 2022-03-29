@@ -559,7 +559,9 @@ class API_EXPORT BamAlignment {
          */
         bool HasTag(const std::string& tag) const;
         /** 
-         * removes a tag
+         * removes a tag. So far this does not work with IGV
+         * After remove got unrecognized tag type error.
+         * Maybe need special coding for removing arrays.
          */
         void RemoveTag(const std::string& tag);
 
