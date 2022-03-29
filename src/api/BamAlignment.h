@@ -196,7 +196,7 @@ class API_EXPORT BamAlignment {
          */
         bool IsFirstMate(void) const;         
         /**
-         * @return true if is the First Read in a paired end read.
+         * @return true if is the First Read of a paired end reads.
          * Alias for IsFirstMate.
          * Use this version for carmel casing.
          * @see isFirstRead
@@ -206,6 +206,8 @@ class API_EXPORT BamAlignment {
         }
         /**
          * Alias for isFirstMate()
+         * First read usually has slightly better quality than the second read
+         * in the read pair.
          */
         bool isFirstRead(void) const { 
            return (AlignmentFlag & READ_1) == READ_1; 
