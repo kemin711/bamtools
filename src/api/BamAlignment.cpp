@@ -2917,7 +2917,7 @@ void BamAlignment::chopDangleFrontSoft() {
 }
 
 void BamAlignment::chopDangleBackSoft() {
-   pair<string,int> nl = getRefnameFromId(getReferenceid());
+   pair<string,int> nl = getRefnameFromId(getReferenceId());
    assert(CigarData.back().getType() == 'S' && getEndPosition() + CigarData.back().getLength() >= nl.second);
    SupportData.QuerySequenceLength -= CigarData.back().getLength();
    QueryBases.resize(QueryBases.size() - CigarData.back().getLength());

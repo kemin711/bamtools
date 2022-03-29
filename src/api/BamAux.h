@@ -55,6 +55,9 @@ struct API_EXPORT CigarOp {
      */
     CigarOp(const char type, const uint32_t& length)
         : Type(type) , Length(length) { }
+    bool operator==(const CigarOp& co) const {
+       return Type == co.Type && Length == co.Length;
+    }
     friend ostream& operator<<(ostream& ous, const CigarOp& co) {
        //ous << co.Type << co.Length; return ous; 
        ous << co.Length << co.Type; return ous; 
