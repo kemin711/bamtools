@@ -1066,18 +1066,18 @@ bool BamAlignment::BuildCharData(void) {
 bool BamAlignment::FindTag(const std::string& tag, char*& pTagData,
       const unsigned int& tagDataLength, unsigned int& numBytesParsed) const
 {
-    while ( numBytesParsed < tagDataLength ) {
+    while (numBytesParsed < tagDataLength) {
         const char* pTagType        = pTagData;
         const char* pTagStorageType = pTagData + 2;
         pTagData       += 3;
         numBytesParsed += 3;
         // check the current tag, return true on match
-        if ( strncmp(pTagType, tag.c_str(), 2) == 0 )
+        if (strncmp(pTagType, tag.c_str(), 2) == 0)
             return true;
         // get the storage class and find the next tag
-        if ( *pTagStorageType == '\0' ) return false;
-        if ( !SkipToNextTag(*pTagStorageType, pTagData, numBytesParsed) ) return false;
-        if ( *pTagData == '\0' ) return false;
+        if (*pTagStorageType == '\0') return false;
+        if (!SkipToNextTag(*pTagStorageType, pTagData, numBytesParsed)) return false;
+        if (*pTagData == '\0') return false;
     }
     return false;
 }
@@ -1677,104 +1677,103 @@ void BamAlignment::SetIsSecondMate(bool ok) {
     else    AlignmentFlag &= ~Constants::BAM_ALIGNMENT_READ_2;
 }
 
-/*! \fn bool BamAlignment::SkipToNextTag(const char storageType, char*& pTagData, unsigned int& numBytesParsed) const
-    \internal
+short BamAlignment::getAtomicTagLength(const char tagt) const {
+   switch (tagt) {
+      case Constants::BAM_TAG_TYPE_ASCII:
+      case Constants::BAM_TAG_TYPE_INT8:
+      case Constants::BAM_TAG_TYPE_UINT8:
+         return 1; break;
+      case Constants::BAM_TAG_TYPE_INT16:
+      case Constants::BAM_TAG_TYPE_UINT16:
+         return sizeof(uint16_t); break;
+      case Constants::BAM_TAG_TYPE_INT32:
+      case Constants::BAM_TAG_TYPE_UINT32:
+      case Constants::BAM_TAG_TYPE_FLOAT:
+         return sizeof(uint32_t); break;
+      default:
+         throw logic_error(string(1, tagt) + " is not elemental Bam TAG type");
+   }
+}
 
-    Moves to next available tag in tag data string
+// p point to the type char field 3rd char
+size_t BamAlignment::getBasicTagLength(const char* p) const {
+   switch (*p) {
+      case Constants::BAM_TAG_TYPE_ASCII:
+      case Constants::BAM_TAG_TYPE_INT8:
+      case Constants::BAM_TAG_TYPE_UINT8:
+         return 1; break;
+      case Constants::BAM_TAG_TYPE_INT16:
+      case Constants::BAM_TAG_TYPE_UINT16:
+         return sizeof(uint16_t); break;
+      case Constants::BAM_TAG_TYPE_INT32:
+      case Constants::BAM_TAG_TYPE_UINT32:
+      case Constants::BAM_TAG_TYPE_FLOAT:
+         return sizeof(uint32_t); break;
+      case (Constants::BAM_TAG_TYPE_STRING) :
+      case (Constants::BAM_TAG_TYPE_HEX)    :
+         const char* x=p+1;
+         while(*x != '\0') { ++x; }
+         // increment for null-terminator
+         return x-p;
+         break;
+      default:
+         throw logic_error(string(1, tagt) + " is not basic Bam TAG type");
+   }
+}
 
-    \param[in]     storageType    BAM tag type-code that determines how far to move cursor
-    \param[in,out] pTagData       pointer to current position (cursor) in tag string
-    \param[in,out] numBytesParsed report of how many bytes were parsed (cumulatively)
+size_t getArrayTagLength(const char* p) {
+}
 
-    \return \c if storageType was a recognized BAM tag type
-
-    \post \a pTagData       will point to the byte where the next tag data begins.
-          \a numBytesParsed will correspond to the cursor's position in the full TagData string.
-*/
-bool BamAlignment::SkipToNextTag(const char storageType,
-                                 char*& pTagData,
+// array is only numeric type
+bool BamAlignment::SkipToNextTag(const char storageType, char*& pTagData,
                                  unsigned int& numBytesParsed) const
 {
-    switch (storageType) {
+   if (storageType != Constants::BAM_TAG_TYPE_ARRAY) {
+      size_t dlen = getBasicTagLength(pTagData-1);
+      numBytesParsed += dlen;
+      pTagData += dlen;
+   }
+   else { // read array type
+      short getAtomicTagLength(*pTagData);
 
-        case (Constants::BAM_TAG_TYPE_ASCII) :
-        case (Constants::BAM_TAG_TYPE_INT8)  :
-        case (Constants::BAM_TAG_TYPE_UINT8) :
-            ++numBytesParsed;
-            ++pTagData;
-            break;
-
-        case (Constants::BAM_TAG_TYPE_INT16)  :
-        case (Constants::BAM_TAG_TYPE_UINT16) :
-            numBytesParsed += sizeof(uint16_t);
-            pTagData       += sizeof(uint16_t);
-            break;
-
-        case (Constants::BAM_TAG_TYPE_FLOAT)  :
-        case (Constants::BAM_TAG_TYPE_INT32)  :
-        case (Constants::BAM_TAG_TYPE_UINT32) :
-            numBytesParsed += sizeof(uint32_t);
-            pTagData       += sizeof(uint32_t);
-            break;
-
-        case (Constants::BAM_TAG_TYPE_STRING) :
-        case (Constants::BAM_TAG_TYPE_HEX)    :
-            while( *pTagData ) {
-                ++numBytesParsed;
-                ++pTagData;
-            }
-            // increment for null-terminator
-            ++numBytesParsed;
-            ++pTagData;
-            break;
-
-        case (Constants::BAM_TAG_TYPE_ARRAY) :
-
-        {
-            // read array type
-            const char arrayType = *pTagData;
-            ++numBytesParsed;
-            ++pTagData;
-
-            // read number of elements
-            int32_t numElements;
-            memcpy(&numElements, pTagData, sizeof(uint32_t)); // already endian-swapped, if needed
-            numBytesParsed += sizeof(uint32_t);
-            pTagData       += sizeof(uint32_t);
-
-            // calculate number of bytes to skip
-            int bytesToSkip = 0;
-            switch (arrayType) {
-                case (Constants::BAM_TAG_TYPE_INT8)  :
-                case (Constants::BAM_TAG_TYPE_UINT8) :
-                    bytesToSkip = numElements;
-                    break;
-                case (Constants::BAM_TAG_TYPE_INT16)  :
-                case (Constants::BAM_TAG_TYPE_UINT16) :
-                    bytesToSkip = numElements*sizeof(uint16_t);
-                    break;
-                case (Constants::BAM_TAG_TYPE_FLOAT)  :
-                case (Constants::BAM_TAG_TYPE_INT32)  :
-                case (Constants::BAM_TAG_TYPE_UINT32) :
-                    bytesToSkip = numElements*sizeof(uint32_t);
-                    break;
-                default:
-                    cerr << __FILE__ << ":" << __LINE__ << ":WARN invalid binary array type: " << arrayType;
-                    return false;
-            }
-
-            // skip binary array contents
-            numBytesParsed += bytesToSkip;
-            pTagData       += bytesToSkip;
-            break;
-        }
-
-        default:
-            //cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid tag type: "
-            //   << storageType << endl;
-            return false;
+         const char arrayType = *pTagData; 
+         ++numBytesParsed;
+         ++pTagData;
+         // read number of elements
+         int32_t numElements;
+         memcpy(&numElements, pTagData, sizeof(uint32_t)); // already endian-swapped, if needed
+         numBytesParsed += sizeof(uint32_t);
+         pTagData       += sizeof(uint32_t);
+         // calculate number of bytes to skip
+         int bytesToSkip = 0;
+         switch (arrayType) {
+               case (Constants::BAM_TAG_TYPE_INT8)  :
+               case (Constants::BAM_TAG_TYPE_UINT8) :
+                  bytesToSkip = numElements;
+                  break;
+               case (Constants::BAM_TAG_TYPE_INT16)  :
+               case (Constants::BAM_TAG_TYPE_UINT16) :
+                  bytesToSkip = numElements*sizeof(uint16_t);
+                  break;
+               case (Constants::BAM_TAG_TYPE_FLOAT)  :
+               case (Constants::BAM_TAG_TYPE_INT32)  :
+               case (Constants::BAM_TAG_TYPE_UINT32) :
+                  bytesToSkip = numElements*sizeof(uint32_t);
+                  break;
+               default:
+                  cerr << __FILE__ << ":" << __LINE__ << ":WARN invalid binary array type: " << arrayType;
+                  return false;
+         }
+         // skip binary array contents
+         numBytesParsed += bytesToSkip;
+         pTagData       += bytesToSkip;
+         break;
+      }
+      default:
+         //cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid tag type: "
+         //   << storageType << endl;
+         return false;
     }
-
     // if we get here, tag skipped OK - return success
     return true;
 }

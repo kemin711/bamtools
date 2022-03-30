@@ -1503,6 +1503,15 @@ class API_EXPORT BamAlignment {
     //! \internal
     // internal utility methods
     private:
+        /**
+         * If not type of char, int then will throw exception.
+         * @return the elemental type length
+         */
+        short getAtomicTagLength(const char tagt) const;
+        /**
+         * @param p poiner at tag type position, 1 before tag data string.
+         */
+        size_t getBasicTagLength(const char* p) const;
         /** 
          *  Searches for requested tag in BAM tag data.
          *  @param  tag            requested 2-character tag name
@@ -1516,8 +1525,22 @@ class API_EXPORT BamAlignment {
         bool FindTag(const std::string& tag, char*& pTagData, 
               const unsigned int& tagDataLength, unsigned int& numBytesParsed) const;
         bool IsValidSize(const std::string& tag, const std::string& type) const;
-        bool SkipToNextTag(const char storageType,
-                           char*& pTagData,
+        /** 
+         *  Moves to next available tag in tag data string this is of the
+         *  type of storageType.
+
+         *  @param[in]     storageType    BAM tag type-code that determines how far to move cursor
+         *  @param[in,out] pTagData       pointer to current position (cursor) in tag string (data).
+         *                    |<-pTagData is here
+         *      |TAG-2|Type-1|Data-determined by Type|
+         *  @param[in,out] numBytesParsed report of how many bytes were parsed (cumulatively)
+
+         *  @return \c if storageType was a recognized BAM tag type
+
+         *  \post \a pTagData       will point to the byte where the next tag data begins.
+         *        \a numBytesParsed will correspond to the cursor's position in the full TagData string.
+         */
+        bool SkipToNextTag(const char storageType, char*& pTagData,
                            unsigned int& numBytesParsed) const;
          /**
           * Max length from either end to to polishing
@@ -1707,38 +1730,39 @@ inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& v
         cerr << __FILE__ << ":" << __LINE__ << ":WARN tag " + tag + " TAGSIZE wrong\n";
         return false;
     }
-    // localize the tag data
+    // localize the tag data, work as char pointer type
     char* pTagData = (char*)TagData.data();
-    const unsigned int tagDataLength = TagData.size();
+    const unsigned int prevTDLen = TagData.size(); // previous TagData length
     unsigned int numBytesParsed = 0;
 
     // if tag already exists, return false
     // use EditTag explicitly instead
-    if (FindTag(tag, pTagData, tagDataLength, numBytesParsed)) {
-        cerr << __FILE__ << ":" << __LINE__ << ":WARN tag " + tag + " already exists\n";
+    if (FindTag(tag, pTagData, prevTDLen, numBytesParsed)) {
+        cerr << __FILE__ << ":" << __LINE__ << ":WARN tag " + tag + " already exists. Cannot add another.\n";
         // TODO: set error string?
         return false;
     }
     // build new tag's base information, BAM_TAG_ARRAYBASE_SIZE=8
     char newTagBase[Constants::BAM_TAG_ARRAYBASE_SIZE];
+    // c_str() is '\0' terminated
     std::memcpy(newTagBase, tag.c_str(), Constants::BAM_TAG_TAGSIZE); // BAM_TAG_TAGSIZE=2
     newTagBase[2] = Constants::BAM_TAG_TYPE_ARRAY; // 'B'
     newTagBase[3] = TagTypeHelper<T>::TypeCode(); // uint32_t => 'I'
 
     // add number of array elements to newTagBase
     const int32_t numElements  = values.size();
-    std::memcpy(newTagBase + 4, &numElements, sizeof(int32_t));
+    std::memcpy(newTagBase + 4, &numElements, sizeof(int32_t)); // 32 bits is 4 bytes
     // copy current TagData string to temp buffer, leaving room for new tag's contents
     const size_t newTagDataLength = 
-       tagDataLength + Constants::BAM_TAG_ARRAYBASE_SIZE + numElements*sizeof(T);
+       prevTDLen + Constants::BAM_TAG_ARRAYBASE_SIZE + numElements*sizeof(T);
     RaiiBuffer originalTagData(newTagDataLength);
-    std::memcpy(originalTagData.Buffer, TagData.c_str(), tagDataLength+1); // '+1' for TagData's null-term
+    std::memcpy(originalTagData.Buffer, TagData.c_str(), prevTDLen+1); // '+1' for TagData's null-term
     // write newTagBase (removes old null term)
-    std::strcat(originalTagData.Buffer + tagDataLength, (const char*)newTagBase);
+    std::strcat(originalTagData.Buffer + prevTDLen, (const char*)newTagBase);
     // add vector elements to tag
-    int elementsBeginOffset = tagDataLength + Constants::BAM_TAG_ARRAYBASE_SIZE;
+    int elementsBeginOffset = prevTDLen + Constants::BAM_TAG_ARRAYBASE_SIZE;
     for (int i = 0 ; i < numElements; ++i) {
-        const T& value = values.at(i);
+        const T& value = values.at(i); // no need for at which slows down
         //cerr << "copying value: " << value << endl;
         memcpy(originalTagData.Buffer + elementsBeginOffset + i*sizeof(T), &value, sizeof(T));
     }
