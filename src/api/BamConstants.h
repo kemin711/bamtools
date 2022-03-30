@@ -84,6 +84,13 @@ namespace Constants {
 
    const uint8_t BAM_TAG_TAGSIZE        = 2;
    const uint8_t BAM_TAG_TYPESIZE       = 1;
+   /**
+    * TAG   BAM_TAG_TYPE_ other than _ARRAY
+    *  !    !
+    * |--|B|-|----| toal 8 bytes
+    *          | exactly 32 bits = 4 bytes
+    *         int32_t
+    */
    const uint8_t BAM_TAG_ARRAYBASE_SIZE = 8;
 
    // DNA bases
@@ -151,6 +158,10 @@ namespace Constants {
 // -------------------------
 
 // fail on any types not specified below
+/**
+ * The master template to signal failure.
+ * Use specialization to pass specific tag types.
+ */
 template<typename T>
 struct TagTypeHelper {
     static bool CanConvertFrom(const char) { assert(false); return false; }
