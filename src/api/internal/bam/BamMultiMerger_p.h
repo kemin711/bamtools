@@ -70,7 +70,7 @@ struct MSortfunc : public std::binary_function<MergeItem, MergeItem, bool> {
             : m_comp(comp)
         { }
 
-        bool operator()(const MergeItem& lhs, const MergeItem& rhs) {
+        bool operator()(const MergeItem& lhs, const MergeItem& rhs) const {
             const BamAlignment& l = *lhs.Alignment;
             const BamAlignment& r = *rhs.Alignment;
             return m_comp(l,r);
@@ -144,12 +144,11 @@ class MultiMerger : public IMultiMerger {
 
 template <typename Compare>
 inline void MultiMerger<Compare>::Add(MergeItem item) {
-
     // N.B. - any future custom Compare types must define this method
     //        see algorithms/Sort.h
-
-    if ( CompareType::UsesCharData() )
+    if (CompareType::UsesCharData()) {
         item.Alignment->BuildCharData();
+    }
     m_data.insert(item);
 }
 

@@ -551,22 +551,26 @@ API_EXPORT inline unsigned short UnpackUnsignedShort(char* buffer) {
 
 /**
  * struct RaiiBuffer
- *   internal
+ *   internal.
+ *  Work with n allocated, not n+1.
  */
 struct RaiiBuffer {
     // data members
     char* Buffer;
     const size_t NumBytes;
 
-    // ctor & dtor
+    /** 
+     * constructor of size n buffer
+     */
     RaiiBuffer(const size_t n)
-        : Buffer( new char[n]() )
-        , NumBytes(n)
+        : Buffer( new char[n]() ), NumBytes(n)
     { }
     ~RaiiBuffer(void) {
         delete[] Buffer;
     }
-    // add'l methods
+    /** 
+     * Set all location to 0 char
+     */
     void Clear(void) {
         memset(Buffer, 0, NumBytes);
     }

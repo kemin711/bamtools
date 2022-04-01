@@ -89,9 +89,32 @@ namespace Constants {
     *  !    !
     * |--|B|-|----| toal 8 bytes
     *          | exactly 32 bits = 4 bytes
-    *         int32_t
+    *         int32_t fixed type
     */
    const uint8_t BAM_TAG_ARRAYBASE_SIZE = 8;
+   inline bool isAtomicBamTagType(char t) {
+      return t == BAM_TAG_TYPE_ASCII || 
+         t == BAM_TAG_TYPE_INT8 || t == BAM_TAG_TYPE_UINT8 || 
+         t == BAM_TAG_TYPE_INT16 || t == BAM_TAG_TYPE_UINT16 || 
+         t == BAM_TAG_TYPE_INT32 || t == BAM_TAG_TYPE_UINT32 || 
+         t == BAM_TAG_TYPE_FLOAT;
+   }
+   inline bool isBasicBamTagType(char t) {
+      return t == BAM_TAG_TYPE_ASCII || 
+         t == BAM_TAG_TYPE_INT8 || t == BAM_TAG_TYPE_UINT8 || 
+         t == BAM_TAG_TYPE_INT16 || t == BAM_TAG_TYPE_UINT16 || 
+         t == BAM_TAG_TYPE_INT32 || t == BAM_TAG_TYPE_UINT32 || 
+         t == BAM_TAG_TYPE_FLOAT || t == BAM_TAG_TYPE_STRING ||
+         t == BAM_TAG_TYPE_HEX;
+   }
+   inline bool isBamTagType(char t) {
+      return t == BAM_TAG_TYPE_ASCII || 
+         t == BAM_TAG_TYPE_INT8 || t == BAM_TAG_TYPE_UINT8 || 
+         t == BAM_TAG_TYPE_INT16 || t == BAM_TAG_TYPE_UINT16 || 
+         t == BAM_TAG_TYPE_INT32 || t == BAM_TAG_TYPE_UINT32 || 
+         t == BAM_TAG_TYPE_FLOAT || t == BAM_TAG_TYPE_STRING ||
+         t == BAM_TAG_TYPE_HEX || t == BAM_TAG_TYPE_ARRAY;
+   }
 
    // DNA bases
    const char* const BAM_DNA_LOOKUP = "=ACMGRSVTWYHKDBN";

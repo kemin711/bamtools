@@ -201,11 +201,17 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    vector<std::string> tagNames = ba.GetTagNames();
    // automatic probe is causing some problems
    // removing it.
+   /*
    for (auto& t : tagNames) {
       char tagtype;
       ba.GetTagType(t, tagtype);
-      if (tagtype == 'i' || tagtype == 'C') { // BamConstants.h define the tag type
+      if (tagtype == 'i' || tagtype == 'c' || tagtype == 's') { // BamConstants.h define the tag type
          int32_t intval; // must use this type, int is wrong
+         ba.GetTag(t, intval);
+         ous << t << ":" << tagtype << ":" << intval << "; ";
+      }
+      else if (tagtype == 'I' || tagtype == 'C' || tagtype == 'S') { // BamConstants.h define the tag type
+         uint32_t intval; // must use this type, int is wrong
          ba.GetTag(t, intval);
          ous << t << ":" << tagtype << ":" << intval << "; ";
       }
@@ -219,6 +225,15 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
             << " not considered yet\n";
       }
    }
+   */
+   for (const char c : ba.TagData) {
+      if (c == '\0') ous << "|";
+      else if (isprint(c)) 
+         ous << c;
+      else 
+         ous << '~';
+   }
+   ous << endl;
 
    return ous;
 }}
@@ -1076,11 +1091,83 @@ bool BamAlignment::FindTag(const std::string& tag, char*& pTagData,
             return true;
         // get the storage class and find the next tag
         if (*pTagStorageType == '\0') return false;
-        if (!SkipToNextTag(*pTagStorageType, pTagData, numBytesParsed)) return false;
+        //if (!SkipToNextTag(*pTagStorageType, pTagData, numBytesParsed)) 
+        if (!SkipToNextTag(pTagData, numBytesParsed)) 
+           return false;
         if (*pTagData == '\0') return false;
     }
     return false;
 }
+
+size_t BamAlignment::getTagWidth(const char* p) const {
+   p += 2; // move to data type char
+   size_t w;
+   if (*p == Constants::BAM_TAG_TYPE_ARRAY) {
+      w = getArrayTagLength(p+1) + 3;
+   }
+   else {
+      w = getBasicTagLength(p) + 3;
+   }
+   return w;
+}
+
+void BamAlignment::showTagData(ostream& ous) const {
+   for (const char c : TagData) {
+      if (c == '\0') ous << ". ";
+      else if (isprint(c)) 
+         ous << c;
+      else 
+         ous << '~';
+   }
+   ous << endl;
+}
+
+char* BamAlignment::findTag(const std::string& tag) {
+   char* p = TagData.data();
+   while (*p != '\0') {
+      //cerr << "at tag: " << *p << *(p+1) << endl;
+      if (tag[0] == *p && tag[1] == *(p+1))
+         return p;
+      //cerr << " tag width=" << getTagWidth(p) << endl;
+      p += getTagWidth(p);
+   }
+   return nullptr;
+}
+
+// assume tag data is constructed
+const char* BamAlignment::findTag(const std::string& tag) const
+{
+   const char* p = TagData.data();
+   //size_t parselen=0;
+   while (*p != '\0') {
+      if (tag[0] == *p && tag[1] == *(p+1))
+         return p;
+      //size_t taglen = getTagLength(p);
+      //p += taglen;
+      p += getTagWidth(p);
+   }
+   return nullptr;
+
+   /* old implementation is bad
+    while (numBytesParsed < tagDataLength) {
+        const char* pTagType        = pTagData;
+        const char* pTagStorageType = pTagData + 2;
+        pTagData       += 3;
+        numBytesParsed += 3;
+        // check the current tag, return true on match
+        if (strncmp(pTagType, tag.c_str(), 2) == 0)
+            return true;
+        // get the storage class and find the next tag
+        if (*pTagStorageType == '\0') return false;
+        //if (!SkipToNextTag(*pTagStorageType, pTagData, numBytesParsed)) 
+        if (!SkipToNextTag(pTagData, numBytesParsed)) 
+           return false;
+        if (*pTagData == '\0') return false;
+    }
+    return false;
+    */
+}
+
 
 /*! \fn bool BamAlignment::GetArrayTagType(const std::string& tag, char& type) const
     \brief Retrieves the BAM tag type-code for the array elements associated with requested tag name.
@@ -1299,21 +1386,31 @@ bool BamAlignment::GetSoftClips(vector<int>& clipSizes,
 }
 
 string BamAlignment::getStringTag(const std::string& tag) const {
-    if (TagData.empty() ||  SupportData.HasCoreOnly ) {
+    if (TagData.empty() || SupportData.HasCoreOnly) {
         return string();
     }
+    const char* pTag = findTag(tag);
+    if (pTag == nullptr) {
+       return string();
+    }
+    else {
+       pTag += 2;
+       return string(pTag);
+    }
+    /*
     // localize the tag data
     char* pTagData = (char*)TagData.data();
     const unsigned int tagDataLength = TagData.size();
     unsigned int numBytesParsed = 0;
     // return failure if tag not found
-    if (!FindTag(tag, pTagData, tagDataLength, numBytesParsed) ) {
+    if (!FindTag(tag, pTagData, tagDataLength, numBytesParsed)) {
         throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +
               ":ERROR Cannot find tag: " + tag);
     }
     // otherwise copy data into destination
     const unsigned int dataLength = strlen(pTagData);
     return TagData.substr(numBytesParsed, dataLength);
+    */
 }
 
 
@@ -1328,31 +1425,27 @@ string BamAlignment::getStringTag(const std::string& tag) const {
     \sa \samSpecURL for more details on reserved tag names, supported tag types, etc.
 */
 std::vector<std::string> BamAlignment::GetTagNames(void) const {
-
     std::vector<std::string> result;
     if ( SupportData.HasCoreOnly || TagData.empty() )
         return result;
-
     char* pTagData = (char*)TagData.data();
     const unsigned int tagDataLength = TagData.size();
     unsigned int numBytesParsed = 0;
     while ( numBytesParsed < tagDataLength ) {
-
         // get current tag name & type
         const char* pTagName = pTagData;
         const char* pTagType = pTagData + 2;
         pTagData       += 3;
         numBytesParsed +=3;
-
         // store tag name
         result.push_back( std::string(pTagName, 2)  );
-
         // find the next tag
-        if ( *pTagType == '\0' ) break;
-        if ( !SkipToNextTag(*pTagType, pTagData, numBytesParsed) ) break;
-        if ( *pTagData == '\0' ) break;
+        if ( *pTagType == '\0' ) break; // end of input
+        //if (!SkipToNextTag(*pTagType, pTagData, numBytesParsed)) 
+        if (!SkipToNextTag(pTagData, numBytesParsed)) 
+           break;
+        if (*pTagData == '\0') break;
     }
-
     return result;
 }
 
@@ -1366,33 +1459,35 @@ std::vector<std::string> BamAlignment::GetTagNames(void) const {
     \sa \samSpecURL for more details on reserved tag names, supported tag types, etc.
 */
 bool BamAlignment::GetTagType(const std::string& tag, char& type) const {
-  
     // skip if alignment is core-only
     if ( SupportData.HasCoreOnly ) {
         // TODO: set error string?
         return false;
     }
-
     // skip if no tags present
     if ( TagData.empty() ) {
         // TODO: set error string?
         return false;
     }
-
+    if (!isValidTagName(tag)) {
+       cerr << *this << endl;
+       cerr << __FILE__ << ":" << __LINE__ << ":ERROR tag " << tag 
+          << " is not valid\n";
+       //showTagData(cerr);
+       throw BamNotagException("invalide tag name");
+    }
     // localize the tag data
     char* pTagData = (char*)TagData.data();
     const unsigned int tagDataLength = TagData.size();
     unsigned int numBytesParsed = 0;
-    
     // if tag not found, return failure
-    if ( !FindTag(tag, pTagData, tagDataLength, numBytesParsed) ){
+    if (!FindTag(tag, pTagData, tagDataLength, numBytesParsed)) {
         // TODO: set error string?
         return false;
     }
-
     // otherwise, retrieve & validate tag type code
     type = *(pTagData - 1);
-    switch ( type ) {
+    switch (type) {
         case (Constants::BAM_TAG_TYPE_ASCII)  :
         case (Constants::BAM_TAG_TYPE_INT8)   :
         case (Constants::BAM_TAG_TYPE_UINT8)  :
@@ -1405,7 +1500,6 @@ bool BamAlignment::GetTagType(const std::string& tag, char& type) const {
         case (Constants::BAM_TAG_TYPE_HEX)    :
         case (Constants::BAM_TAG_TYPE_ARRAY)  :
             return true;
-
         // unknown tag type
         default:
             cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid tag type: " << type << endl;
@@ -1420,11 +1514,9 @@ bool BamAlignment::GetTagType(const std::string& tag, char& type) const {
     \return \c true if alignment has a record for tag
 */
 bool BamAlignment::HasTag(const std::string& tag) const {
-
     // return false if no tag data present
     if ( SupportData.HasCoreOnly || TagData.empty() )
         return false;
-
     // localize the tag data for lookup
     char* pTagData = (char*)TagData.data();
     const unsigned int tagDataLength = TagData.size();
@@ -1539,6 +1631,14 @@ bool BamAlignment::IsValidSize(const std::string& tag, const std::string& type) 
            (type.size() == Constants::BAM_TAG_TYPESIZE);
 }
 
+bool BamAlignment::isValidArrayTag(const string& tag) const {
+   const char* p = findTag(tag);
+   if (p == nullptr) {
+      return false;
+   }
+   return isValidArrayTag(tag);
+}
+
 /*! \fn void BamAlignment::RemoveTag(const std::string& tag)
     \brief Removes field from BAM tags.
 
@@ -1549,8 +1649,42 @@ void BamAlignment::RemoveTag(const std::string& tag) {
     if ( SupportData.HasCoreOnly )
         BuildCharData();
     // skip if no tags available
-    if ( TagData.empty() )
-        return;
+    if (TagData.empty()) {
+       cerr << __FILE__ << ":" << __LINE__ << ":WARN no tag data while removing tag: "
+         << tag << endl;
+       return;
+    }
+    char* pTag = findTag(tag);
+    if (pTag == nullptr) {
+       throw BamNotagException("there is no tag " + tag + " to remove");
+    }
+    if (!isValidArrayTag(pTag)) {
+       cerr << *this << endl;
+       throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Invalid array tag: " + tag + " cannot remove");
+    }
+    //bool inbug = false;
+    //if (getName() == "cons1696185") {
+    //   cerr << "tryint to remove " << tag << endl;
+    //   inbug = true;
+    //}
+    size_t tglen = getTagWidth(pTag); // num char of whole tag entry
+    size_t newtgdLength = TagData.size() - tglen;
+    //if (inbug) {
+    //   cerr << " tglen=" << tglen << " newtgdLength=" << newtgdLength << " TagData.size=" 
+    //      << TagData.size() << endl;
+    //}
+    if (*(pTag + tglen) != '\0') { // tag is not the last one
+       //memmove(pTag, pTag+tglen, TagData.size() - (pTag - TagData.data()) - tglen);
+       memmove(pTag, pTag+tglen, newtgdLength - (pTag - TagData.data()));
+       //pTag+tglen-TagData.data() is the length of bytes before the next tag
+    }
+    //TagData.resize(TagData.size() - tglen);
+    TagData.resize(newtgdLength);
+    //if (inbug) {
+    //  cerr << "after resize\n" << TagData << endl;
+    //}
+
+    /* old implementation bad
     // localize the tag data
     char* pOriginalTagData = (char*)TagData.data();
     char* pTagData = pOriginalTagData;
@@ -1572,19 +1706,19 @@ void BamAlignment::RemoveTag(const std::string& tag) {
     memcpy(newTagData.Buffer, pOriginalTagData, numBytesParsed);
 
     // attemp to skip to next tag
-    const char* pTagStorageType = pTagData + 2;
+    //const char* pTagStorageType = pTagData + 2;
     pTagData       += 3;
     numBytesParsed += 3;
-    if ( SkipToNextTag(*pTagStorageType, pTagData, numBytesParsed) ) {
-
+    //if (SkipToNextTag(*pTagStorageType, pTagData, numBytesParsed) ) {
+    if (SkipToNextTag(pTagData, numBytesParsed)) {
         // squeeze remaining tag data
         const unsigned int skippedDataLength = (numBytesParsed - beginningTagDataLength);
         const unsigned int endTagDataLength = originalTagDataLength - beginningTagDataLength - skippedDataLength;
         memcpy(newTagData.Buffer + beginningTagDataLength, pTagData, endTagDataLength );
-
         // save modified tag data in alignment
         TagData.assign(newTagData.Buffer, beginningTagDataLength + endTagDataLength);
     }
+    */
 }
 
 /*! \fn void BamAlignment::SetIsDuplicate(bool ok)
@@ -1701,81 +1835,77 @@ size_t BamAlignment::getBasicTagLength(const char* p) const {
       case Constants::BAM_TAG_TYPE_ASCII:
       case Constants::BAM_TAG_TYPE_INT8:
       case Constants::BAM_TAG_TYPE_UINT8:
-         return 1; break;
+         return 1; 
       case Constants::BAM_TAG_TYPE_INT16:
       case Constants::BAM_TAG_TYPE_UINT16:
-         return sizeof(uint16_t); break;
+         return sizeof(uint16_t);
       case Constants::BAM_TAG_TYPE_INT32:
       case Constants::BAM_TAG_TYPE_UINT32:
       case Constants::BAM_TAG_TYPE_FLOAT:
-         return sizeof(uint32_t); break;
+         return sizeof(uint32_t); 
       case (Constants::BAM_TAG_TYPE_STRING) :
       case (Constants::BAM_TAG_TYPE_HEX)    :
+      {
          const char* x=p+1;
-         while(*x != '\0') { ++x; }
-         // increment for null-terminator
-         return x-p;
-         break;
-      default:
-         throw logic_error(string(1, tagt) + " is not basic Bam TAG type");
-   }
-}
-
-size_t getArrayTagLength(const char* p) {
-}
-
-// array is only numeric type
-bool BamAlignment::SkipToNextTag(const char storageType, char*& pTagData,
-                                 unsigned int& numBytesParsed) const
-{
-   if (storageType != Constants::BAM_TAG_TYPE_ARRAY) {
-      size_t dlen = getBasicTagLength(pTagData-1);
-      numBytesParsed += dlen;
-      pTagData += dlen;
-   }
-   else { // read array type
-      short getAtomicTagLength(*pTagData);
-
-         const char arrayType = *pTagData; 
-         ++numBytesParsed;
-         ++pTagData;
-         // read number of elements
-         int32_t numElements;
-         memcpy(&numElements, pTagData, sizeof(uint32_t)); // already endian-swapped, if needed
-         numBytesParsed += sizeof(uint32_t);
-         pTagData       += sizeof(uint32_t);
-         // calculate number of bytes to skip
-         int bytesToSkip = 0;
-         switch (arrayType) {
-               case (Constants::BAM_TAG_TYPE_INT8)  :
-               case (Constants::BAM_TAG_TYPE_UINT8) :
-                  bytesToSkip = numElements;
-                  break;
-               case (Constants::BAM_TAG_TYPE_INT16)  :
-               case (Constants::BAM_TAG_TYPE_UINT16) :
-                  bytesToSkip = numElements*sizeof(uint16_t);
-                  break;
-               case (Constants::BAM_TAG_TYPE_FLOAT)  :
-               case (Constants::BAM_TAG_TYPE_INT32)  :
-               case (Constants::BAM_TAG_TYPE_UINT32) :
-                  bytesToSkip = numElements*sizeof(uint32_t);
-                  break;
-               default:
-                  cerr << __FILE__ << ":" << __LINE__ << ":WARN invalid binary array type: " << arrayType;
-                  return false;
-         }
-         // skip binary array contents
-         numBytesParsed += bytesToSkip;
-         pTagData       += bytesToSkip;
-         break;
+         while(*x != '\0') ++x; // x now at null-terminator
+         return x - p; // length of data includding \0
       }
       default:
-         //cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid tag type: "
-         //   << storageType << endl;
-         return false;
-    }
-    // if we get here, tag skipped OK - return success
-    return true;
+         throw logic_error(string(1, *p) + " is not basic Bam TAG type");
+   }
+}
+
+bool BamAlignment::isValidTag(const char* p) const {
+   for (auto i=0; i < Constants::BAM_TAG_TAGSIZE; ++i) {
+      if (!isalpha(*p)) return false;
+      ++p;
+   }
+   if (*p == Constants::BAM_TAG_TYPE_ARRAY) {
+      return Constants::isAtomicBamTagType(*(p+1));
+   }
+   else {
+      return Constants::isBasicBamTagType(*p);
+   }
+}
+
+bool BamAlignment::isValidArrayTag(const char* p) const {
+   size_t w = getArrayTagLength(p+3) + 3;
+   p += w;
+   if (*p == '\0' || isValidTag(p)) {
+      return true;
+   }
+   return false;
+}
+
+// p ponter at array element type char (4th char)
+size_t BamAlignment::getArrayTagLength(const char* p) const {
+   short elemlen = getAtomicTagLength(*p);
+   const char* x=p+1; // [ 4 byte int32_t ] for number of elements
+   int32_t numelement;
+   memcpy(&numelement, x, sizeof(uint32_t)); // already endian-swapped, if needed
+   return numelement*elemlen + Constants::BAM_TAG_ARRAYBASE_SIZE - 3;
+}
+
+// pTagData at first char of data, for array is at element type char.
+//bool BamAlignment::SkipToNextTag(const char storageType, char*& pTagData, unsigned int& numBytesParsed) const
+bool BamAlignment::SkipToNextTag(char*& pTagData, unsigned int& numBytesParsed) const
+{
+   size_t dlen;
+   try {
+      if (*(pTagData-1) != Constants::BAM_TAG_TYPE_ARRAY) {
+         dlen = getBasicTagLength(pTagData-1);
+      }
+      else { 
+         dlen = getArrayTagLength(pTagData);
+      }
+      numBytesParsed += dlen;
+      pTagData += dlen; // if string type will be at \0
+   }
+   catch (logic_error& err) {
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR " << err.what() << endl;
+      return false;
+   }
+   return true;
 }
 
 // BamAlignment stores the ASCII values, Phred+33
