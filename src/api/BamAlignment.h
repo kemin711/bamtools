@@ -51,6 +51,13 @@ class BamNotagException : public BamAlignmentException {
       { }
 };
 
+class BamTypeException : public logic_error {
+   public:
+      BamTypeException(const string& msg)
+         : logic_error(msg)
+      { }
+};
+
 /**
  *  BamAlignment data structure to hold a single
  *  Alignment data with summary information to it partner 
@@ -511,10 +518,11 @@ class API_EXPORT BamAlignment {
         template<typename T> bool AddTag(const std::string& tag, const std::vector<T>& values);
         template<typename T> void addTag(const std::string& tag, const std::vector<T>& values);
         /** 
-         *  edit (or append) tag
-         *  \brief Edits a BAM tag field.
+         *  Edits a BAM tag field.
          *
          *  If \a tag does not exist, a new entry is created.
+         *  If tag exists then it will be removed first. So the same tag
+         *  can store a different type of data.
          *
          *  @param tag[in]   2-character tag name
          *  @param type[in]  1-character tag type (must be "Z", "i", or "H")
@@ -553,6 +561,19 @@ class API_EXPORT BamAlignment {
         */
         template<typename T> bool GetTag(const std::string& tag, T& destination) const;
         /**
+         * This version should work with both string and atomic types
+         * but should not be used for vector type.
+         * @throw exceptions if anything goes wrong: BamNotagException.
+         * @return the value store under tag if everything goes well
+         */
+        template<typename T> T getTag(const std::string& tag) const;
+        //template<typename T> T getTag(const char* tag) const {
+        //    return getTag<T>(string(tag));
+        //}
+        //template<typename T> T getTag(const char tag[3]) const {
+        //    return getTag<T>(string(tag));
+        //}
+        /**
          * String specialization.
          * @param destination will clear previous values and fill with tag value.
          * @return true if found
@@ -562,6 +583,10 @@ class API_EXPORT BamAlignment {
          * New implementation should be faster
          */
         template<typename T> bool getTag(const std::string& tag, std::vector<T>& destination) const;
+        /**
+         * @return the underlying tag data as a vector of type T
+         */
+        template<typename T> vector<T> getArrayTag(const std::string& tag) const;
         /**
          * More convenient version return value directly. If not found
          * for string then return empty string. For integer types
@@ -590,18 +615,32 @@ class API_EXPORT BamAlignment {
          * \sa \samSpecURL for more details on reserved tag names, supported tag types, etc.
          */
         bool GetTagType(const std::string& tag, char& type) const;
-        // retrieves the SAM/BAM type-code for the data elements in an array tag
+        /**
+         * retrieves the SAM/BAM type-code for the data elements in an array tag
+         */
         bool GetArrayTagType(const std::string& tag, char& type) const;
         /** 
          * @returns true if alignment has a record for this tag name
          */
         bool HasTag(const std::string& tag) const;
+        /**
+         * New implementation
+         * @return true if has this tag.
+         */
+        bool hasTag(const std::string& tag) const;
         /** 
          * removes a tag. So far this does not work with IGV
          * After remove got unrecognized tag type error.
          * Maybe need special coding for removing arrays.
          */
-        void RemoveTag(const std::string& tag);
+        void removeTag(const std::string& tag);
+        /**
+         * Alias for removeTag
+         * remove tag if exists; otherwise do nothing
+         */
+        void RemoveTag(const std::string& tag) {
+            removeTag(tag);
+        }
 
     ////// additional methods /////////
     public:
@@ -1539,9 +1578,11 @@ class API_EXPORT BamAlignment {
          */
         short getAtomicTagLength(const char tagt) const;
         /**
+         * Only work with Atomic, String, or Hex types.
          * @param p poiner at tag type position, 1 before tag data string.
          *     p at 3rd char.
          * @return the length of the data length in number of chars.
+         *    The type char is not included.
          */
         size_t getBasicTagLength(const char* p) const;
         /**
@@ -1940,6 +1981,7 @@ inline bool BamAlignment::EditTag(const std::string& tag, const std::vector<T>& 
         RemoveTag(tag);
     return AddTag(tag, values);
 }
+
 /**
  * Obtain the tag value tag and put into destination
  * @param tag name of the tag such as NM
@@ -1969,18 +2011,12 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
     }
     const char type = *(pTagData - 1); // make sure type compatible
     if (!TagTypeHelper<T>::CanConvertFrom(type)) {
-       cerr << __FILE__ << ":" << __LINE__ << ":ERROR " << tag << " stored type " 
-          << type << " cannot be converted to " << typeid(T).name() << endl;
-       throw logic_error("Cannot convert from " + string(1, type) + " to " + string(typeid(T).name()));
+       //cerr << __FILE__ << ":" << __LINE__ << ":ERROR " << tag << " stored type " 
+       //   << type << " cannot be converted to " << typeid(T).name() << endl;
+       throw BamTypeException("Cannot convert from " + string(1, type) + " to " + string(typeid(T).name()));
        //return false;
     }
-    //if (type == 'C') // C is uint32_t
-    //{ 
-    //  destination=(uint32_t)(*pTagData);
-    //  return true;
-    //}
     size_t destinationLength = 0;
-    //size_t tagdatalen = getAtomicTagLength(*(pTagData-1));
     try {
        destinationLength = getAtomicTagLength(*(pTagData-1));
     }
@@ -1988,42 +2024,6 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
        cerr << err.what() << endl;
        return false;
     }
-    /*
-    switch ( type ) { // TODO: replace case with object design
-        // 1 byte data
-        case (Constants::BAM_TAG_TYPE_ASCII) :
-        case (Constants::BAM_TAG_TYPE_INT8)  :
-        case (Constants::BAM_TAG_TYPE_UINT8) :
-            destinationLength = 1;
-            break;
-        // 2 byte data
-        case (Constants::BAM_TAG_TYPE_INT16)  :
-        case (Constants::BAM_TAG_TYPE_UINT16) :
-            destinationLength = 2;
-            break;
-        // 4 byte data
-        case (Constants::BAM_TAG_TYPE_INT32)  :
-        case (Constants::BAM_TAG_TYPE_UINT32) :
-        case (Constants::BAM_TAG_TYPE_FLOAT)  :
-            destinationLength = 4;
-            break;
-        // var-length types not supported for numeric destination
-        case (Constants::BAM_TAG_TYPE_STRING) :
-        case (Constants::BAM_TAG_TYPE_HEX)    :
-        case (Constants::BAM_TAG_TYPE_ARRAY)  :
-            //SetErrorString("BamAlignment::GetTag",
-            //              "cannot store variable length tag data into a numeric destination");
-            cerr << __FILE__ << ":" << __LINE__ 
-               << ":ERROR cannot store variable length tag data into a numeric destination\n";
-            return false;
-        // unrecognized tag type
-        default:
-            //const std::string message = std::string("invalid tag type: ") + type;
-            //SetErrorString("BamAlignment::GetTag", message);
-            cerr << __FILE__ << ":" << __LINE__ << ":ERROR invalid tag type: " << type << endl;
-            return false;
-    } // using a string specialization version for string data
-    */
     // store data in destination
     destination = 0;
     memcpy(&destination, pTagData, destinationLength);
@@ -2031,12 +2031,69 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
     return true;
 }
 
+// should not use this for vector version
+template<typename T> inline T BamAlignment::getTag(const std::string& tag) const {
+    // skip if alignment is core-only
+    if (SupportData.HasCoreOnly || TagData.empty()) {
+       throw BamNotagException("Only has core data");
+       // return false;
+    }
+    const char* p = findTag(tag);
+    if (p == nullptr) {
+       throw BamNotagException(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Bam tag: " + tag + " not found");
+    }
+    // p point to first char of TAG
+    p += Constants::BAM_TAG_TAGSIZE;
+    if (!TagTypeHelper<T>::CanConvertFrom(*p)) {
+       //cerr << __FILE__ << ":" << __LINE__ << ":ERROR " << tag << " stored type " 
+       //   << type << " cannot be converted to " << typeid(T).name() << endl;
+       throw BamTypeException(string(__FILE__) + ":" + to_string(__LINE__) 
+             + ":ERROR Cannot convert from stored data type " + string(*p, 1) 
+             + " in tag " + tag + " to requested type: " + string(typeid(T).name()));
+    }
+    size_t tagdatalen = getAtomicTagLength(*p);
+    T res;
+    p += Constants::BAM_TAG_TYPESIZE;
+    memcpy(&res, p, tagdatalen);
+    return res;
+}
+
+template<> inline string BamAlignment::getTag<string>(const std::string& tag) const {
+    // skip if alignment is core-only
+    if (SupportData.HasCoreOnly || TagData.empty()) {
+       throw BamNotagException("Only has core data");
+       // return false;
+    }
+    const char* p = findTag(tag);
+    if (p == nullptr) {
+       throw BamNotagException(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Bam tag: " + tag + " not found");
+    }
+    // p point to first char of TAG
+    p += Constants::BAM_TAG_TAGSIZE;
+    if (!TagTypeHelper<string>::CanConvertFrom(*p)) {
+       //cerr << __FILE__ << ":" << __LINE__ << ":ERROR " << tag << " stored type " 
+       //   << type << " cannot be converted to " << typeid(T).name() << endl;
+       throw BamTypeException(string(__FILE__) + ":" + to_string(__LINE__) 
+             + ":ERROR Cannot convert from stored data type " + string(1, *p) 
+             + " in tag " + tag + " to string type");
+    }
+    // above code will make sure p point to H or Z
+    //if (*p != Constants::BAM_TAG_TYPE_HEX && *p != Constants::BAM_TAG_TYPE_STRING) {
+    //    throw BamTypeException("Tag: " + tag + " does not hold string data");
+    //}
+    p += Constants::BAM_TAG_TYPESIZE; // move to data
+    size_t tagdatalen = 0;
+    while (*p != '\0') { ++tagdatalen; ++p; }
+    string res(tagdatalen, '\0');
+    memcpy(res.data(), p, tagdatalen);
+    return res;
+}
+
 /**
  * Specialization for string
  */
 template<>
-inline bool BamAlignment::GetTag<std::string>(const std::string& tag,
-         std::string& destination) const
+inline bool BamAlignment::GetTag<std::string>(const std::string& tag, std::string& destination) const
 {
     // skip if alignment is core-only
     if ( SupportData.HasCoreOnly ) {
@@ -2112,7 +2169,7 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
     if (!TagTypeHelper<T>::CanConvertFrom(elementType) ) {
         cerr << __FILE__ << ":" << __LINE__ << ": cannot convert from "
             << elementType << endl;
-        throw logic_error(string(typeid(T).name()) + " cannot hold Bam type: " + string(1, elementType));
+        throw BamTypeException(string(typeid(T).name()) + " cannot hold Bam type: " + string(1, elementType));
         //return false;
     }
     if (!Constants::isAtomicBamTagType(elementType)) {
@@ -2206,6 +2263,37 @@ inline bool BamAlignment::getTag(const std::string& tag, std::vector<T>& destina
     //size_t len = numE * sizeof(T);
     memcpy(destination.data(), p, numE*sizeof(T));
     return true;
+}
+
+template<typename T>
+inline vector<T> BamAlignment::getArrayTag(const std::string& tag) const {
+    // skip if alignment is core-only
+    if (SupportData.HasCoreOnly || TagData.empty()) {
+        cerr << __FILE__ << ":" << __LINE__ << ": bam has only core data failed to get tag: "
+            << tag << "\n";
+        //return false;
+        throw BamNotagException("Has only core data");
+    }
+    const char* p = findTag(tag);
+    if (!isValidArrayTag(p)) {
+       throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Invalid array tag: " + tag);
+    }
+    p += (Constants::BAM_TAG_TAGSIZE + Constants::BAM_TAG_TYPESIZE);
+    const char elementType = *p;
+    if (!TagTypeHelper<T>::CanConvertFrom(elementType) ) {
+        cerr << __FILE__ << ":" << __LINE__ << ": cannot convert from "
+            << elementType << endl;
+        throw logic_error(string(typeid(T).name()) + " cannot hold Bam type: " + string(1, elementType));
+    }
+    int32_t numE;
+    ++p;
+    memcpy(&numE, p, sizeof(int32_t));
+    p += sizeof(int32_t); // should be 4 bytes
+    vector<T> res(numE);
+    //destination.resize(numE);
+    //size_t len = numE * sizeof(T);
+    memcpy(res.data(), p, numE*sizeof(T));
+    return res;
 }
 
 typedef std::vector<BamAlignment> BamAlignmentVector;

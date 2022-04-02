@@ -469,7 +469,7 @@ void BamAlignment::fixStaggerGap() {
          // here is a devil in duplicating data: we have to remember to change 
          // the duplicated information, design flaw
          SupportData.NumCigarOperations = CigarData.size();
-         int edit;
+         uint8_t edit;
          GetTag("NM", edit);
          edit -= gaplen;
          EditTag("NM", "i", edit);
@@ -774,9 +774,18 @@ void BamAlignment::moveInsertion(int oldloc, int newloc) {
 
 
 pair<int,int> BamAlignment::getMismatchCount() const {
-   int num_mismatch = 0;
+   int32_t numdiff = 0;
    if (HasTag("NM")) {
-      GetTag("NM", num_mismatch);
+      try { 
+         GetTag("NM", numdiff);
+      }
+      catch (const BamTypeException& err) {
+         cerr << __FILE__ << ":" << __LINE__ << ":ERROR " 
+            << err.what() << endl;
+         uint32_t num=0;
+         GetTag("NM", num);
+         numdiff=num;
+      }
    }
    else {
       cerr << *this << endl;
@@ -792,13 +801,22 @@ pair<int,int> BamAlignment::getMismatchCount() const {
          indel += cd.Length;
       }
    }
-   return make_pair(num_mismatch-indel, alnlen);
+   return make_pair(numdiff-indel, alnlen);
 }
 
 float BamAlignment::getNGIdentity() const {
-   int num_mismatch = 0;
+   int32_t numMis = 0;
    if (HasTag("NM")) {
-      GetTag("NM", num_mismatch);
+      try {
+         GetTag("NM", numMis);
+      }
+      catch (const BamTypeException& err) {
+         //cerr << __FILE__ << ":" << __LINE__ << ":ERROR "
+         //   << err.what() << endl;
+         uint32_t num=0;
+         GetTag("NM", num);
+         numMis = num;
+      }
    }
    else {
       cerr << *this << endl;
@@ -816,13 +834,21 @@ float BamAlignment::getNGIdentity() const {
          indel += cd.Length;
       }
    }
-   return (1-(num_mismatch-indel)/(float)alnlen);
+   return (1-(numMis-indel)/(float)alnlen);
 }
 
 float BamAlignment::getIdentity() const {
-   int num_mismatch = 0;
+   int32_t numdiff = 0;
    if (HasTag("NM")) {
-      GetTag("NM", num_mismatch);
+      try {
+         GetTag("NM", numdiff);
+      }
+      catch (const BamTypeException& err) {
+         cerr << __LINE__ << ":ERROR " << err.what() << endl;
+         uint32_t num=0;
+         GetTag("NM", num);
+         numdiff = num;
+      }
    }
    else {
       // cerr << *this << endl << " has no NM tag assuming no aligned\n";
@@ -842,7 +868,7 @@ float BamAlignment::getIdentity() const {
             << " Cigarop: " << cd.Type << " not added to alignment length\n";
       }
    }
-   return (1-(num_mismatch)/(float)alnlen);
+   return (1-(numdiff)/(float)alnlen);
 }
 
 void BamAlignment::setQuality(const vector<int> &qual) {
@@ -1100,20 +1126,27 @@ bool BamAlignment::FindTag(const std::string& tag, char*& pTagData,
 }
 
 size_t BamAlignment::getTagWidth(const char* p) const {
-   p += 2; // move to data type char
-   size_t w;
-   if (*p == Constants::BAM_TAG_TYPE_ARRAY) {
-      w = getArrayTagLength(p+1) + 3;
+   try {
+      p += 2; // move to data type char
+      size_t w;
+      if (*p == Constants::BAM_TAG_TYPE_ARRAY) {
+         w = getArrayTagLength(p+1) + 3;
+      }
+      else {
+         w = getBasicTagLength(p) + 3;
+      }
+      return w;
    }
-   else {
-      w = getBasicTagLength(p) + 3;
+   catch (const BamTypeException& ler) {
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR failed inside "
+         << __func__ << " " << ler.what() << endl;
+      throw BamTypeException(string(ler.what()) + " failed getTagWidth()");
    }
-   return w;
 }
 
 void BamAlignment::showTagData(ostream& ous) const {
    for (const char c : TagData) {
-      if (c == '\0') ous << ". ";
+      if (c == '\0') ous << ".";
       else if (isprint(c)) 
          ous << c;
       else 
@@ -1125,10 +1158,9 @@ void BamAlignment::showTagData(ostream& ous) const {
 char* BamAlignment::findTag(const std::string& tag) {
    char* p = TagData.data();
    while (*p != '\0') {
-      //cerr << "at tag: " << *p << *(p+1) << endl;
-      if (tag[0] == *p && tag[1] == *(p+1))
+      if (tag[0] == *p && tag[1] == *(p+1)) {
          return p;
-      //cerr << " tag width=" << getTagWidth(p) << endl;
+      }
       p += getTagWidth(p);
    }
    return nullptr;
@@ -1138,34 +1170,12 @@ char* BamAlignment::findTag(const std::string& tag) {
 const char* BamAlignment::findTag(const std::string& tag) const
 {
    const char* p = TagData.data();
-   //size_t parselen=0;
    while (*p != '\0') {
       if (tag[0] == *p && tag[1] == *(p+1))
          return p;
-      //size_t taglen = getTagLength(p);
-      //p += taglen;
       p += getTagWidth(p);
    }
    return nullptr;
-
-   /* old implementation is bad
-    while (numBytesParsed < tagDataLength) {
-        const char* pTagType        = pTagData;
-        const char* pTagStorageType = pTagData + 2;
-        pTagData       += 3;
-        numBytesParsed += 3;
-        // check the current tag, return true on match
-        if (strncmp(pTagType, tag.c_str(), 2) == 0)
-            return true;
-        // get the storage class and find the next tag
-        if (*pTagStorageType == '\0') return false;
-        //if (!SkipToNextTag(*pTagStorageType, pTagData, numBytesParsed)) 
-        if (!SkipToNextTag(pTagData, numBytesParsed)) 
-           return false;
-        if (*pTagData == '\0') return false;
-    }
-    return false;
-    */
 }
 
 
@@ -1507,12 +1517,6 @@ bool BamAlignment::GetTagType(const std::string& tag, char& type) const {
     }
 }
 
-/*! \fn bool BamAlignment::HasTag(const std::string& tag) const
-    \brief Returns true if alignment has a record for requested tag.
-
-    \param[in] tag 2-character tag name
-    \return \c true if alignment has a record for tag
-*/
 bool BamAlignment::HasTag(const std::string& tag) const {
     // return false if no tag data present
     if ( SupportData.HasCoreOnly || TagData.empty() )
@@ -1524,6 +1528,15 @@ bool BamAlignment::HasTag(const std::string& tag) const {
 
     // if result of tag lookup
     return FindTag(tag, pTagData, tagDataLength, numBytesParsed);
+}
+
+bool BamAlignment::hasTag(const std::string& tag) const {
+    // return false if no tag data present
+    if ( SupportData.HasCoreOnly || TagData.empty() )
+        return false;
+    // localize the tag data for lookup
+    const char* p = findTag(tag);
+    return p != nullptr;
 }
 
 bool BamAlignment::IsDuplicate(void) const {
@@ -1632,19 +1645,16 @@ bool BamAlignment::IsValidSize(const std::string& tag, const std::string& type) 
 }
 
 bool BamAlignment::isValidArrayTag(const string& tag) const {
+   if (tag.size() != Constants::BAM_TAG_TAGSIZE) 
+      return false;
    const char* p = findTag(tag);
    if (p == nullptr) {
       return false;
    }
-   return isValidArrayTag(tag);
+   return isValidArrayTag(p);
 }
 
-/*! \fn void BamAlignment::RemoveTag(const std::string& tag)
-    \brief Removes field from BAM tags.
-
-    \param[in] tag 2-character name of field to remove
-*/
-void BamAlignment::RemoveTag(const std::string& tag) {
+void BamAlignment::removeTag(const std::string& tag) {
     // if char data not populated, do that first
     if ( SupportData.HasCoreOnly )
         BuildCharData();
@@ -1654,71 +1664,18 @@ void BamAlignment::RemoveTag(const std::string& tag) {
          << tag << endl;
        return;
     }
-    char* pTag = findTag(tag);
+    char* pTag = findTag(tag); // pTag pointer to first char of TAG
     if (pTag == nullptr) {
-       throw BamNotagException("there is no tag " + tag + " to remove");
+       //throw BamNotagException("there is no tag " + tag + " to remove");
+       cerr << __FILE__ << ":" << __FILE__ << ":WARN there is no tag " + tag + " to remove\n";
+       return;
     }
-    if (!isValidArrayTag(pTag)) {
-       cerr << *this << endl;
-       throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Invalid array tag: " + tag + " cannot remove");
-    }
-    //bool inbug = false;
-    //if (getName() == "cons1696185") {
-    //   cerr << "tryint to remove " << tag << endl;
-    //   inbug = true;
-    //}
     size_t tglen = getTagWidth(pTag); // num char of whole tag entry
     size_t newtgdLength = TagData.size() - tglen;
-    //if (inbug) {
-    //   cerr << " tglen=" << tglen << " newtgdLength=" << newtgdLength << " TagData.size=" 
-    //      << TagData.size() << endl;
-    //}
     if (*(pTag + tglen) != '\0') { // tag is not the last one
-       //memmove(pTag, pTag+tglen, TagData.size() - (pTag - TagData.data()) - tglen);
        memmove(pTag, pTag+tglen, newtgdLength - (pTag - TagData.data()));
-       //pTag+tglen-TagData.data() is the length of bytes before the next tag
     }
-    //TagData.resize(TagData.size() - tglen);
     TagData.resize(newtgdLength);
-    //if (inbug) {
-    //  cerr << "after resize\n" << TagData << endl;
-    //}
-
-    /* old implementation bad
-    // localize the tag data
-    char* pOriginalTagData = (char*)TagData.data();
-    char* pTagData = pOriginalTagData;
-    const unsigned int originalTagDataLength = TagData.size();
-    unsigned int newTagDataLength = 0;
-    unsigned int numBytesParsed = 0;
-
-    // skip if tag not found
-    if  (!FindTag(tag, pTagData, originalTagDataLength, numBytesParsed))
-        return;
-    // otherwise, remove it
-    RaiiBuffer newTagData(originalTagDataLength);
-
-    // copy original tag data up til desired tag
-    pTagData       -= 3;
-    numBytesParsed -= 3;
-    const unsigned int beginningTagDataLength = numBytesParsed;
-    newTagDataLength += beginningTagDataLength;
-    memcpy(newTagData.Buffer, pOriginalTagData, numBytesParsed);
-
-    // attemp to skip to next tag
-    //const char* pTagStorageType = pTagData + 2;
-    pTagData       += 3;
-    numBytesParsed += 3;
-    //if (SkipToNextTag(*pTagStorageType, pTagData, numBytesParsed) ) {
-    if (SkipToNextTag(pTagData, numBytesParsed)) {
-        // squeeze remaining tag data
-        const unsigned int skippedDataLength = (numBytesParsed - beginningTagDataLength);
-        const unsigned int endTagDataLength = originalTagDataLength - beginningTagDataLength - skippedDataLength;
-        memcpy(newTagData.Buffer + beginningTagDataLength, pTagData, endTagDataLength );
-        // save modified tag data in alignment
-        TagData.assign(newTagData.Buffer, beginningTagDataLength + endTagDataLength);
-    }
-    */
 }
 
 /*! \fn void BamAlignment::SetIsDuplicate(bool ok)
@@ -1825,7 +1782,9 @@ short BamAlignment::getAtomicTagLength(const char tagt) const {
       case Constants::BAM_TAG_TYPE_FLOAT:
          return sizeof(uint32_t); break;
       default:
-         throw logic_error(string(1, tagt) + " is not elemental Bam TAG type");
+         cerr << __FILE__ << ":" << __LINE__ << ":ERROR atomic tag error\n" 
+            << *this << endl;
+         throw BamTypeException(string(__func__) + ":ERROR " + string(tagt, 1) + " is not elemental Bam TAG type");
    }
 }
 
@@ -1851,7 +1810,7 @@ size_t BamAlignment::getBasicTagLength(const char* p) const {
          return x - p; // length of data includding \0
       }
       default:
-         throw logic_error(string(1, *p) + " is not basic Bam TAG type");
+         throw logic_error(string(*p, 1) + " is not basic Bam TAG type");
    }
 }
 
@@ -1869,21 +1828,38 @@ bool BamAlignment::isValidTag(const char* p) const {
 }
 
 bool BamAlignment::isValidArrayTag(const char* p) const {
-   size_t w = getArrayTagLength(p+3) + 3;
-   p += w;
-   if (*p == '\0' || isValidTag(p)) {
-      return true;
+   try {
+      size_t w = getArrayTagLength(p+3) + 3;
+      p += w;
+      if (*p == '\0' || isValidTag(p)) {
+         return true;
+      }
+      return false;
    }
-   return false;
+   catch (const BamTypeException& ler) {
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR failed inside isValidArrayTag()\n"
+         << ler.what() << endl;
+      throw BamTypeException(string(ler.what()) + " inside isValidArrayTag()");
+   }
 }
 
 // p ponter at array element type char (4th char)
 size_t BamAlignment::getArrayTagLength(const char* p) const {
-   short elemlen = getAtomicTagLength(*p);
-   const char* x=p+1; // [ 4 byte int32_t ] for number of elements
-   int32_t numelement;
-   memcpy(&numelement, x, sizeof(uint32_t)); // already endian-swapped, if needed
-   return numelement*elemlen + Constants::BAM_TAG_ARRAYBASE_SIZE - 3;
+   try {
+      short elemlen = getAtomicTagLength(*p);
+      const char* x=p+1; // [ 4 byte int32_t ] for number of elements
+      int32_t numelement;
+      memcpy(&numelement, x, sizeof(uint32_t)); // already endian-swapped, if needed
+      return numelement*elemlen + Constants::BAM_TAG_ARRAYBASE_SIZE - 3;
+   }
+   catch (const BamTypeException& ler) {
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR failed to getArrayTagLength()\n"
+         << ler.what() << endl << p << endl;
+      showTagData(cerr);
+      cerr << endl;
+      throw BamTypeException(string(ler.what()) + " Failed getArrayTagLength()");
+   }
+   return 0;
 }
 
 // pTagData at first char of data, for array is at element type char.
@@ -1902,7 +1878,8 @@ bool BamAlignment::SkipToNextTag(char*& pTagData, unsigned int& numBytesParsed) 
       pTagData += dlen; // if string type will be at \0
    }
    catch (logic_error& err) {
-      cerr << __FILE__ << ":" << __LINE__ << ":ERROR " << err.what() << endl;
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR " << err.what() 
+         << " cannot skip to next tag " << endl;
       return false;
    }
    return true;
