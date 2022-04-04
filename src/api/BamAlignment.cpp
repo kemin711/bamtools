@@ -469,10 +469,20 @@ void BamAlignment::fixStaggerGap() {
          // here is a devil in duplicating data: we have to remember to change 
          // the duplicated information, design flaw
          SupportData.NumCigarOperations = CigarData.size();
-         uint8_t edit;
-         GetTag("NM", edit);
+         uint16_t edit=0;
+         try {
+            pair<uint16_t,bool> res = getTag<uint16_t>("NM");
+            if (res.second) edit = res.first;
+         }
+         catch (const BamTypeException& ler) {
+            pair<int,bool> res = getTag<int>("NM");
+            if (res.second) edit = res.first;
+         }
+         if (gaplen > edit) {
+            throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR gap lenth greater than edit");
+         }
          edit -= gaplen;
-         EditTag("NM", "i", edit);
+         EditTag("NM", "C", edit);
          return;
       }
    }
@@ -482,13 +492,6 @@ void BamAlignment::fixStaggerGap() {
 bool BamAlignment::fix1M() {
    if (CigarData.size() < 5) return false;
    bool changed=false;
-   //if (getName() == "S345182753") { // for debug particular read
-   //   cerr << "Need to debug this one\n" << *this << endl;
-   //   cerr << string(60, '-') << endl;
-   //   if (!validCigar()) {
-   //      cerr << "invalid Cigar before trying to fix1M!\n";
-   //   }
-   //}
    for (int i=2; i+2 < getCigarSize(); ++i) {
       if (CigarData[i].getType() == 'M' && CigarData[i].getLength() < 3) 
       { // candidate for doing fixing, imply i-2>-1 && i+2 < CigarData.size()
@@ -774,22 +777,23 @@ void BamAlignment::moveInsertion(int oldloc, int newloc) {
 
 
 pair<int,int> BamAlignment::getMismatchCount() const {
-   int32_t numdiff = 0;
-   if (HasTag("NM")) {
-      try { 
-         GetTag("NM", numdiff);
-      }
-      catch (const BamTypeException& err) {
-         cerr << __FILE__ << ":" << __LINE__ << ":ERROR " 
-            << err.what() << endl;
-         uint32_t num=0;
-         GetTag("NM", num);
-         numdiff=num;
-      }
+   int32_t numdiff = -1;
+   try { // bwa use uint8_t for NM tag, so try this first to
+      // reduce the chance of trying signed integer type
+      pair<uint32_t,bool> res = getTag<uint32_t>("NM");
+      if (res.second) numdiff = res.first;
    }
-   else {
+   catch (const BamTypeException& err) {
+      //cerr << __FILE__ << ":" << __LINE__ << ":ERROR " 
+      //   << err.what() << endl;
+      //uint32_t num=0;
+      pair<int32_t,bool> res = getTag<int32_t>("NM");
+      if (res.second) numdiff = res.first;
+   }
+   if (numdiff == -1) {
       cerr << *this << endl;
-      throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +  ":ERROR No NM tag in bam file");
+      throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) 
+            +  ":ERROR No NM tag in bam alignment " + getName());
    }
    int alnlen=0;
    int indel=0;
@@ -800,29 +804,34 @@ pair<int,int> BamAlignment::getMismatchCount() const {
       else if (cd.Type == 'D' || cd.Type == 'I') {
          indel += cd.Length;
       }
+   }
+   if (indel > numdiff) {
+      throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR inde greater than numdiff");
    }
    return make_pair(numdiff-indel, alnlen);
 }
 
+// if no NM tag then assume 0% identity, could be unaligned read
 float BamAlignment::getNGIdentity() const {
-   int32_t numMis = 0;
-   if (HasTag("NM")) {
-      try {
-         GetTag("NM", numMis);
-      }
-      catch (const BamTypeException& err) {
-         //cerr << __FILE__ << ":" << __LINE__ << ":ERROR "
-         //   << err.what() << endl;
-         uint32_t num=0;
-         GetTag("NM", num);
-         numMis = num;
-      }
+   int32_t numMis = -1;
+   try {
+      pair<uint32_t,bool> res = getTag<uint32_t>("NM");
+      if (res.second) numMis = res.first;
    }
-   else {
+   catch (const BamTypeException& err) {
+      pair<int32_t,bool> res = getTag<int32_t>("NM");
+      if (res.second) numMis = res.first;
+   }
+   if (numMis == -1) {
       cerr << *this << endl;
       //throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +  ":ERROR No NM tag in bam file");
-      cerr  << __FILE__ << ":" << __LINE__  << ":ERROR No NM tag in bam file\n";
+      cerr  << __FILE__ << ":" << __LINE__  << ":ERROR No NM tag in bam alignment\n";
       return 0;
+   }
+   if (numMis < -1) {
+      cerr << *this << endl;
+      cerr << __FILE__ << ":" << __LINE__ << ": numMis=" << numMis << endl; 
+      throw logic_error("check getTag function");
    }
    int alnlen=0;
    int indel=0;
@@ -833,24 +842,26 @@ float BamAlignment::getNGIdentity() const {
       else if (cd.Type == 'D' || cd.Type == 'I') {
          indel += cd.Length;
       }
+   }
+   if (indel > numMis) {
+      throw logic_error("indel greater than total edit distance: " + to_string(numMis));
    }
    return (1-(numMis-indel)/(float)alnlen);
 }
 
 float BamAlignment::getIdentity() const {
-   int32_t numdiff = 0;
-   if (HasTag("NM")) {
-      try {
-         GetTag("NM", numdiff);
-      }
-      catch (const BamTypeException& err) {
-         cerr << __LINE__ << ":ERROR " << err.what() << endl;
-         uint32_t num=0;
-         GetTag("NM", num);
-         numdiff = num;
-      }
+   int32_t numdiff = -1;
+   try {
+      pair<uint32_t,bool> res = getTag<uint32_t>("NM");
+      if (res.second) numdiff = res.first;
    }
-   else {
+   catch (const BamTypeException& err) {
+      //cerr << __LINE__ << ":ERROR " << err.what() << endl;
+      //uint32_t num=0;
+      pair<int32_t,bool> res = getTag<int32_t>("NM");
+      if (res.second) numdiff = res.first;
+   }
+   if (numdiff == -1) {
       // cerr << *this << endl << " has no NM tag assuming no aligned\n";
       return 0;
       //throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +  ":ERROR No NM tag in bam file");
@@ -1156,8 +1167,10 @@ void BamAlignment::showTagData(ostream& ous) const {
 }
 
 char* BamAlignment::findTag(const std::string& tag) {
+   //cerr << "finding tag " << tag << endl;
    char* p = TagData.data();
    while (*p != '\0') {
+      //cerr << "at " << p << endl;
       if (tag[0] == *p && tag[1] == *(p+1)) {
          return p;
       }
@@ -1169,8 +1182,10 @@ char* BamAlignment::findTag(const std::string& tag) {
 // assume tag data is constructed
 const char* BamAlignment::findTag(const std::string& tag) const
 {
+   //cerr << __LINE__ << ": finding tag " << tag << endl;
    const char* p = TagData.data();
    while (*p != '\0') {
+      //cerr << "at " << p << endl;
       if (tag[0] == *p && tag[1] == *(p+1))
          return p;
       p += getTagWidth(p);
@@ -1581,14 +1596,14 @@ bool BamAlignment::IsMateReverseStrand(void) const {
 }
 
 double BamAlignment::getFractionStrand() const {
-   if (HasTag("XO")) {
-      int32_t overlap;
-      GetTag("XO", overlap);
-      if (overlap == getReferenceWidth()) {
+   //int32_t overlap = -1;
+   pair<int32_t,bool> res = getTag<int32_t>("XO");
+   if (res.second) {
+      if (res.first == getReferenceWidth()) {
          return 0;
       }
       else {
-         return 1-(double)overlap/getReferenceWidth();
+         return 1-static_cast<double>(res.first)/getReferenceWidth();
       }
    }
    else {
@@ -1667,7 +1682,7 @@ void BamAlignment::removeTag(const std::string& tag) {
     char* pTag = findTag(tag); // pTag pointer to first char of TAG
     if (pTag == nullptr) {
        //throw BamNotagException("there is no tag " + tag + " to remove");
-       cerr << __FILE__ << ":" << __FILE__ << ":WARN there is no tag " + tag + " to remove\n";
+       //cerr << __FILE__ << ":" << __LINE__ << ":WARN there is no tag " + tag + " to remove\n";
        return;
     }
     size_t tglen = getTagWidth(pTag); // num char of whole tag entry
@@ -3040,8 +3055,8 @@ void BamAlignment::chopDangleBackSoft() {
 pair<vector<int>, vector<string>> BamAlignment::getMDArray() {
    vector<int> mdseg;
    vector<string> mdref;
-   string md;
-   if (GetTag("MD", md)) {
+   auto[md, hasmd] = getTag<string>("MD");
+   if (hasmd) {
       // even position number, odd position letter last 3 digits
       // for bases 00 A, 01 C, 10 G, 11 T, 100 N, first bit del
       string::size_type i=0;
@@ -3584,7 +3599,7 @@ void BamAlignment::updateNMTag(const string& refseq) {
    int b = getPosition();
    int e = GetEndPosition(); // one passed the end [b,e)
    string subseq = refseq.substr(b, e-b);
-   int edit=0;
+   uint8_t edit=0;
    size_t ci=0, ri=0, qi=0, cigarIdx;
    AlignedBases.clear();
    //cout << "reference sequence:\n"
@@ -3627,11 +3642,11 @@ void BamAlignment::updateNMTag(const string& refseq) {
       ++ci;
    }
    //cout << "recalculated edit distance: " << edit << endl;
-   if (HasTag("NM")) {
-      EditTag("NM", "i", edit);
+   if (hasTag("NM")) {
+      EditTag("NM", "C", edit);
    }
    else {
-      AddTag("NM", "i", edit);
+      AddTag("NM", "C", edit);
    }
 }
 
@@ -3641,21 +3656,38 @@ bool BamAlignment::hasSoftclip() const {
 }
 
 int BamAlignment::getASValue() const {
-   if (!HasTag("AS")) return -1;
+   if (!hasTag("AS")) return -1;
    int val=-1;
-   if (!GetTag("AS", val)) {
-      cerr << "Failed to get AS tag vaule returning -1\n";
-      return -1;
+   try {
+      pair<int,bool> res = getTag<int>("AS");
+      if (res.second) val = res.first;
+   }
+   catch (const BamTypeException& ler) {
+      pair<uint32_t,bool> res = getTag<uint32_t>("AS");
+      if (res.second) val = res.first;
    }
    return val;
 }
 
 int BamAlignment::getNMValue() const {
-   if (!HasTag("NM")) return -1;
-   int val=-1;
-   if (!GetTag("NM", val)) {
-      cerr << "Failed to get NM value returning -1\n";
-      return -1;
+   //if (!hasTag("NM")) return -1;
+   int val = -1;
+   try {
+      pair<uint16_t,bool> res = getTag<uint16_t>("NM");
+      if (res.second) val = res.first;
+   }
+   catch (const BamTypeException& ler) {
+      pair<int,bool> res = getTag<int32_t>("NM");
+      if (res.second) val = res.first;
+   }
+   catch (const exception& err) {
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR failed to get NM tag value\n";
+      throw;
+   }
+   if (val < -1) {
+      cerr << *this << endl;
+      cerr << __FILE__ << ":" << __LINE__ << ": val=" << val << endl;
+      throw logic_error("check getTag");
    }
    return val;
 }
@@ -3693,7 +3725,7 @@ pair<int,int> BamAlignment::getMatchBound() const {
 }
 
 int BamAlignment::getMatchedQueryLength() const {
-   if (CigarData.empty() || !HasTag("NM")) return 0;
+   if (CigarData.empty() || !hasTag("NM")) return 0;
    int len=getLength();
    if (CigarData.front().getType() == 'S' || CigarData.front().getType() == 'H') {
       len -= CigarData.front().getLength();

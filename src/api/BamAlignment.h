@@ -562,17 +562,15 @@ class API_EXPORT BamAlignment {
         template<typename T> bool GetTag(const std::string& tag, T& destination) const;
         /**
          * This version should work with both string and atomic types
-         * but should not be used for vector type.
+         * but should not be used for vector type. By checking the 
+         * second field of the returned value, there is not need to 
+         * call hasTag() method. This will speed up the algorithm.
          * @throw exceptions if anything goes wrong: BamNotagException.
-         * @return the value store under tag if everything goes well
+         * @return [value, hastag] tag value store under tag and whether 
+         *    the tag is present or not. If no such tag then hastag field 
+         *    will be false.
          */
-        template<typename T> T getTag(const std::string& tag) const;
-        //template<typename T> T getTag(const char* tag) const {
-        //    return getTag<T>(string(tag));
-        //}
-        //template<typename T> T getTag(const char tag[3]) const {
-        //    return getTag<T>(string(tag));
-        //}
+        template<typename T> pair<T,bool> getTag(const std::string& tag) const;
         /**
          * String specialization.
          * @param destination will clear previous values and fill with tag value.
@@ -585,6 +583,7 @@ class API_EXPORT BamAlignment {
         template<typename T> bool getTag(const std::string& tag, std::vector<T>& destination) const;
         /**
          * @return the underlying tag data as a vector of type T
+         *    If no such tag then return an empty container.
          */
         template<typename T> vector<T> getArrayTag(const std::string& tag) const;
         /**
@@ -2032,7 +2031,7 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
 }
 
 // should not use this for vector version
-template<typename T> inline T BamAlignment::getTag(const std::string& tag) const {
+template<typename T> inline pair<T,bool> BamAlignment::getTag(const std::string& tag) const {
     // skip if alignment is core-only
     if (SupportData.HasCoreOnly || TagData.empty()) {
        throw BamNotagException("Only has core data");
@@ -2040,10 +2039,13 @@ template<typename T> inline T BamAlignment::getTag(const std::string& tag) const
     }
     const char* p = findTag(tag);
     if (p == nullptr) {
-       throw BamNotagException(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Bam tag: " + tag + " not found");
+       //throw BamNotagException(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Bam tag: " + tag + " not found");
+       return make_pair(0, false);
     }
     // p point to first char of TAG
+    //cerr << "p is at " << p << endl;
     p += Constants::BAM_TAG_TAGSIZE;
+    //cerr << "p is at " << p << endl;
     if (!TagTypeHelper<T>::CanConvertFrom(*p)) {
        //cerr << __FILE__ << ":" << __LINE__ << ":ERROR " << tag << " stored type " 
        //   << type << " cannot be converted to " << typeid(T).name() << endl;
@@ -2052,21 +2054,27 @@ template<typename T> inline T BamAlignment::getTag(const std::string& tag) const
              + " in tag " + tag + " to requested type: " + string(typeid(T).name()));
     }
     size_t tagdatalen = getAtomicTagLength(*p);
-    T res;
+    //cerr << "tagatalen=" << tagdatalen << endl;
+    T res=0;
     p += Constants::BAM_TAG_TYPESIZE;
+    //cerr << "p is at " << p << endl;
     memcpy(&res, p, tagdatalen);
-    return res;
+    //cerr << "res=" << res << endl;
+    return make_pair(res, true);
 }
 
-template<> inline string BamAlignment::getTag<string>(const std::string& tag) const {
+template<> inline pair<string,bool> BamAlignment::getTag<string>(const std::string& tag) const {
+    //cerr << "getting tag " << tag << endl;
     // skip if alignment is core-only
     if (SupportData.HasCoreOnly || TagData.empty()) {
        throw BamNotagException("Only has core data");
        // return false;
     }
     const char* p = findTag(tag);
+    //cerr << "now at tag: " << p << endl;
     if (p == nullptr) {
-       throw BamNotagException(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Bam tag: " + tag + " not found");
+       //throw BamNotagException(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Bam tag: " + tag + " not found");
+       return make_pair(string(), false);
     }
     // p point to first char of TAG
     p += Constants::BAM_TAG_TAGSIZE;
@@ -2082,11 +2090,7 @@ template<> inline string BamAlignment::getTag<string>(const std::string& tag) co
     //    throw BamTypeException("Tag: " + tag + " does not hold string data");
     //}
     p += Constants::BAM_TAG_TYPESIZE; // move to data
-    size_t tagdatalen = 0;
-    while (*p != '\0') { ++tagdatalen; ++p; }
-    string res(tagdatalen, '\0');
-    memcpy(res.data(), p, tagdatalen);
-    return res;
+    return make_pair(string(p), true);
 }
 
 /**
@@ -2275,6 +2279,10 @@ inline vector<T> BamAlignment::getArrayTag(const std::string& tag) const {
         throw BamNotagException("Has only core data");
     }
     const char* p = findTag(tag);
+    if (p == nullptr) {
+       //throw BamNotagException("There is no BamTag: " + tag);
+       return vector<T>(); // return empty vector object
+    }
     if (!isValidArrayTag(p)) {
        throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Invalid array tag: " + tag);
     }
