@@ -517,6 +517,13 @@ class API_EXPORT BamAlignment {
          */
         template<typename T> bool AddTag(const std::string& tag, const std::vector<T>& values);
         template<typename T> void addTag(const std::string& tag, const std::vector<T>& values);
+        template<typename T> void addOrReplaceTag(const std::string& tag, const std::vector<T>& values) {
+           if (hasTag(tag)) {
+              removeTag(tag);
+           }
+           addTag(tag, values);
+        }
+
         /** 
          *  Edits a BAM tag field.
          *
@@ -1792,6 +1799,10 @@ inline void BamAlignment::addTag(const std::string& tag, const std::string& type
     memcpy(p, tag.c_str(), Constants::BAM_TAG_TAGSIZE);
     p += Constants::BAM_TAG_TAGSIZE;
     memcpy(p, type.c_str(), Constants::BAM_TAG_TYPESIZE);
+    short typeLen = getAtomicTagLength(*p);
+    if (typeLen != sizeof(T)) {
+       throw logic_error("write more code to deal with addTag type and T not same length");
+    }
     p += Constants::BAM_TAG_TYPESIZE;
     memcpy(p, &value, sizeof(T));
 }
@@ -1925,7 +1936,9 @@ inline void BamAlignment::addTag(const std::string& tag, const std::vector<T>& v
     if (!isValidTagName(tag)) {
         cerr << __FILE__ << ":" << __LINE__ << ":WARN tag " + tag + " TAGSIZE wrong\n";
         throw logic_error("Invalid BamTag name: " + tag);
-        //return false;
+    }
+    if (values.empty()) {
+       throw logic_error("empty values when adding array tag");
     }
     // localize the tag data, work as char pointer type
     char* p = findTag(tag);
@@ -1946,16 +1959,6 @@ inline void BamAlignment::addTag(const std::string& tag, const std::vector<T>& v
     std::memcpy(p, &numElements, sizeof(int32_t)); // 32 bits is 4 bytes
     p += sizeof(int32_t); // now at first element data 
     memcpy(p, values.data(), sizeof(T)*numElements);
-    // add vector elements to tag
-    //for (int i = 0 ; i < numElements; ++i) {
-    //    //const T& value = values.at(i); // no need for at which slows down
-    //    //cerr << "copying value: " << value << endl;
-    //    memcpy(p, &values[i], sizeof(T));
-    //}
-    // store temp buffer back in TagData
-    //const char* newTagData = (const char*)originalTagData.Buffer;
-    //TagData.assign(newTagData, newTagDataLength);
-    //return true;
 }
 
 template<typename T>
@@ -2054,11 +2057,56 @@ template<typename T> inline pair<T,bool> BamAlignment::getTag(const std::string&
              + " in tag " + tag + " to requested type: " + string(typeid(T).name()));
     }
     size_t tagdatalen = getAtomicTagLength(*p);
-    //cerr << "tagatalen=" << tagdatalen << endl;
     T res=0;
-    p += Constants::BAM_TAG_TYPESIZE;
-    //cerr << "p is at " << p << endl;
-    memcpy(&res, p, tagdatalen);
+    if (sizeof(T) > tagdatalen) {
+       char typechar = *p;
+       p += Constants::BAM_TAG_TYPESIZE;
+       cerr << "output data size is larger than stored value\n";
+       if (typechar == Constants::BAM_TAG_TYPE_ASCII ||
+             typechar == Constants::BAM_TAG_TYPE_INT8) 
+       {
+            int8_t x;
+            memcpy(&x, p, sizeof(int8_t));
+            res = x;
+       }
+       else if (typechar == Constants::BAM_TAG_TYPE_UINT8) {
+            uint8_t x;
+            memcpy(&x, p, sizeof(uint8_t));
+            res = x;
+       }
+       else if (typechar == Constants::BAM_TAG_TYPE_INT16) {
+            int16_t x;
+            memcpy(&x, p, sizeof(int16_t));
+            res = x;
+       }
+       else if (typechar == Constants::BAM_TAG_TYPE_UINT16) {
+            uint16_t x;
+            memcpy(&x, p, sizeof(uint16_t));
+            res = x;
+       }
+       else if (typechar == Constants::BAM_TAG_TYPE_INT32) {
+            int32_t x;
+            memcpy(&x, p, sizeof(int32_t));
+            res = x;
+       }
+       else if (typechar == Constants::BAM_TAG_TYPE_UINT32) {
+            uint32_t x;
+            memcpy(&x, p, sizeof(uint32_t));
+            res = x;
+       }
+       else { //if (typechar == Constants::BAM_TAG_TYPE_FLOAT) {
+          assert(typechar == Constants::BAM_TAG_TYPE_FLOAT);
+            float x;
+            memcpy(&x, p, sizeof(float));
+            res = x;
+       }
+    }
+    else {
+      //cerr << "tagatalen=" << tagdatalen << endl;
+      p += Constants::BAM_TAG_TYPESIZE;
+      //cerr << "p is at " << p << endl;
+      memcpy(&res, p, tagdatalen);
+    }
     //cerr << "res=" << res << endl;
     return make_pair(res, true);
 }

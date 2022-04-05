@@ -844,7 +844,8 @@ float BamAlignment::getNGIdentity() const {
       }
    }
    if (indel > numMis) {
-      throw logic_error("indel greater than total edit distance: " + to_string(numMis));
+      cerr << *this << endl;
+      throw logic_error("indel " + to_string(indel) + " greater than total edit distance: " + to_string(numMis));
    }
    return (1-(numMis-indel)/(float)alnlen);
 }
