@@ -635,9 +635,8 @@ class API_EXPORT BamAlignment {
          */
         bool hasTag(const std::string& tag) const;
         /** 
-         * removes a tag. So far this does not work with IGV
-         * After remove got unrecognized tag type error.
-         * Maybe need special coding for removing arrays.
+         * Removes a tag if exists otherwise do nothing. 
+         * If tag does not exist it is fine.
          */
         void removeTag(const std::string& tag);
         /**
@@ -735,11 +734,17 @@ class API_EXPORT BamAlignment {
          * Otherwise just the range of this alignment.
          * </pre>
          * b could be larger than e
+         * Can get the mate alignment length from the MC tag
          */
         std::pair<int,int> getPairedRange() const;
         /**
-         * Same as getPairedRange
+         * Similar to getPairedRange but wihout the informaiton about the
+         * direction of the two reads.
+         *  |==R1==  ==R2==|
+         *  |<------------>|
+         *  b              e
          * Should always be [small, large]
+         * @return [b,e] pair.
          */
         std::pair<int,int> getPairedInterval() const;
 
@@ -881,7 +886,7 @@ class API_EXPORT BamAlignment {
          */
         int32_t getMateReferenceId() const { return MateRefID; }
         /**
-         * @return mate mapped position
+         * @return mate mapped position (left mapping point)
          */
         int32_t getMatePosition() const { return MatePosition; }
         /**
@@ -1376,6 +1381,7 @@ class API_EXPORT BamAlignment {
          bool nearReferenceEnd(int d) const {
             return abs(getReferenceLength() - getEndPosition()) < d;
          }
+         int getMateRefwidth() const;
          /// debug function ///
          void showTagData(ostream& ous) const;
 
@@ -2061,7 +2067,7 @@ template<typename T> inline pair<T,bool> BamAlignment::getTag(const std::string&
     if (sizeof(T) > tagdatalen) {
        char typechar = *p;
        p += Constants::BAM_TAG_TYPESIZE;
-       cerr << "output data size is larger than stored value\n";
+       //cerr << "output data size is larger than stored value\n";
        if (typechar == Constants::BAM_TAG_TYPE_ASCII ||
              typechar == Constants::BAM_TAG_TYPE_INT8) 
        {

@@ -815,7 +815,8 @@ pair<int,int> BamAlignment::getMismatchCount() const {
 float BamAlignment::getNGIdentity() const {
    int32_t numMis = -1;
    try {
-      pair<uint32_t,bool> res = getTag<uint32_t>("NM");
+      //pair<uint32_t,bool> res = getTag<uint32_t>("NM");
+      pair<uint8_t,bool> res = getTag<uint8_t>("NM");
       if (res.second) numMis = res.first;
    }
    catch (const BamTypeException& err) {
@@ -853,7 +854,7 @@ float BamAlignment::getNGIdentity() const {
 float BamAlignment::getIdentity() const {
    int32_t numdiff = -1;
    try {
-      pair<uint32_t,bool> res = getTag<uint32_t>("NM");
+      pair<uint8_t,bool> res = getTag<uint8_t>("NM");
       if (res.second) numdiff = res.first;
    }
    catch (const BamTypeException& err) {
@@ -2012,12 +2013,80 @@ std::pair<int,int> BamAlignment::getPairedRange() const {
    return make_pair(b,e);
 }
 
+// compute the reference length from the MC tag
+int BamAlignment::getMateRefwidth() const {
+   pair<string,bool> mcval = getTag<string>("MC");
+   if (!mcval.second) {
+      cerr << *this << endl << __FILE__ << ":" << __LINE__ 
+         << ": WARN BamAlignment has no MC tag\n";
+      throw runtime_error("BamAlignment has no MC tag");
+   }
+   vector<pair<char,int>> mateCigar = parseCigar(mcval.first);
+   int w =0;
+   for (auto& x : mateCigar) {
+      if (x.first == 'M' || x.first == 'D') {
+         w += x.second;
+      }
+   }
+   return w;
+}
+
 std::pair<int,int> BamAlignment::getPairedInterval() const {
+   if (!mateOnSameReference() || getInsertSize() == 0) {
+      return getInterval();
+   }
+   /*
    pair<int,int> tmp = getPairedRange();
    if (tmp.first > tmp.second) {
       return make_pair(tmp.second, tmp.first);
    }
    return tmp;
+   */
+   int b = getPosition();
+   int b2 = getMatePosition();
+   //if (getQueryName() == "S1464448") {
+   //   cerr << "b=" << b << " b2=" << b2 << " templen=" << getInsertSize() << endl;
+   //}
+   if (isForwardStrand()) { // --R-->
+      if (isMateForwardStrand()) { // both this and mate are forward direction
+         // now figure out which one is on the left (smaller)
+         if (b < b2) { // --R--> --M-->
+           // this is one the left, mate on right
+           return make_pair(b, b2 + getMateRefwidth() - 1);
+         }
+         else { // --M-->  --R-->
+            return make_pair(b2, getEndPosition());
+         }
+      }
+      else { // mate on Reverse strand
+         if (b < b2) { // --R--> <--M--, properly mapped case
+            assert(getInsertSize() > 0);
+            return make_pair(b, b+getInsertSize()-1);
+         }
+         else { // <--M-- --R--> improper head-to-head case
+            return make_pair(b2, getEndPosition());
+         }
+      }
+   }
+   else { // <--R-- this on reverse direction
+      if (isMateForwardStrand()) { // <--R-- --M-->
+         if (b < b2) { // <--R-- --M--> this is left
+            return make_pair(b, b2 + getMateRefwidth() - 1);
+         }
+         else { // --M--> <--R-- Proper pair
+            return make_pair(b2, getEndPosition());
+         }
+      }
+      else { //both this and mate on reverse strand
+         if (b < b2) { // <--R-- <--M--
+            assert(getInsertSize() > 0);
+            return make_pair(b, b2 + getInsertSize() -1);
+         }
+         else { // <--M-- <--R--  this on the right hand side
+            return make_pair(b2,  getEndPosition());
+         }
+      }
+   }
 }
 
 int BamAlignment::getPairedEndPosition() const {

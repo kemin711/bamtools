@@ -859,7 +859,7 @@ FilterTool::FilterTool(void)
     const string inDesc     = "the input BAM file(s)";
     const string listDesc   = "the input BAM file list, one line per file";
     const string outDesc    = "the output BAM file";
-    const string regionDesc = "only read data from this genomic region (see documentation for more details).\n -region chr1  entire reference chr1\n -region chr1:500   overlapping the region starting at chr1:500 and continuing to the end of chr1\n -region chr1:500..1000   overlapping the region starting at chr1:500 and continuing to chr1:1000\n -region chr1:500..chr3:750   overlapping the region starting at chr1:500 and continuing to chr3:750";
+    const string regionDesc = "only read data from this genomic region (see documentation for more details).\n -region chr1  entire reference chr1\n -region chr1:500   overlapping the region starting at chr1:500 and continuing to the end of chr1.\n -region chr1:500..1000   overlapping the region starting at chr1:500 and continuing to chr1:1000.\n -region chr1:500..chr3:750   overlapping the region starting at chr1:500 and continuing to chr3:750";
     const string scriptDesc = "the filter script file (see documentation for more details)";
     const string forceDesc  = "if results are sent to stdout (like when piping to another tool), "
                               "default behavior is to leave output uncompressed. Use this flag to "
