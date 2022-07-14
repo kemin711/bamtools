@@ -1376,6 +1376,9 @@ class API_EXPORT BamAlignment {
          bool nearReferenceEnd(int d) const {
             return abs(getReferenceLength() - getEndPosition()) < d;
          }
+         const string& getReferenceName() const {
+            return rsname[getReferenceId()].first;
+         }
          /// debug function ///
          void showTagData(ostream& ous) const;
 
