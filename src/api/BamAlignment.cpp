@@ -316,9 +316,13 @@ bool BamAlignment::hasICigar() const {
 
 bool BamAlignment::validCigar() const {
    int cigarQL=0;
+   int cigarRL=0;
    for (auto& c : CigarData) {
       if (c.getType() == 'S' || c.getType() == 'M' || c.getType() == 'I') {
          cigarQL += c.getLength();
+      }
+      if (c.getType() == 'M' || c.getType() == 'D') {
+         cigarRL += c.getLength();
       }
    }
    if (cigarQL != getLength()) {
@@ -326,7 +330,12 @@ bool BamAlignment::validCigar() const {
          << cigarQL << " queryLength=" << getLength() << endl;
       cerr << *this << endl;
    }
-   return cigarQL == getLength();
+   if (cigarRL != getReferenceWidth()) {
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR reference length contradict cigar computed: "
+         << cigarRL << endl;
+      cerr << *this << endl;
+   }
+   return cigarQL == getLength() || cigarRL == getReferenceWidth();
 }
 
 bool BamAlignment::sameCigar(const vector<pair<char,int>>& cigar) const {

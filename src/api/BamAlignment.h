@@ -719,6 +719,8 @@ class API_EXPORT BamAlignment {
         /**
          * The distance coverted by the alignment on the reference.
          * Should be the same as the sum of cigar M+D length.
+         * The validCigar() function check the above fact.
+         * @return the match length on reference.
          */
         int getReferenceWidth() const {
            return GetEndPosition(false,false) - getPosition();
@@ -967,6 +969,11 @@ class API_EXPORT BamAlignment {
          */
         bool lackICigar() const;
         bool hasICigar() const;
+        /**
+         * @return true of the reference length (M+D) and query length (M+I) 
+         *   computed from cigar are the same as computed from query length and
+         *   END-BEGIN+1. 
+         */
         bool validCigar() const;
         /**
          * @return the  Cigar operation type as a single char
@@ -1382,8 +1389,15 @@ class API_EXPORT BamAlignment {
             return abs(getReferenceLength() - getEndPosition()) < d;
          }
          int getMateRefwidth() const;
+         /**
+          * must call setRefvector() before using this
+          * function.
+          */
          const string& getReferenceName() const {
-            return rsname[getReferenceId()].first;
+            if (rsname.empty()) {
+               throw runtime_error(string(__func__) + ": empty rsname, may need to call setRefvector()");
+            }
+            return rsname.at(getReferenceId()).first;
          }
          /// debug function ///
          void showTagData(ostream& ous) const;
@@ -1480,6 +1494,9 @@ class API_EXPORT BamAlignment {
         int32_t     Length() const {
            return SupportData.QuerySequenceLength;
         }             
+        /**
+         * @return the query sequence length
+         */
         int32_t     length() const {
            return SupportData.QuerySequenceLength;
         }             
