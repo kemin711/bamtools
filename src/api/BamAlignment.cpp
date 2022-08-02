@@ -256,6 +256,15 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
          }
          ous << t << ":" << tagtype << ":" << uival << "; ";
       }
+      else if (t == "XM" || t == "XW" || t == "XD" || t == "YD" || t == "ZD") {
+         vector<int32_t> tmpv = ba.getArrayTag<int32_t>(t);
+         assert(tmpv.size() > 1);
+         ous << t << ":" << tmpv[0] << ',' << tmpv[1];
+         for (size_t x=2; x < tmpv.size(); x += 2) {
+            ous << '|' << tmpv[x] << ',' << tmpv[x+1];
+         }
+         ous << " ";
+      }
    }
    ous << endl;
 
