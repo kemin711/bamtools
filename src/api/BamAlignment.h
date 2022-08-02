@@ -572,6 +572,10 @@ class API_EXPORT BamAlignment {
          * but should not be used for vector type. By checking the 
          * second field of the returned value, there is not need to 
          * call hasTag() method. This will speed up the algorithm.
+         * The parameter T can be any type that is wider than than
+         * values stores. int32_t can get stored int8_t. So it is
+         * save to use T::int32_t to get all integer types of different
+         * length.
          * @throw exceptions if anything goes wrong: BamNotagException.
          * @return [value, hastag] tag value store under tag and whether 
          *    the tag is present or not. If no such tag then hastag field 
@@ -585,7 +589,8 @@ class API_EXPORT BamAlignment {
          */
         template<typename T> bool GetTag(const std::string& tag, std::vector<T>& destination) const;
         /**
-         * New implementation should be faster
+         * get array tag.
+         * New implementation should be faster.
          */
         template<typename T> bool getTag(const std::string& tag, std::vector<T>& destination) const;
         /**

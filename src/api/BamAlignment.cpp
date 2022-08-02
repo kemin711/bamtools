@@ -226,12 +226,36 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
       }
    }
    */
+   // raw output
    for (const char c : ba.TagData) {
       if (c == '\0') ous << "|";
       else if (isprint(c)) 
          ous << c;
       else 
          ous << '~';
+   }
+   // print integer types
+   for (auto& t : tagNames) {
+      char tagtype;
+      ba.GetTagType(t, tagtype);
+      if (tagtype == 'i' || tagtype == 'c' || tagtype == 's') { // int 32, 16, 8 respectively BamConstants.h define the tag type
+         //int32_t intval; // must use this type, int is wrong
+         //ba.GetTag(t, intval);
+         auto [ival, hastag] = ba.getTag<int32_t>(t);
+         if (!hastag) {
+            throw runtime_error("tag: " + t + " getTag() failed");
+         }
+         ous << t << ":" << tagtype << ":" << ival << "; ";
+      }
+      else if (tagtype == 'I' || tagtype == 'C' || tagtype == 'S') { // BamConstants.h define the tag type
+        // uint32_t intval; // must use this type, int is wrong
+        // ba.GetTag(t, intval);
+         auto [uival, hastag] = ba.getTag<uint32_t>(t);
+         if (!hastag) {
+            throw runtime_error("Failed getTag call on " + t);
+         }
+         ous << t << ":" << tagtype << ":" << uival << "; ";
+      }
    }
    ous << endl;
 
