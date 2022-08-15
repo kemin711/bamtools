@@ -345,14 +345,10 @@ class API_EXPORT BamReader {
          *  @param[in] refName name of reference to look up
         */
         int GetReferenceID(const std::string& refName) const;
-        const string& getReferenceName(int refid) const {
-           const RefVector& rd = getReferenceData();
-           if (refid < 0 || refid >= rd.size()) {
-              throw logic_error("reference id " + itos(refid) + " is invalid");
-           }
-           return rd[refid].getRefname();
-        }
-
+        /**
+         * @return reference name given refid
+         */
+        const string& getReferenceName(int refid) const;
         // ----------------------
         // BAM index operations
         // ----------------------
