@@ -308,7 +308,7 @@ class API_EXPORT BamReader {
          *
          * The index in the vector (RefVector) has a pattern
          * chrM 0, chr1 1, ..., chr22 22, chrX 23, chrY 24.
-         * Not sure how others are names, so you have to
+         * Not sure how others are named, so you have to
          * rely on the index to get the string to be safe.
          * The number after 24 is unreliable.
          *
@@ -345,6 +345,13 @@ class API_EXPORT BamReader {
          *  @param[in] refName name of reference to look up
         */
         int GetReferenceID(const std::string& refName) const;
+        const string& getReferenceName(int refid) const {
+           const RefVector& rd = getReferenceData();
+           if (refid < 0 || refid >= rd.size()) {
+              throw logic_error("reference id " + itos(refid) + " is invalid");
+           }
+           return rd[refid].getRefname();
+        }
 
         // ----------------------
         // BAM index operations

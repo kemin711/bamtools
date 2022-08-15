@@ -199,9 +199,12 @@ class API_EXPORT BamAlignment {
         bool IsDuplicate(void) const;
         bool IsFailedQC(void) const;          // returns true if this read failed quality control
         /**
-         *  @return true if alignment is first mate on paired-end read
-         *  First mate is also first read: Two words meaning the same thing.
-         *  First read usually have better quality than second read.
+         * Mate one is determined by the sequencer operation. It 
+         * read the same read twice. The second mate is reading from
+         * the other strand.
+         * @return true if alignment is first mate on paired-end read
+         * First mate is also first read: Two words meaning the same thing.
+         * First read usually have better quality than second read.
          */
         bool IsFirstMate(void) const;         
         /**
@@ -309,9 +312,8 @@ class API_EXPORT BamAlignment {
            AlignmentFlag &= ~(REVERSE_STRAND);
         }
         /**
-         * There is only two state, cannot be zero.
-         * @return -1 reverse strand, +1 for forward strand, and
-         *      0 for both strand or strand unknown.
+         * There are only two states; cannot be zero.
+         * @return -1 reverse strand, +1 for forward strand; 
          */
         int getStrand() const {
            if (isReverseStrand()) return -1;

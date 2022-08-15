@@ -124,4 +124,10 @@ vector<pair<string,int>> BamReader::getReferenceMetaData() const {
    return res;
 }
 
-
+const string& BamReader::getReferenceName(int refid) const {
+   const RefVector& rd = getReferenceData();
+   if (refid < 0 || refid >= rd.size()) {
+      throw logic_error("reference id " + itos(refid) + " is invalid");
+   }
+   return rd[refid].getRefname();
+}

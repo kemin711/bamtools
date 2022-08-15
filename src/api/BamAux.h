@@ -109,15 +109,22 @@ struct API_EXPORT RefData {
     std::string RefName;    //!< name of reference sequence
     int32_t     RefLength;  //!< length of reference sequence
     
-    //! constructor
-    RefData(const std::string& name = "",
-            const int32_t& length = 0)
-        : RefName(name)
-        , RefLength(length)
+    /** 
+     * default constructor
+     */
+    RefData()
+        : RefName(), RefLength(0)
+    { }
+    RefData(const std::string& name,
+            const int32_t& length)
+        : RefName(name), RefLength(length)
     { }
     pair<string, int32_t> asPair() const {
        return make_pair(RefName, RefLength);
     }
+    /**
+     * @return the reference name
+     */
     const string& getRefname() const {
        return RefName;
     }
