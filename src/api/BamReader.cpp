@@ -126,8 +126,12 @@ vector<pair<string,int>> BamReader::getReferenceMetaData() const {
 
 const string& BamReader::getReferenceName(int refid) const {
    const RefVector& rd = GetReferenceData();
+   if (rd.empty()) {
+      throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR BamReader::GetReferenceData() returned empty object");
+   }
    if (refid < 0 || refid >= static_cast<int>(rd.size())) {
-      throw logic_error("reference id " + to_string(refid) + " is invalid");
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR refid:" << refid << " is invalid\n";
+      throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR reference id " + to_string(refid) + " is invalid");
    }
    return rd[refid].getRefname();
 }
