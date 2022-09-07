@@ -1463,7 +1463,7 @@ string BamAlignment::getStringTag(const std::string& tag) const {
        return string();
     }
     else {
-       pTag += 2;
+       pTag += (BAM_TAG_TAGSIZE + BAM_TAG_TYPESIZE);
        return string(pTag);
     }
     /*
@@ -2090,43 +2090,77 @@ std::pair<int,int> BamAlignment::getPairedInterval() const {
    //   cerr << "b=" << b << " b2=" << b2 << " templen=" << getInsertSize() << endl;
    //}
    if (isForwardStrand()) { // --R-->
+      assert(getInsertSize() > 0);
       if (isMateForwardStrand()) { // both this and mate are forward direction
          // now figure out which one is on the left (smaller)
-         if (b < b2) { // --R--> --M-->
-           // this is one the left, mate on right
-           return make_pair(b, b2 + getMateRefwidth() - 1);
-         }
-         else { // --M-->  --R-->
-            return make_pair(b2, getEndPosition());
-         }
+         //if (b < b2) { // --R--> --M-->
+         //  // this is one the left, mate on right
+         //  return make_pair(b, b2 + getMateRefwidth() - 1);
+         //}
+         //else { // --M-->  --R-->
+         //   return make_pair(b2, getEndPosition());
+         //}
+         return make_pair(min(b,b2), max(getEndPosition(), b2 + getMateRefwidth() - 1));
       }
       else { // mate on Reverse strand
-         if (b < b2) { // --R--> <--M--, properly mapped case
-            assert(getInsertSize() > 0);
-            return make_pair(b, b+getInsertSize()-1);
+         //if (b <= b2) { // --R--> <--M--, properly mapped case
+         //   // special case ==R==>
+         //   //              <=M====
+         //   return make_pair(b, b+getInsertSize()-1);
+         //}
+         //else { // <--M-- --R--> improper head-to-head case
+         //   //return make_pair(b2, getEndPosition());
+         //   return make_pair(b2, b2+getInsertSize()-1);
+         //}
+         int minB=min(b,b2);
+         int maxE = minB + getInsertSize() - 1;
+         if (getEndPosition() > maxE) {
+            //cerr << *this << endl;
+            //cerr << __FILE__ << ":" << __LINE__ << ":WARN: Warning MC tag and InsertSize inconsistent consider fix bug somewhere\n";
+            maxE = getEndPosition();
          }
-         else { // <--M-- --R--> improper head-to-head case
-            return make_pair(b2, getEndPosition());
-         }
+         if (getMatePosition() + getMateRefwidth() - 1 > maxE)
+            maxE = getMatePosition() + getMateRefwidth() - 1;
+         return make_pair(minB, maxE);
       }
    }
    else { // <--R-- this on reverse direction
       if (isMateForwardStrand()) { // <--R-- --M-->
+         assert(getInsertSize() < 0);
+         /*
          if (b < b2) { // <--R-- --M--> this is left
-            return make_pair(b, b2 + getMateRefwidth() - 1);
+            // <==R==
+            //   =M===>
+            //return make_pair(b, b2 + getMateRefwidth() - 1);
+            return make_pair(b, b-getInsertSize()-1);
          }
          else { // --M--> <--R-- Proper pair
-            return make_pair(b2, getEndPosition());
+            //return make_pair(b2, getEndPosition());
+            return make_pair(b2, b2-getInsertSize()-1);
          }
+         */
+         int minB=min(b,b2);
+         if (getEndPosition() + getInsertSize() +1 < minB)
+            minB = getEndPosition() + getInsertSize() +1;
+         int maxE = minB - getInsertSize() - 1;
+         if (getEndPosition() > maxE) {
+            //cerr << *this << endl;
+            //cerr << __FILE__ << ":" << __LINE__ << ":WARN: Warning MC tag and InsertSize inconsistent consider fix bug somewhere\n";
+            maxE = getEndPosition();
+         }
+         if (minB + getMateRefwidth() - 1 > maxE)
+            maxE = minB + getMateRefwidth() - 1;
+         return make_pair(minB, maxE);
       }
       else { //both this and mate on reverse strand
-         if (b < b2) { // <--R-- <--M--
-            assert(getInsertSize() > 0);
-            return make_pair(b, b2 + getInsertSize() -1);
-         }
-         else { // <--M-- <--R--  this on the right hand side
-            return make_pair(b2,  getEndPosition());
-         }
+         //if (b < b2) { // <--R-- <--M--
+         //   assert(getInsertSize() > 0);
+         //   return make_pair(b, b2+getInsertSize() -1);
+         //}
+         //else { // <--M-- <--R--  this on the right hand side
+         //   return make_pair(b2, getEndPosition());
+         //}
+         return make_pair(min(b,b2), max(getEndPosition(), b2 + getMateRefwidth() - 1));
       }
    }
 }

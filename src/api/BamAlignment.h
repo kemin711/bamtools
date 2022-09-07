@@ -1395,6 +1395,13 @@ class API_EXPORT BamAlignment {
          bool nearReferenceEnd(int d) const {
             return abs(getReferenceLength() - getEndPosition()) < d;
          }
+         /**
+          * @return a positive number of how long does the mate cover
+          *   on the reference sequence based on the MC (mate cigar)
+          *   tag value. 
+          * Note: this method is not very efficient since it has to 
+          * get the tag and parse the tag.
+          */
          int getMateRefwidth() const;
          /**
           * must call setRefvector() before using this
