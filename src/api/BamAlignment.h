@@ -1282,6 +1282,9 @@ class API_EXPORT BamAlignment {
          *    from zero for the first cigar element.
          */
         void nextCigar(int& i, int& j, unsigned int& ci) const;
+        /**
+         * @return index from reference to that of query.
+         */
         int indexRef2Query(int ri) const;
         /**
          * Pick the subsequence based on the 0-based index
@@ -1324,9 +1327,13 @@ class API_EXPORT BamAlignment {
         /** 
          * even position number, odd position letter last 3 digits
          * for bases 00 A, 01 C, 10 G, 11 T, 100 N, first bit del
-         * MD:Z:20^A127
+         * MD:Z:20^A127 20 match, A in ref deleted, 127 match
          * MD:Z:108^TTCTAAGGCCAGCTCCTGCACC39 =>108 identical deletion of TT...ACC match of 39
-         * MD tag ^AC to represent deletion of AC in query
+         * MD tag ^AC to represent deletion of ref AC in query
+         * MD: ^A0T means A in ref deleted, followed by ref base T mismatch
+         *      0 is used to separate to consecutive position.
+         *     0G154, 0 match, followed by G ref mismatch, then 154 match
+         *     154G0, 154 match, ref G mismatch, 0 match
          * But insertion in query is not recorded.
          * Difference in base is represented by Base
          * identical residues are represented by number.
@@ -1334,11 +1341,18 @@ class API_EXPORT BamAlignment {
         pair<vector<int>, vector<string>> getMDArray();
         void updateMDTag(const pair<vector<int>, vector<string>>& mdvec);
         /**
+         * Helper method not tested
+         */
+        int countFrontMismatch(int len) const;
+        int countBackMismatch(int len) const;
+        /**
          * Helper method used by trimFront()
          */
         void chopFront(size_t len, int numMismatch);
         /**
          * Helper used by trimBack()
+         * @param numMismatch is the number of mismatch in the region
+         *   to be chopped between query and reference.
          */
         void chopBack(size_t len, int numMismatch);
         /**
