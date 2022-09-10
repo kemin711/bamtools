@@ -3198,7 +3198,7 @@ void BamAlignment::chopDangleBackSoft() {
 // the read should not be longer than 255 nt
 // for longer reads we need to use integer as type
 // the first character being ^ means deletion
-pair<vector<int>, vector<string>> BamAlignment::getMDArray() {
+pair<vector<int>, vector<string>> BamAlignment::getMDArray() const {
    vector<int> mdseg;
    vector<string> mdref;
    auto[md, hasmd] = getTag<string>("MD");
@@ -3223,6 +3223,9 @@ pair<vector<int>, vector<string>> BamAlignment::getMDArray() {
          }
          mdref.push_back(md.substr(b, i-b));
       }
+   }
+   else {
+      cerr << __FILE__ << ":" << __LINE__ << ":WARN no MD tag will return empty object\n";
    }
    return make_pair(mdseg, mdref);
 }
@@ -3588,40 +3591,120 @@ void BamAlignment::chopBack(size_t len, int numMismatch) {
    }
 }
 
-void chopAfter(int idx) {
+void BamAlignment::chopBefore(int idx) {
+   assert(idx > 0); // 0 means chop nothing
+   int ri = getPosition();
+   int qi = 0;
+   vector<CigarOp> newcigar;
+   int inscnt = 0;
+   //size_t c = 0;
+   auto it = CigarData.begin();
+   //while (c < CigarData.size()) {
+   while (it != CigarData.end()) {
+      if (it->getType() == 'S' || it->getType() == 'H') { // will ignore 
+         qi += it->getLength();
+      }
+      //else if (CigarData[c].getType() == 'M') {
+      else if (it->getType() == 'M') {
+         if (ri+static_cast<int>(it->getLength()) > idx) { // idx inside this cigar segment
+            // ri  idx   ri+Cgrlen idx will be the new position
+            // |    |    |
+            // -----=====
+            newcigar.push_back(CigarOp('M', ri + it->getLength() - idx)); // idx will be retained in new object
+            qi += (idx - ri); // advance to postion corresponds to idx
+            ++it;
+            break;
+         }
+         else {
+            // ri ri+Cgrlen idx
+            // |         |  | 
+            // ==========  
+            ri += it->getLength();
+            qi += it->getLength();
+         }
+      }
+      else if (it->getType() == 'I') { // insertion is between postion 
+         inscnt += it->getLength();
+         qi += it->getLength();
+      }
+      else if (it->getType() == 'D') { 
+         if (ri + static_cast<int>(it->getLength()) <= idx) {
+            ri += it->getLength();
+         }
+         else { // idx fall inside deletion of query
+            // alignment cannot end with D state
+            // will not add D to newcigar
+            ++it;
+            throw logic_error("BamAlignment::chopBefore() idx is inside deletion");
+            //break;
+         }
+      } 
+      else { // cigar type N or other not considered
+         throw logic_error("Cigar type: " + string(1, it->getType()) + " not considered in BamAlignment::chopBefore()");
+      }
+      ++it;
+   }
+   while (it != CigarData.end()) {
+      newcigar.push_back(*it);
+      ++it;
+   }
+   // insert size, position will not be affected
+   SupportData.QuerySequenceLength -= qi;
+   QueryBases = QueryBases.substr(qi);
+   Qualities = Qualities.substr(qi);
+   CigarData = std::move(newcigar); // need to update MC tag of mate
+   setPosition(idx); // update position if chopping from head
+   // only need to count D and mismatch from MD tag after idx
+   int mismatchCnt = chopMDBefore(idx) + inscnt; // update MD tag
+   reduceNMTag(mismatchCnt);
+}
+
+
+void BamAlignment::chopAfter(int idx) {
    assert(idx < getEndPosition());
    size_t c = 0;
-   int ri = 0;
+   int ri = getPosition();
    int qi = 0;
    vector<CigarOp> newcigar;
    while (c < CigarData.size()) {
       if (CigarData[c].getType() == 'S' || CigarData[c].getType() == 'H') {
          newcigar.push_back(CigarData[c]);
-         qi += CigarData.getLength();
+         qi += CigarData[c].getLength();
       }
       else if (CigarData[c].getType() == 'M') {
-         if (ri+CigarData[c].getLength() < idx) {
-            newcigar.push_back(CigarData[c]);
+         if (ri+static_cast<int>(CigarData[c].getLength()) <= idx) {
+            // ri ri+cigarlen idx
+            // |            |  |
+            // =============   
             ri += CigarData[c].getLength();
             qi += CigarData[c].getLength();
+            newcigar.push_back(CigarData[c]);
          }
-         else { // ri inside this Cigar segment
+         else { // idx inside this Cigar segment
+            // ri   idx      ri+CigarLen > idx
+            // |     |        |
+            // =======--------
             newcigar.push_back(CigarOp('M', idx-ri+1)); // idx will be retained in new object
+            //ri = idx; // move ri to this location, ri not used no need to do it
+            qi += (idx - ri);
+            ++c;
             break;
          }
       }
       else if (CigarData[c].getType() == 'I') {
-         newcigar.push_back(CigarData[c]);
          qi += CigarData[c].getLength();
+         newcigar.push_back(CigarData[c]);
       }
       else if (CigarData[c].getType() == 'D') { 
-         if (ri + CigarData[c].getLength() < idx) {
+         if (ri + static_cast<int>(getCigarLength(c)) <= idx) {
+            ri += getCigarLength(c);
             newcigar.push_back(CigarData[c]);
-            ri += CigarData[c].getLength();
          }
          else { // idx fall inside deletion of query
             // alignment cannot end with D state
             // will not add D to newcigar
+            ++c;
+            throw logic_error("BamAlignment::chopAfter() idx fall inside D of query sequence");
             break;
          }
       } 
@@ -3630,13 +3713,40 @@ void chopAfter(int idx) {
       }
       ++c;
    }
+   int inscnt=0; // number of query inserted total bases
+   while (c < CigarData.size()) {
+      if (CigarData[c].getType() == 'I')
+         inscnt += CigarData[c].getLength();
+      ++c;
+   }
    // insert size, position will not be affected
    SupportData.QuerySequenceLength = qi+1;
    QueryBases.resize(qi+1);
    Qualities.resize(qi+1);
+   // check last setment is D or I
+   if (newcigar.back().getType() == 'D') {
+      cerr << "warning last segment is D is not permissted will remove\n";
+      newcigar.resize(newcigar.size()-1);
+   }
+   if (newcigar.back().getType() == 'I') {
+      cerr << "Warning last segment is I will be converted to S\n";
+      newcigar.back().setType('S');
+   }
    CigarData = std::move(newcigar);
    // only need to count D and mismatch from MD tag after idx
-   int mismatchCnt = chopMDAfter(idx); // update MD tag
+   int mismatchCnt = chopMDAfter(idx) + inscnt; // update MD tag
+   reduceNMTag(mismatchCnt);
+}
+
+int BamAlignment::chopMDBefore(int idx) {
+   // mdvec second has one fewer element
+   pair<vector<int>, vector<string>> mdvec = getMDArray();
+   Matchdiff mdchopper(std::move(mdvec.first), std::move(mdvec.second));
+   idx -= getPosition(); // convert to 0-index from chromosome index
+   int diff_inhead = mdchopper.removeBefore(idx);
+   string newmdtag = mdchopper.toString();
+   EditTag("MD", "Z", newmdtag);
+   return diff_inhead;
 }
 
 // count the number of mismatch after idx
@@ -3644,48 +3754,27 @@ void chopAfter(int idx) {
 int BamAlignment::chopMDAfter(int idx) {
    // mdvec second has one fewer element
    pair<vector<int>, vector<string>> mdvec = getMDArray();
-   //int i=0;
-   int d = mdvec.first.size() - 1; // index into mdvec.first
-   int miscnt = 0; // mismatch count
-   int i = getEndPosition();
-   while (d > -1 && i > idx) {
-      if (d-1 < 0) {
-         throw logic_error("d out of bound in BamAlignment::chopMDAfter()");
-      }
-      if (i-mdvec.first[d] < idx) { // idx between i-mdvec.first[d] and i
-         // stop here
-         mdvec.first.resize(d+1);
-         mdvec.first.back() -= (i - idx);
-         mdvec.second.resize(d);
-         break;
-      }
-      else { // check to see falls inside mismatched or insert area
-      if (mdvec.second[d-1].front() == '^') {
-         if (len == mdvec.first[d].size()) {
-            throw logic_error("after " + to_string(len) + " is a ref deletion: "
-                  + mdvec.second[d-1]);
-         }
-         if (mdvec.first[d].size() <= len) {
-            len -= mdvec.first[d].size();
-            nummismatch += (mdvec.second[d].size()-1);
-         }
-         else { // left match longer than len done, no mismatch
-            break;
-         }
-      }
-      else {
-         len -= mdvec.first[d].size();
-         if (len < 0) break; // no mismatch
-         if (mdvec.second[d].size() <= len) {
-            nummismatch += mdvec.second[d].size();
-            len -= mdvec.second[d].size();
-         }
-         else len = 0;
-      }
-      ++d;
-   }
+   Matchdiff mdchopper(std::move(mdvec.first), std::move(mdvec.second));
+   idx -= getPosition(); // convert to 0-index from chromosome index
+   int diff_intail = mdchopper.removeAfter(idx);
+   string newmdtag = mdchopper.toString();
+   EditTag("MD", "Z", newmdtag);
+   return diff_intail;
 }
 
+void BamAlignment::reduceNMTag(int diff) {
+   auto [nmval, hasNM] = getTag<int32_t>("NM"); // number of mismatch
+   if (!hasNM) {
+      throw logic_error(string(__func__) + ":ERROR Bam dose not have NM tab");
+   }
+   if (diff > nmval) {
+      throw logic_error(string(__func__) + ":ERROR diff mismatch more than entire NM tag value");
+   }
+   nmval -= diff;
+   if (!EditTag("NM", "i", nmval)) {
+      throw logic_error(string(__func__) + ":ERROR Failed to edit NM tag");
+   }
+}
 
 // len is ref count only
 int BamAlignment::countFrontMismatch(int len) const {
@@ -3698,12 +3787,12 @@ int BamAlignment::countFrontMismatch(int len) const {
          throw logic_error("d out of bound in BamAlignment::countFrontMismatch()");
       }
       if (mdvec.second[d].front() == '^') {
-         if (len == mdvec.first[d].size()) {
+         if (len == static_cast<int>(mdvec.second[d].size())) {
             throw logic_error("after " + to_string(len) + " from left is a ref deletion: "
                   + mdvec.second[d]);
          }
-         if (mdvec.first[d].size() <= len) {
-            len -= mdvec.first[d].size();
+         if (static_cast<int>(mdvec.second[d].size()) <= len) {
+            len -= mdvec.second[d].size();
             nummismatch += (mdvec.second[d].size()-1);
          }
          else { // left match longer than len done, no mismatch
@@ -3711,9 +3800,9 @@ int BamAlignment::countFrontMismatch(int len) const {
          }
       }
       else {
-         len -= mdvec.first[d].size();
+         len -= mdvec.second[d].size();
          if (len <= 0) break; // no mismatch
-         if (mdvec.second[d].size() <= len) {
+         if (static_cast<int>(mdvec.second[d].size()) <= len) {
             nummismatch += mdvec.second[d].size();
             len -= mdvec.second[d].size();
          }
@@ -3737,12 +3826,12 @@ int BamAlignment::countBackMismatch(int len) const {
          throw logic_error("d out of bound in BamAlignment::countBackMismatch()");
       }
       if (mdvec.second[d-1].front() == '^') {
-         if (len == mdvec.first[d].size()) {
+         if (len == static_cast<int>(mdvec.second[d].size())) {
             throw logic_error("after " + to_string(len) + " is a ref deletion: "
                   + mdvec.second[d-1]);
          }
-         if (mdvec.first[d].size() <= len) {
-            len -= mdvec.first[d].size();
+         if (static_cast<int>(mdvec.second[d].size()) <= len) {
+            len -= mdvec.second[d].size();
             nummismatch += (mdvec.second[d].size()-1);
          }
          else { // left match longer than len done, no mismatch
@@ -3750,9 +3839,9 @@ int BamAlignment::countBackMismatch(int len) const {
          }
       }
       else {
-         len -= mdvec.first[d].size();
+         len -= mdvec.second[d].size();
          if (len < 0) break; // no mismatch
-         if (mdvec.second[d].size() <= len) {
+         if (static_cast<int>(mdvec.second[d].size()) <= len) {
             nummismatch += mdvec.second[d].size();
             len -= mdvec.second[d].size();
          }

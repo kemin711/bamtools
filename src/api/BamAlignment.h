@@ -1338,8 +1338,29 @@ class API_EXPORT BamAlignment {
          * Difference in base is represented by Base
          * identical residues are represented by number.
         */ 
-        pair<vector<int>, vector<string>> getMDArray();
+        pair<vector<int>, vector<string>> getMDArray() const;
+        /**
+         * Update the MD tag with the value mdvec
+         */
         void updateMDTag(const pair<vector<int>, vector<string>>& mdvec);
+        int chopMDBefore(int idx);
+        /**
+         * Helper method used by chopAfter()
+         */
+        int chopMDAfter(int idx);
+        /**  
+         * If align is + strand then insertSize also needs to be updated.
+         * This method cannot change that, needs the mate information.
+         * Usually done when both mates are available by the caller.
+         * @param idx is the 0-based chromosome index.
+         */
+        void chopBefore(int idx);
+        /**
+         * Remove alignment after idx, idx will be the last aligned base.
+         * If - strand insert size will be changed.
+         * @param idx is the 0-based index on the reference.
+         */
+        void chopAfter(int idx);
         /**
          * Helper method not tested
          */
@@ -1391,6 +1412,7 @@ class API_EXPORT BamAlignment {
          *  not just the subsequence for this object.
          */
          void updateNMTag(const string& refseq);
+         void reduceNMTag(int diff);
          /**
          * friendly wrapper for better code.
          * @return -1 if no tag

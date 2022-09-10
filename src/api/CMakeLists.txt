@@ -19,6 +19,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # make list of all API source files
 set( BamToolsAPISources
+	  BamAux.cpp
         BamAlignment.cpp
         BamMultiReader.cpp
         BamReader.cpp
