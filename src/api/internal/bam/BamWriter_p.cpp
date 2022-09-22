@@ -102,19 +102,19 @@ void BamWriterPrivate::EncodeQuerySequence(const string& query, string& encodedQ
             case (Constants::BAM_DNA_EQUAL) : nucleotideCode = Constants::BAM_BASECODE_EQUAL; break;
             case (Constants::BAM_DNA_A)     : nucleotideCode = Constants::BAM_BASECODE_A;     break;
             case (Constants::BAM_DNA_C)     : nucleotideCode = Constants::BAM_BASECODE_C;     break;
-            case (Constants::BAM_DNA_M)     : nucleotideCode = Constants::BAM_BASECODE_M;     break;
             case (Constants::BAM_DNA_G)     : nucleotideCode = Constants::BAM_BASECODE_G;     break;
+            case (Constants::BAM_DNA_T)     : nucleotideCode = Constants::BAM_BASECODE_T;     break;
+            case (Constants::BAM_DNA_N)     : nucleotideCode = Constants::BAM_BASECODE_N;     break;
+            case (Constants::BAM_DNA_M)     : nucleotideCode = Constants::BAM_BASECODE_M;     break;
             case (Constants::BAM_DNA_R)     : nucleotideCode = Constants::BAM_BASECODE_R;     break;
             case (Constants::BAM_DNA_S)     : nucleotideCode = Constants::BAM_BASECODE_S;     break;
             case (Constants::BAM_DNA_V)     : nucleotideCode = Constants::BAM_BASECODE_V;     break;
-            case (Constants::BAM_DNA_T)     : nucleotideCode = Constants::BAM_BASECODE_T;     break;
             case (Constants::BAM_DNA_W)     : nucleotideCode = Constants::BAM_BASECODE_W;     break;
             case (Constants::BAM_DNA_Y)     : nucleotideCode = Constants::BAM_BASECODE_Y;     break;
             case (Constants::BAM_DNA_H)     : nucleotideCode = Constants::BAM_BASECODE_H;     break;
             case (Constants::BAM_DNA_K)     : nucleotideCode = Constants::BAM_BASECODE_K;     break;
             case (Constants::BAM_DNA_D)     : nucleotideCode = Constants::BAM_BASECODE_D;     break;
             case (Constants::BAM_DNA_B)     : nucleotideCode = Constants::BAM_BASECODE_B;     break;
-            case (Constants::BAM_DNA_N)     : nucleotideCode = Constants::BAM_BASECODE_N;     break;
             default:
                 const string message = string("invalid base: ") + *pQuery;
                 throw BamException("BamWriter::EncodeQuerySequence", message);
@@ -165,6 +165,10 @@ bool BamWriterPrivate::Open(const string& filename, const string& samHeaderText,
 
 // saves the alignment to the alignment archive
 bool BamWriterPrivate::SaveAlignment(const BamAlignment& al) {
+    //if (!al.validCigar()) {
+    //  cerr << __FILE__ << ":" << __LINE__ << ": invalid cigar when saving\n";
+    //  throw logic_error("cigar is inconsistent with query or reference");
+    //}
     try {
         // if BamAlignment contains only the core data and a raw char data buffer
         // (as a result of BamReader::GetNextAlignmentCore())
@@ -180,11 +184,11 @@ bool BamWriterPrivate::SaveAlignment(const BamAlignment& al) {
         return false;
     }
     catch (exception& err) {
+       cerr << endl << string(50, '!') << endl << al << endl;
        cerr << err.what() << endl;
        cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
-          << " Failed\n";
+          << " Failed to write object inconsistent value.\n";
        throw;
-       //exit(1);
     }
 }
 
@@ -220,7 +224,7 @@ void BamWriterPrivate::WriteAlignment(const BamAlignment& al) {
          queryLength +         // here referring to quality length
          tagDataLength;
     unsigned int blockSize = Constants::BAM_CORE_SIZE + dataBlockSize;
-    if ( m_isBigEndian ) BamTools::SwapEndian_32(blockSize);
+    if (m_isBigEndian) BamTools::SwapEndian_32(blockSize);
     m_stream.Write((char*)&blockSize, Constants::BAM_SIZEOF_INT);
 
     // assign the BAM core data
@@ -247,7 +251,7 @@ void BamWriterPrivate::WriteAlignment(const BamAlignment& al) {
         char* cigarData = new char[packedCigarLength]();
         memcpy(cigarData, packedCigar.data(), packedCigarLength);
         if ( m_isBigEndian ) {
-            for ( size_t i = 0; i < packedCigarLength; ++i )
+                for ( size_t i = 0; i < packedCigarLength; ++i )
                 BamTools::SwapEndian_32p(&cigarData[i]);
         }
         m_stream.Write(cigarData, packedCigarLength);
@@ -255,24 +259,38 @@ void BamWriterPrivate::WriteAlignment(const BamAlignment& al) {
     }
     else
         m_stream.Write(packedCigar.data(), packedCigarLength);
-
     if ( queryLength > 0 ) {
         // write the encoded query sequence
+        //cerr << "encodedQuery.len=" << encodedQuery.size() 
+        //    << " encodedQueryLength=" << encodedQueryLength << endl;
         m_stream.Write(encodedQuery.data(), encodedQueryLength);
+        //cerr << "written to m_stream\n";
         // write the base qualities as phred score (+33)
         char* pBaseQualities = new char[queryLength]();
-        if ( al.Qualities.empty() || ( al.Qualities.size() == 1 && al.Qualities[0] == '*' ) || al.Qualities[0] == (char)0xFF )
+        if (al.Qualities.empty() || (al.Qualities.size() == 1 && al.Qualities[0] == '*') || al.Qualities[0] == (char)0xFF)
             memset(pBaseQualities, 0xFF, queryLength); // if missing or '*', fill with invalid qual
         else {
-            for ( size_t i = 0; i < queryLength; ++i )
-                pBaseQualities[i] = al.Qualities.at(i) - 33; // FASTQ ASCII -> phred score conversion
+            //cerr << " queryLength=" << queryLength << " al.Qualitities.len="
+            //    << al.Qualities.size() << endl;
+#ifdef DEBUG
+            if (queryLength != al.Qualities.size()) {
+                throw logic_error("queryLength " + to_string(queryLength) +
+                        " different from quality length " + to_string(al.Qualities.size()));
+            }
+#endif
+            for ( size_t i = 0; i < queryLength; ++i ) {
+                //pBaseQualities[i] = al.Qualities.at(i) - 33; // FASTQ ASCII -> phred score conversion
+                pBaseQualities[i] = al.Qualities[i] - 33; // FASTQ ASCII -> phred score conversion
+            }
         }
         m_stream.Write(pBaseQualities, queryLength);
         //std::cout << __FILE__ << ":" << __LINE__ << ":" << __func__
         //   << " pBaseQualities: " << pBaseQualities << endl;
         delete[] pBaseQualities;
     }
+    //cerr << __LINE__ << ": writting tag data\n";
     // write the tag data
+    try {
     if (m_isBigEndian) {
         char* tagData = new char[tagDataLength]();
         memcpy(tagData, al.TagData.data(), tagDataLength);
@@ -354,6 +372,11 @@ void BamWriterPrivate::WriteAlignment(const BamAlignment& al) {
     }
     else
         m_stream.Write(al.TagData.data(), tagDataLength);
+    }
+    catch(const exception& err) {
+       cerr << __LINE__ << ": faied to write tag data\n" << err.what() << endl;
+       throw;
+    }
 }
 
 void BamWriterPrivate::WriteCoreAlignment(const BamAlignment& al) {

@@ -47,12 +47,12 @@ INCLUDE(CPack)
 set( EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin" )
 set( LIBRARY_OUTPUT_PATH    "${CMAKE_SOURCE_DIR}/lib" )
 
-#set(CMAKE_BUILD_TYPE "Debug")
+set(CMAKE_BUILD_TYPE "Debug")
 # to use the release mode
 # cmake . -DCMAKE_BUILD_TYPE=Release
 
 # define compiler flags for all code
-set(CMAKE_BUILD_TYPE Release)
+#set(CMAKE_BUILD_TYPE Release)
 #set(CMAKE_BUILD_TYPE RelWithDebInfo)
 #set( CMAKE_BUILD_TYPE Debug )
 #set(CMAKE_CXX_FLAGS "-g -std=c++11 -Wall")
