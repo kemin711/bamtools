@@ -1041,28 +1041,21 @@ class API_EXPORT BamAlignment {
         void fixStaggerGap();
         /**
          * Fix cigar with pattern like 57M1I1M1I69M 1M flank I or D
+         * After this operation MD tag will be invalid. Need the
+         * reference sequence to recalculate this tag. NM value is
+         * also approximate. If want to be accurate, also need to
+         * recalculate.
+         * In the case of 15S2M2D59M, 57M2D1M23S, 15S2M2I59M, 95M1I2M15S,
+         * the estimated MD tag may be close.
+         * In the case of ...57M1I1M1I69M... editing MD tag is almost
+         * impossible. So has to be recomputed.
          */
         bool fix1M();
         /**
          * will convert 12I135M into 12S135M
+         * Change ending I to S
          */
-        void fixCigarError() {
-            if (getCigarType(0) == 'I') {
-               CigarData[0].setType('S');
-            }
-            else if (getCigarType(0) == 'S' && getCigarType(1) == 'I') {
-               CigarData[0].expand(getCigarLength(1));
-               CigarData.erase(CigarData.begin()+1);
-            }
-            if (CigarData.back().getType() == 'I') {
-               CigarData.back().setType('S');
-            }
-            else if (CigarData.size() > 2 && CigarData.back().getType() == 'S'
-                  && getCigarType(CigarData.size()-2) == 'I') {
-               CigarData.back().expand(getCigarLength(CigarData.size()-2));
-               CigarData.erase(CigarData.begin()+CigarData.size()-2);
-            }
-        }
+        void fixCigarError();
 
         /**
          * @return true if start with softclip
@@ -1125,6 +1118,12 @@ class API_EXPORT BamAlignment {
          *   Soft clipped regions are not counted.
          */
         float getIdentity() const;
+        /**
+         * @return a normalized score comparable between different alignments.
+         */
+        float getScore() const {
+           return getIdentity() * getAlignLength();
+        }
         /**
          * Same as horizontal coverage of the query.
          * @return the portion of aligned query sequence.
@@ -1295,6 +1294,10 @@ class API_EXPORT BamAlignment {
            setCigarData(cd);
         }
         /**
+         * @return the sum of M,D,I segment length
+         */
+        int getAlignLength() const;
+        /**
          * @param materefid Mate reference id, set to -1 if mate unmapped
          */
         void setMateRefID(int32_t materefid)  {  MateRefID = materefid; } 
@@ -1306,11 +1309,11 @@ class API_EXPORT BamAlignment {
         void setMatePosition(int32_t matepos) { MatePosition = matepos; } 
         /**
          * Sets the insert size which is the 
-         * length of the template.
+         * length of the template. For forward strand, it is positive,
+         * for reverse strand it is negative. This function will automaticall
+         * adjust the sign of the value if the user did it wrong.
          */
-        void setInsertSize(int32_t insize) { 
-           InsertSize = insize; 
-        }  
+        void setInsertSize(int32_t insize); 
         /////// end of setter methods ///////
         //
         // mutation functions

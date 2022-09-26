@@ -545,115 +545,197 @@ void BamAlignment::fixStaggerGap() {
 }
 
 // make this also fix stagger M left and right different
+// problem, this will not be able to update MD to make it consistent
+// with the cigar string.
 bool BamAlignment::fix1M() {
-   if (CigarData.size() < 5) return false;
-   bool changed=false;
-   for (int i=2; i+2 < getCigarSize(); ++i) {
-      if (CigarData[i].getType() == 'M' && CigarData[i].getLength() < 3) 
-      { // candidate for doing fixing, imply i-2>-1 && i+2 < CigarData.size()
-         //cerr << " i=" << i << " id fix1M candidate\n";
-         if (CigarData[i-1].getType() == CigarData[i+1].getType()) { // same ins or del
-            if (CigarData[i-1].getType() == 'I' || CigarData[i-1].getType() == 'D') {
-               //int nmvalue = getNMValue();
-               uint32_t nmvalue = getNMValue();
-               if (getCigarType(i-2) == 'M') { // merge 1M with previous M
-                  // the last segment could be S  MD1MS is fine, last done no need M
-                  nmvalue += getCigarLength(i);
-                  CigarData[i-2].expand(getCigarLength(i));
-                  CigarData[i-1].expand(getCigarLength(i+1));
-                  CigarData.erase(CigarData.begin()+i, CigarData.begin()+i+2);
-                  changed=true;
-               }
-               else if (CigarData[i+2].getType() == 'M') {
-                  nmvalue += getCigarLength(i);
-                  CigarData[i+2].expand(getCigarLength(i));
-                  CigarData[i+1].expand(CigarData[i-1].getLength());
-                  CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+1);
-                  changed=true;
-               }
-               else {
-                  cerr << __FILE__ << ":" << __LINE__ << ":WARN Cannot fix 1M somthing is wrong!\n";
-                  throw runtime_error("failed to fix1M");
-               }
-               //EditTag("NM", "i", nmvalue);
-               if (nmvalue < UINT8_MAX) 
-                  EditTag("NM", "C", nmvalue);
-               else {
-                  throw runtime_error("nmvalue is greater than UINT8_MAX");
-               }
-               SupportData.NumCigarOperations = CigarData.size();
+   /*
+   short int numseg=CigarData.size();
+   if (startWithSoftclip()) --numseg;
+   if (endWithSoftclip()) --numseg;
+   if (numseg < 5) 
+      return false;
+      */
+   if (getCigarSize() < 4) return false;
+   //bool changed=false;
+   int oldnm=getNMValue();
+   //int nmvalue=getNMValue();
+   int nmvalue=oldnm;
+   if (getCigarType(0) == 'S' && getCigarType(1) == 'M' && getCigarType(2) == 'D' && getCigarType(3) == 'M') {
+      // 15S2M2D59M...
+      if (getCigarLength(1) < 3) { // approximation, we assum 1M is mismatch to new location
+         int Lm = getCigarLength(1);
+         int Ld = getCigarLength(2);
+         // to avoid to recompute idnentity
+         if (hasTag("MD")) { // do approximate fixing of MD could be only off by 1
+            // same is try for NM tag
+            pair<vector<int>,vector<string>> mdarr = getMDArray();
+            assert(mdarr.second.front().front() == '^');
+            if (Lm >= Ld) { // Lm >= Ld
+               mdarr.first.front() = Lm - Ld;
+               mdarr.second.front() = mdarr.second.front().substr(1); // remove ^
             }
-            //cerr << "fixed 1M\n";
+            else { // Lm < Ld
+               mdarr.first.front() = 0;
+               mdarr.second.front() = mdarr.second.front().substr(Ld-Lm+1); // remove ^
+            }
+         }
+         CigarData[3].expand(getCigarLength(1));
+         CigarData.erase(CigarData.begin()+1, CigarData.begin()+3);
+         nmvalue += Lm;
+      }
+   }
+   else if (getCigarType(0) == 'S' && getCigarType(1) == 'M' && getCigarType(2) == 'I' && getCigarType(3) == 'M') {
+      // 15S2M1I59M...
+      if (getCigarLength(1) < 3) { // approximation, we assum 1M is mismatch to new location
+         // to avoid to recompute idnentity
+         // not sure MD use 0 padding for 'I' or not?
+         // I state will not change the MD string, so can ignore it
+         nmvalue += getCigarLength(1);
+         CigarData[3].expand(getCigarLength(1));
+         CigarData[0].expand(getCigarLength(2)); // I merge with S
+         CigarData.erase(CigarData.begin()+1, CigarData.begin()+3);
+      }
+   }
+   else if (getCigarType(getCigarSize()-1) == 'S' && getCigarType(getCigarSize()-2) == 'M' 
+         && getCigarType(getCigarSize()-3) == 'D' && getCigarType(getCigarSize()-4) == 'M') 
+   {
+      // 57M2D1M23S
+      if (getCigarLength(getCigarSize()-2) < 3) { // approximation, we assum 1M is mismatch to new location
+         // to avoid to recompute idnentity
+         int Lm = getCigarLength(getCigarSize()-2);
+         int Ld = getCigarLength(getCigarSize()-3);
+         if (hasTag("MD")) { // do approximate fixing of MD could be only off by 1
+            // same is try for NM tag
+            pair<vector<int>,vector<string>> mdarr = getMDArray();
+            assert(mdarr.second.back().front() == '^');
+            if (Lm >= Ld) { // Lm >= Ld
+               mdarr.first.back() = Lm - Ld;
+               mdarr.second.front() = mdarr.second.back().substr(1); // remove ^
+            }
+            else { // Lm < Ld
+               mdarr.first.front() = 0;
+               mdarr.second.front() = mdarr.second.front().substr(Ld-Lm+1); // remove ^
+            }
+         }
+         CigarData[getCigarSize()-4].expand(getCigarLength(getCigarSize()-2));
+         CigarData.erase(CigarData.begin()+getCigarSize()-3, CigarData.begin()+getCigarSize()-1);
+         nmvalue += Lm;
+      }
+   }
+   else if (getCigarType(getCigarSize()-1) == 'S' && getCigarType(getCigarSize()-2) == 'M' 
+         && getCigarType(getCigarSize()-3) == 'I' && getCigarType(getCigarSize()-4) == 'M') 
+   {
+      if (getCigarLength(getCigarSize()-2) < 3) { // approximation, we assum 1M is mismatch to new location
+         // to avoid to recompute idnentity
+         // not sure MD use 0 padding for 'I' or not?
+         // I state will not change the MD string, so can ignore it
+         nmvalue += getCigarLength(getCigarSize()-2);
+         CigarData[3].expand(getCigarLength(getCigarSize()-2));
+         CigarData[getCigarSize()-1].expand(getCigarLength(getCigarSize()-3));
+         CigarData.erase(CigarData.begin()+getCigarSize()-3, CigarData.begin()+getCigarSize()-1);
+      }
+   }
+   if (getCigarSize() < 5) {
+      if (oldnm != nmvalue) {
+         EditTag("NM", "C", static_cast<uint8_t>(nmvalue)); 
+         SupportData.NumCigarOperations = CigarData.size();
+         clearAlignedBases();
+         return true;
+      }
+      return false;
+   }
+   // Check for M_I/D_M_I/D_M case
+   for (int i=2; i+2 < getCigarSize(); ++i) {
+      if (getCigarType(i) == 'M' && getCigarType(i-2) == 'M' 
+            && getCigarType(i+2) == 'M' && getCigarLength(i) < 3) 
+      { 
+         if (getCigarType(i-1) == getCigarType(i+1) && 
+                  (getCigarType(i-1) == 'D' && getCigarType(i-1) == 'I')) 
+         {
+            nmvalue += getCigarLength(i);
+            // same I or D, will not recompute MD. Almost impossible.
+            if (getCigarLength(i-2) > getCigarLength(i+2)) { // merge 1M with Left M longer
+               CigarData[i-2].expand(getCigarLength(i));
+               CigarData[i-1].expand(getCigarLength(i+1));
+               CigarData.erase(CigarData.begin()+i, CigarData.begin()+i+2);
+            }
+            else { // M at i+2 same or longer 
+               CigarData[i+2].expand(getCigarLength(i));
+               CigarData[i+1].expand(CigarData[i-1].getLength());
+               CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+1);
+            }
          }
          else if (((getCigarType(i-1) == 'I' && getCigarType(i+1) == 'D') ||
-                     (getCigarType(i-1) == 'D' && getCigarType(i+1) == 'I')) &&
-               getCigarType(i-2) == 'M' && getCigarType(i+2) == 'M')
+                     (getCigarType(i-1) == 'D' && getCigarType(i+1) == 'I'))) 
          { // M[DI]M[ID]M
-            //cerr << "old cigar: ";
-            //for (auto& c : CigarData) {
-            //   cerr << c.getLength() << c.getType();
-            //}
-            //cerr << endl;
-            uint32_t nmvalue = getNMValue();
-            if (getCigarLength(i-1) < getCigarLength(i+1)) {
-               CigarData[i-2].expand(getCigarLength(i-1) + getCigarLength(i));
-               CigarData[i+1].setLength(getCigarLength(i+1) - getCigarLength(i-1));
-               nmvalue += (getCigarLength(i) - getCigarLength(i-1));
+            int lenL=getCigarLength(i-1); // for visual effect and easy reading of code
+            int lenR=getCigarLength(i+1);
+            int lenC=getCigarLength(i); // center
+            if (lenL < lenR) {
+               nmvalue += (lenC - lenL);
+               CigarData[i-2].expand(lenC + lenL);
+               CigarData[i+1].setLength(lenR - lenL);
                CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+1);
                // erase [DI]M 2 segments to the left of i
-               SupportData.NumCigarOperations -= 2;
+               //SupportData.NumCigarOperations -= 2;
             }
-            else if (getCigarLength(i-1) > getCigarLength(i+1)) {
-               CigarData[i+2].expand(getCigarLength(i+1) + getCigarLength(i));
-               CigarData[i-1].setLength(getCigarLength(i-1) - getCigarLength(i+1));
-               nmvalue += (getCigarLength(i) - getCigarLength(i+1));
+            else if (lenL > lenR) {
+               nmvalue += (lenC - lenR);
+               CigarData[i+2].expand(lenR + lenC);
+               CigarData[i-1].setLength(lenL -lenR);
                CigarData.erase(CigarData.begin()+i, CigarData.begin()+i+2);
                // erase M[ID] 2 segments to the right of i
-               SupportData.NumCigarOperations -= 2;
+               //SupportData.NumCigarOperations -= 2;
             }
             else { // lengths of segment i-1 and i+1 are identical
-               CigarData[i-2].expand(getCigarLength(i) + getCigarLength(i+1) + getCigarLength(i+2));
-               nmvalue += getCigarLength(i) - getCigarLength(i+1);
-               SupportData.NumCigarOperations -= 4;
-               if ((int)CigarData.size() == i+3) {
-                  CigarData.resize(getCigarSize() - 4);
-               }
-               else if ((int)CigarData.size() > i+3) {
-                  CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+3);
-               }
-               else {
-                  throw logic_error("cigar segment too few");
-               }
+               nmvalue += (lenC - lenL);
+               CigarData[i-2].expand(lenC + lenL + getCigarLength(i+2));
+               CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+3);
             }
-            if (nmvalue < UINT8_MAX) {
-               EditTag("NM", "i", nmvalue); // approximate, exact computation too expensive
-            }
-            else {
-               throw runtime_error("nmvalue greater than UMI8_MAX");
-            }
-            changed=true;
-            //cerr << "fixed stagger: ";
-            //for (auto& c : CigarData) {
-            //   cerr << c.getLength() << c.getType();
-            //}
-            //cerr << endl;
          }
       }
    }
-   if (changed && !validCigar()) { // only check if changed
-      cerr << __FILE__ << ":" << __LINE__ << ":ERROR CigarData and len mismatch\n" << *this << endl;
-      throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR CigarData and query sequence length does not match");
+   if (oldnm != nmvalue) {
+      if (nmvalue > -1 && nmvalue < UINT8_MAX) {
+         //EditTag("NM", "i", nmvalue); // approximate, exact computation too expensive
+         EditTag("NM", "C", static_cast<uint8_t>(nmvalue)); // approximate, exact computation too expensive
+         SupportData.NumCigarOperations = CigarData.size();
+         clearAlignedBases();
+      }
+      else {
+         cerr << *this << endl;
+         cerr << __FILE__ << ":" << __LINE__ << ": nmvalue=" << nmvalue << " too big\n";
+         throw logic_error("nmvalue " + to_string(nmvalue) + " greater than UMI8_MAX");
+      }
+      /* Will create invalid object for this operation
+      if (!validCigar()) { // only check if changed
+         cerr << __FILE__ << ":" << __LINE__ << ":ERROR CigarData and len mismatch\n" << *this << endl;
+         throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR CigarData and query sequence length does not match");
+      }
+      */
+      return true;
    }
-   return changed;
+   return false;
 }
 
-/* must be inline for performance
 void BamAlignment::fixCigarError() {
+   if (CigarData.empty()) return;
    if (getCigarType(0) == 'I') {
       CigarData[0].setType('S');
    }
+   else if (getCigarType(0) == 'S' && getCigarType(1) == 'I') {
+      CigarData[0].expand(getCigarLength(1));
+      CigarData.erase(CigarData.begin()+1);
+   }
+   if (CigarData.back().getType() == 'I') {
+      CigarData.back().setType('S');
+   }
+   else if (CigarData.size() > 2 && CigarData.back().getType() == 'S'
+         && getCigarType(CigarData.size()-2) == 'I') {
+      CigarData.back().expand(getCigarLength(CigarData.size()-2));
+      CigarData.erase(CigarData.begin()+CigarData.size()-2);
+   }
 }
-*/
 
 void BamAlignment::moveDeletion(int oldloc, int newloc) {
    assert(oldloc != newloc);
@@ -973,6 +1055,12 @@ void BamAlignment::fillQuality(int score) {
       }
    }
 }
+
+void BamAlignment::setInsertSize(int32_t insize) { 
+   InsertSize = insize; 
+   if (isReverseStrand() && InsertSize > 0)
+      InsertSize = -InsertSize;
+}  
 
 /*! \fn bool BamAlignment::BuildCharData(void)
     \brief Populates alignment string fields (read name, bases, qualities, tag data).
@@ -2161,7 +2249,13 @@ std::pair<int,int> BamAlignment::getPairedInterval() const {
    }
    else { // <--R-- this on reverse direction
       if (isMateForwardStrand()) { // <--R-- --M-->
-         assert(getInsertSize() < 0);
+         //assert(getInsertSize() < 0);
+         if (getInsertSize() > 0) { // zero is acepted, must be negative
+            cerr << *this << endl;
+            cerr << __LINE__ << ": <--R-- --M--> negative read should have - insert size\n";
+            throw logic_error("negative strand should have negative insert size " 
+                  + to_string(getInsertSize()));
+         }
          /*
          if (b < b2) { // <--R-- --M--> this is left
             // <==R==
@@ -3343,6 +3437,13 @@ void BamAlignment::updateMDTag(const pair<vector<int>, vector<string>>& mdvec) {
 // for debug
 //void BamAlignment::recalMD(const string& refsq, mutex& mtx) {
 void BamAlignment::recalMD(const string& refsq) {
+   //if (getName() == "S52968595") {
+   //   cerr << refsq.substr(getPosition(), getReferenceWidth()) << endl
+   //      << getQueryBases() << endl;
+   //}
+#ifdef DEBUG
+   float idenBefore = getIdentity();
+#endif
    vector<int> matchPart;
    vector<string> mismatchPart;
    int matchcnt=0; int mismatchcnt=0;
@@ -3411,11 +3512,15 @@ void BamAlignment::recalMD(const string& refsq) {
       }
       ++c;
    }
+#ifdef DEBUG
    float iden = static_cast<float>(matchcnt)/(matchcnt+mismatchcnt);
-   if (iden < 0.75) {
-      cerr << __FILE__ << ":" << ": identity=" << iden << " too low after MD recalculation\n";
-      throw logic_error("MD compuation need further testing");
+   if (abs(iden - idenBefore) > 0.04) {
+      cerr << *this << endl;
+      cerr << __FILE__ << ":" << __LINE__ << ": before after identity=" << idenBefore << "," << iden 
+         << " mismatch=" << mismatchcnt << " diff too much\n";
+      throw logic_error("MD compuation maybe wrong");
    }
+#endif
    if (matchPart.size() == mismatchPart.size()) {
       // need padding
       matchPart.push_back(0);
@@ -3880,8 +3985,8 @@ void BamAlignment::chopBefore(int idx) {
       cerr << *this;
       throw logic_error("invalid cigar after chopBefore operation()");
    }
-   if (!refwidthAgreeWithMD()) {
-      cerr << *this;
+   if (!valid()) {
+      cerr << *this << __FILE__ << ":" << __LINE__ << ": invalid bam after " << __func__ << endl;
       throw logic_error("bad MD after chopBefore()");
    }
 }
@@ -3991,8 +4096,9 @@ void BamAlignment::chopAfter(int idx) {
    //if (getName() == "S858") {
    //   cerr << *this << "  at end of chopAfter()\n";
    //}
-   if (!refwidthAgreeWithMD()) {
-      throw logic_error("bad MD at end of chopAfter()");
+   if (!valid()) {
+      cerr << *this << __FILE__ << ":" << __LINE__ << ": invalid bam after " << __func__ << endl;
+      throw logic_error("invalid bam end of chopAfter()");
    }
 }
 
@@ -4462,5 +4568,11 @@ void BamAlignment::makeUnmapped() {
    removeTag("NM"); removeTag("MD"); removeTag("MC");
 }
 
-
-
+int BamAlignment::getAlignLength() const {
+   int res=0;
+   for (auto& c : CigarData) {
+      if (c.getType() != 'S' && c.getType() != 'H') 
+         res += c.getLength();
+   }
+   return res;
+}
