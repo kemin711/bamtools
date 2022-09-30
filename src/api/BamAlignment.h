@@ -922,6 +922,7 @@ class API_EXPORT BamAlignment {
          * @return mate mapped position (left mapping point)
          */
         int32_t getMatePosition() const { return MatePosition; }
+        int getMateEndPostion() const;
         /**
          * @return the strand as a single char + or -
          */
@@ -939,11 +940,10 @@ class API_EXPORT BamAlignment {
         /**
          * If read is unpaired, the insert size is also zero.
          * @return length of the template positive for
-         *    plus strand mate and negative for minus strand mate.
+         *    first segment (left most) mate and negative for last (right most)mate.
          *    If the two reads map to different references then
          *    the insert size is set to zero.
-         *
-         *  BamWriter use the InsertSize directly for output.
+         * Note: BamWriter use the InsertSize directly for output.
          */
         int32_t getInsertSize() const { 
            return InsertSize; 
@@ -1329,7 +1329,8 @@ class API_EXPORT BamAlignment {
          * @param ci is the index for the cigar segment. Start
          *    from zero for the first cigar element.
          */
-        void nextCigar(int& i, int& j, unsigned int& ci) const;
+        //void nextCigar(int& i, int& j, unsigned int& ci) const;
+        void nextCigar(int& i, int& j, int& ci) const;
         /**
          * @return index from reference to that of query.
          */
@@ -1368,6 +1369,7 @@ class API_EXPORT BamAlignment {
         /**
          * The position is followed by a insertion of particular
          *   sequence.
+         * @param ri is the reference index.
          * @param seq is the sequence of last Base of M
          *   plus the entire bases of I.
          */
@@ -1523,6 +1525,12 @@ class API_EXPORT BamAlignment {
           */
          int getMateRefwidth() const;
          /**
+            * Try to calucate mate reference width. If could not then return -1
+            */
+         int getMateReferenceWidth() {
+            return getMateRefwidth();
+         }
+         /**
           * must call setRefvector() before using this
           * function.
           */
@@ -1541,6 +1549,7 @@ class API_EXPORT BamAlignment {
           * tag: NM, MD, MC removed
           */
          void makeUnmapped();
+         void makeMateUnmapped();
          int32_t     Length() const {
            return SupportData.QuerySequenceLength;
          }             
@@ -1822,7 +1831,6 @@ class API_EXPORT BamAlignment {
           * default 3
           */
          static int GAP_CUT; // = 3;
-
 
     // internal data member
     private:

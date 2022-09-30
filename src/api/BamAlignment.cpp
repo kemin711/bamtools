@@ -546,7 +546,7 @@ void BamAlignment::fixStaggerGap() {
 
 // make this also fix stagger M left and right different
 // problem, this will not be able to update MD to make it consistent
-// with the cigar string.
+// with the cigar string. will leave MD unchanged thus invalid
 bool BamAlignment::fix1M() {
    /*
    short int numseg=CigarData.size();
@@ -564,8 +564,9 @@ bool BamAlignment::fix1M() {
       // 15S2M2D59M...
       if (getCigarLength(1) < 3) { // approximation, we assum 1M is mismatch to new location
          int Lm = getCigarLength(1);
-         int Ld = getCigarLength(2);
+         //int Ld = getCigarLength(2);
          // to avoid to recompute idnentity
+         /* fixing MD is almost impossible
          if (hasTag("MD")) { // do approximate fixing of MD could be only off by 1
             // same is try for NM tag
             pair<vector<int>,vector<string>> mdarr = getMDArray();
@@ -579,6 +580,7 @@ bool BamAlignment::fix1M() {
                mdarr.second.front() = mdarr.second.front().substr(Ld-Lm+1); // remove ^
             }
          }
+         */
          CigarData[3].expand(getCigarLength(1));
          CigarData.erase(CigarData.begin()+1, CigarData.begin()+3);
          nmvalue += Lm;
@@ -603,7 +605,8 @@ bool BamAlignment::fix1M() {
       if (getCigarLength(getCigarSize()-2) < 3) { // approximation, we assum 1M is mismatch to new location
          // to avoid to recompute idnentity
          int Lm = getCigarLength(getCigarSize()-2);
-         int Ld = getCigarLength(getCigarSize()-3);
+         //int Ld = getCigarLength(getCigarSize()-3);
+         /*
          if (hasTag("MD")) { // do approximate fixing of MD could be only off by 1
             // same is try for NM tag
             pair<vector<int>,vector<string>> mdarr = getMDArray();
@@ -617,6 +620,7 @@ bool BamAlignment::fix1M() {
                mdarr.second.front() = mdarr.second.front().substr(Ld-Lm+1); // remove ^
             }
          }
+         */
          CigarData[getCigarSize()-4].expand(getCigarLength(getCigarSize()-2));
          CigarData.erase(CigarData.begin()+getCigarSize()-3, CigarData.begin()+getCigarSize()-1);
          nmvalue += Lm;
@@ -697,7 +701,6 @@ bool BamAlignment::fix1M() {
    }
    if (oldnm != nmvalue) {
       if (nmvalue > -1 && nmvalue < UINT8_MAX) {
-         //EditTag("NM", "i", nmvalue); // approximate, exact computation too expensive
          EditTag("NM", "C", static_cast<uint8_t>(nmvalue)); // approximate, exact computation too expensive
          SupportData.NumCigarOperations = CigarData.size();
          clearAlignedBases();
@@ -976,13 +979,14 @@ float BamAlignment::getNGIdentity() const {
       cerr << *this << endl;
       //throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) +  ":ERROR No NM tag in bam file");
       cerr  << __FILE__ << ":" << __LINE__  << ":ERROR No NM tag in bam alignment\n";
-      return 0;
+      throw logic_error("bad bam witout NM tag");
+      //return 0;
    }
-   if (numMis < -1) {
-      cerr << *this << endl;
-      cerr << __FILE__ << ":" << __LINE__ << ": numMis=" << numMis << endl; 
-      throw logic_error("check getTag function");
-   }
+   //if (numMis < -1) {
+   //   cerr << *this << endl;
+   //   cerr << __FILE__ << ":" << __LINE__ << ": numMis=" << numMis << endl; 
+   //   throw logic_error("check getTag function");
+   //}
    int alnlen=0;
    int indel=0;
    for (auto& cd : CigarData) {
@@ -1058,8 +1062,25 @@ void BamAlignment::fillQuality(int score) {
 
 void BamAlignment::setInsertSize(int32_t insize) { 
    InsertSize = insize; 
-   if (isReverseStrand() && InsertSize > 0)
-      InsertSize = -InsertSize;
+   /*
+    * the sign of insert size is determined by the relative position of the
+    * mapping on the same read. 1st +, last -. We cannot make a decision
+    * based on single number!
+   if (isReverseStrand()) {
+     if (insize > 0) {
+         cerr << __FILE__ << ":" << __LINE__ << "WARN: reverse strand insert size not -\n";
+         InsertSize = -insize;
+     }
+     else InsertSize = insize; 
+   }
+   else { //if (isForwardStrand() && 
+      if (insize < 0) {
+         cerr << __FILE__ << ":" << __LINE__ << "WARN: forward strand insert size not +\n";
+         InsertSize = -insize;
+      }
+      else InsertSize = insize; 
+   }
+   */
 }  
 
 /*! \fn bool BamAlignment::BuildCharData(void)
@@ -2110,33 +2131,56 @@ std::pair<int,int> BamAlignment::getSoftInterval() const {
    return res;
 }
 
+// not tested yet, should not use
+int BamAlignment::getMateEndPostion() const {
+   if (InsertSize > 0) {
+      return getPosition() + InsertSize - 1;
+   }
+   else if (InsertSize < 0) {
+      if (hasTag("MC")) {
+         return getEndPosition()+InsertSize+getMateRefwidth();
+      }
+   }
+   else {
+      cerr << __FILE__ << ":" << __LINE__ << ": there is no insert size info\n";
+      throw logic_error("no insert size cannot esteimate mate END position");
+      return -1;
+   }
+   return -1;
+}
+
+// only use getMateRefwidth() function, independent on insert size calculation
 std::pair<int,int> BamAlignment::getPairedRange() const {
-   if (!mateOnSameReference()) {
+   if (!mateOnSameReference() || isMateUnmapped()) {
       //return getRange();
       return getInterval();
    }
    int b, e;
+   // R is the focus of this function, M is the mate
    if (IsReverseStrand()) { // read1 - 
-      if (isMateReverseStrand()) { // read 2 - <--R1--  <--R2--
-         if (getPosition() < getMatePosition()) {
+      if (isMateReverseStrand()) { // <--R--  <--M--
+         if (getPosition() <= getMatePosition()) { // <--R-- <--M--
             b=getEndPosition();
-            e = b + getInsertSize() - 1;
+            e = getMatePosition() + getMateRefwidth() - 1; 
+            // calculate without insert size insertsz is border
          }
-         else if (getPosition() == getMatePosition()) {
-            // <--R1--      or   <--R1--------
-            // <--R2-----        <--R2--
-            b=getEndPosition();
-            e=b+getInsertSize();
-         }
-         else {  // <--R2-- <--R1--
+         //else if (getPosition() == getMatePosition()) {
+         //   // <--R--      or   <--M--------
+         //   // <--R-----        <--M--
+         //   b=getEndPosition();
+         //   e=getMatePosition() + getMateRefwidth() - 1;
+         //} same as previous state
+         else {  // <--M-- <--R---
             e = getEndPosition();
-            b= e-abs(getInsertSize()) + 1; // insert Size is negative for the last one
+            //b = e-abs(getInsertSize()) + 1; // insert Size is negative for the last one
+            b = getMatePosition() + getMateRefwidth() - 1; // insert Size is negative for the last one
+            // not necessarily the - strand!
          }
       }
-      else { // read 2 +   -/+
-         if (getEndPosition() <= getMatePosition()) {
-            // <--R1--     --R2-->
-            //       |--I--|
+      else { // read 2 +   <-R- --M--> -/+
+         if (getEndPosition() <= getMatePosition()) { // head to head
+            // <--R--     --M--->
+            //      |--I--|
             b=getEndPosition();
             e=getMatePosition();
             //cerr << "improper mapped read pair <--R1-- <--R2--\n"
@@ -2144,7 +2188,7 @@ std::pair<int,int> BamAlignment::getPairedRange() const {
             //cerr << *this << endl;
             //exit(1);
          }
-         else { // read 2 + --R2--> <--R1--
+         else { // read 2 + --M--> <--R---
             b=getMatePosition();
             e=getEndPosition();
          }
@@ -2152,24 +2196,26 @@ std::pair<int,int> BamAlignment::getPairedRange() const {
    }
    else { // + strand --R1-->
       if (isMateReverseStrand()) { // Read 2 -
-        if (getPosition() <= getMatePosition() + getQueryLength()) { // --R1--> <--R2--
-            // this is an estimate of Read 2 length with read 1 length
-            // this is the defect of Sam/Bam schema
+         if (getPosition() >= getMatePosition() + getMateRefwidth()) {
+            // <--M---   --R-->
+            e=getPosition();
+            b=getMatePosition() + getMateRefwidth() - 1;
+         }
+         else  {// if (getPosition() <= getMatePosition() + getQueryLength()) { // --R--> <--M---
+            // --R--> <--M--
             b=getPosition();
-            e=b+getInsertSize()-1;
-        }
-        else { // <--R2--   --R1--> 
-           //           b   e   cannot get e exactly without R2 length
-           e=getPosition();
-           b=e-abs(getInsertSize()) + 1; // how bwa compute it
-        }
+            //e=b+getInsertSize()-1;
+            e=getMatePosition() + getMateRefwidth() -1;
+         }
       }
       else { // --R1--> --R2-->
          if (getPosition() < getMatePosition()) {
+            // --R-->  --M-->
             b=getPosition();
             e=getMatePosition();
          }
          else {
+            // --M--> --R-->
             e=getPosition();
             b=getMatePosition();
          }
@@ -2209,87 +2255,46 @@ std::pair<int,int> BamAlignment::getPairedInterval() const {
    */
    int b = getPosition();
    int b2 = getMatePosition();
-   //if (getQueryName() == "S1464448") {
-   //   cerr << "b=" << b << " b2=" << b2 << " templen=" << getInsertSize() << endl;
-   //}
    if (isForwardStrand()) { // --R-->
-      assert(getInsertSize() > 0);
       if (isMateForwardStrand()) { // both this and mate are forward direction
          // now figure out which one is on the left (smaller)
-         //if (b < b2) { // --R--> --M-->
-         //  // this is one the left, mate on right
-         //  return make_pair(b, b2 + getMateRefwidth() - 1);
-         //}
-         //else { // --M-->  --R-->
-         //   return make_pair(b2, getEndPosition());
-         //}
-         return make_pair(min(b,b2), max(getEndPosition(), b2 + getMateRefwidth() - 1));
-      }
-      else { // mate on Reverse strand
-         //if (b <= b2) { // --R--> <--M--, properly mapped case
-         //   // special case ==R==>
-         //   //              <=M====
-         //   return make_pair(b, b+getInsertSize()-1);
-         //}
-         //else { // <--M-- --R--> improper head-to-head case
-         //   //return make_pair(b2, getEndPosition());
-         //   return make_pair(b2, b2+getInsertSize()-1);
-         //}
-         int minB=min(b,b2);
-         int maxE = minB + getInsertSize() - 1;
-         if (getEndPosition() > maxE) {
-            //cerr << *this << endl;
-            //cerr << __FILE__ << ":" << __LINE__ << ":WARN: Warning MC tag and InsertSize inconsistent consider fix bug somewhere\n";
-            maxE = getEndPosition();
+         if (b < b2) { // --R--> --M-->
+           // this is one the left, mate on right
+           return make_pair(b, b2 + getMateRefwidth() - 1);
          }
-         if (getMatePosition() + getMateRefwidth() - 1 > maxE)
-            maxE = getMatePosition() + getMateRefwidth() - 1;
-         return make_pair(minB, maxE);
+         else { // --M-->  --R-->
+            return make_pair(b2, getEndPosition());
+         }
+      }
+      else { // --R--> <--M-- mate on Reverse strand
+         if (b <= b2) { // --R--> <--M--, properly mapped case
+            // special case ==R==>
+            //              <=M====
+            return make_pair(b, b+abs(getInsertSize())-1);
+         }
+         else { // <--M-- --R--> improper head-to-head case
+            return make_pair(b2, getEndPosition());
+         }
       }
    }
    else { // <--R-- this on reverse direction
       if (isMateForwardStrand()) { // <--R-- --M-->
-         //assert(getInsertSize() < 0);
-         if (getInsertSize() > 0) { // zero is acepted, must be negative
-            cerr << *this << endl;
-            cerr << __LINE__ << ": <--R-- --M--> negative read should have - insert size\n";
-            throw logic_error("negative strand should have negative insert size " 
-                  + to_string(getInsertSize()));
-         }
-         /*
          if (b < b2) { // <--R-- --M--> this is left
             // <==R==
             //   =M===>
-            //return make_pair(b, b2 + getMateRefwidth() - 1);
-            return make_pair(b, b-getInsertSize()-1);
+            return make_pair(b, b2 + getMateRefwidth() - 1);
          }
          else { // --M--> <--R-- Proper pair
-            //return make_pair(b2, getEndPosition());
-            return make_pair(b2, b2-getInsertSize()-1);
+            return make_pair(b2, getEndPosition());
          }
-         */
-         int minB=min(b,b2);
-         if (getEndPosition() + getInsertSize() +1 < minB)
-            minB = getEndPosition() + getInsertSize() +1;
-         int maxE = minB - getInsertSize() - 1;
-         if (getEndPosition() > maxE) {
-            //cerr << *this << endl;
-            //cerr << __FILE__ << ":" << __LINE__ << ":WARN: Warning MC tag and InsertSize inconsistent consider fix bug somewhere\n";
-            maxE = getEndPosition();
-         }
-         if (minB + getMateRefwidth() - 1 > maxE)
-            maxE = minB + getMateRefwidth() - 1;
-         return make_pair(minB, maxE);
       }
       else { //both this and mate on reverse strand
-         //if (b < b2) { // <--R-- <--M--
-         //   assert(getInsertSize() > 0);
-         //   return make_pair(b, b2+getInsertSize() -1);
-         //}
-         //else { // <--M-- <--R--  this on the right hand side
-         //   return make_pair(b2, getEndPosition());
-         //}
-         return make_pair(min(b,b2), max(getEndPosition(), b2 + getMateRefwidth() - 1));
+         if (b < b2) { // <--R-- <--M--
+            return make_pair(b, b2+getMateRefwidth() -1);
+         }
+         else { // <--M-- <--R--  this on the right hand side
+            return make_pair(b2, getEndPosition());
+         }
       }
    }
 }
@@ -2608,7 +2613,8 @@ void BamAlignment::advanceIndex(int &i, int &j, int &b,
    }
 }
 
-void BamAlignment::nextCigar(int& i, int& j, unsigned int& ci) const {
+//void BamAlignment::nextCigar(int& i, int& j, unsigned int& ci) const {
+void BamAlignment::nextCigar(int& i, int& j, int& ci) const {
    if  (getCigarType(ci) == 'M') {
       i += getCigarLength(ci);
       j += getCigarLength(ci);
@@ -2712,12 +2718,13 @@ int BamAlignment::indexRef2Query(int ri) const {
    int i=getPosition();
    assert(ri>= i && ri <= getEndPosition());
    int j=0; //i index on reference, j index on query
-   unsigned int ci=0; // ci is index in the cigaroperation: CigarData
+   //unsigned int ci=0; // ci is index in the cigaroperation: CigarData
+   int ci=0; // ci is index in the cigaroperation: CigarData
    if (getCigarType(0) == 'S') { // S => next state
       j += getCigarLength(0);
       ci=1;
    }
-   while (i < ri && ci < getCigarOperationCount()) {
+   while (i < ri && ci < getCigarSize()) {
       if ((unsigned int)ri < i+getCigarLength(ci)) { // fall within this segment, done
          if  (getCigarType(ci) == 'M') {
             // this is expected segment
@@ -3087,13 +3094,13 @@ char BamAlignment::charAtByRef(int ri) const {
    if (i == ri) { // special case where first base requested
       return QueryBases[j];
    }
-   unsigned int ci=0; // ci is index in the cigaroperation: CigarData
+   int ci=0; // ci is index in the cigaroperation: CigarData
    if (getCigarType(0) == 'S') { // S => next state
       j += getCigarLength(0);
       ci=1;
    }
-   while (i <= ri && ci < getCigarOperationCount()) {
-      if (i < ri && ci < getCigarOperationCount() && getCigarType(ci) == 'I') {
+   while (i <= ri && ci < getCigarSize()) {
+      if (i < ri && ci < getCigarSize() && getCigarType(ci) == 'I') {
          nextCigar(i,j,ci);
       }
       else if ((unsigned int)ri < i+getCigarLength(ci)) { // fall within this segment, done
@@ -3139,14 +3146,14 @@ bool BamAlignment::isDeletionAt(int ri, int len) const {
    int i = getPosition();
    assert(ri>=i && ri <= getEndPosition());
    int j=0; //i index on reference, j index on query
-   unsigned int ci=0; // ci is index in the cigaroperation: CigarData
+   int ci=0; // ci is index in the cigaroperation: CigarData
    if (getCigarType(0) == 'S') { // S => next state
       j += getCigarLength(0);
       ci=1;
    }
-   while (i <= ri && ci < getCigarOperationCount()) {
+   while (i <= ri && ci < getCigarSize()) {
       //cout << "i=" << i << " j=" << j << " ci=" << ci << endl;
-      if (i < ri && ci < getCigarOperationCount() && getCigarType(ci) == 'I') {
+      if (i < ri && ci < getCigarSize() && getCigarType(ci) == 'I') {
          nextCigar(i,j,ci);
       }
       else if ((unsigned int)ri < i+getCigarLength(ci)) { // fall within this segment, done
@@ -3203,21 +3210,31 @@ bool BamAlignment::isInsertionAt(int ri, const string& seq) const {
    int i = getPosition();
    assert(ri>=i && ri <= getEndPosition());
    int j=0; //i index on reference, j index on query
-   unsigned int ci=0; // ci is index in the cigaroperation: CigarData
+   int ci=0; // ci is index in the cigaroperation: CigarData
    if (getCigarType(0) == 'S') { // S => next state
       j += getCigarLength(0);
       ci=1;
    }
-   while (i <= ri && ci < getCigarOperationCount()) {
-      if (i < ri && ci < getCigarOperationCount() && getCigarType(ci) == 'I') {
+   //while (i <= ri && ci < getCigarSize()) {
+   while (ci < getCigarSize()) {
+      if (getCigarType(ci) == 'S' || getCigarType(ci) == 'H') {
+         return false; // at end did not find
+      }
+      if (i < ri && ci < getCigarSize() && getCigarType(ci) == 'I') {
          nextCigar(i,j,ci);
       }
-      else if ((unsigned int)ri < i+getCigarLength(ci)) { // fall within this segment, done
+      else if (ri < static_cast<int>(i+getCigarLength(ci))) { // fall within this segment, done
          if (getCigarType(ci) == 'M') {
             // this is expected segment, ri should be at last base
             // of M exactly
-            if (i+getCigarLength(ci)-1 == (unsigned int)ri) { // last base of M
-               assert(ci+1 < getCigarOperationCount());
+            if (static_cast<int>(i+getCigarLength(ci)-1) == ri) { // last base of M
+               //assert(ci+1 < getCigarSize());
+               if (ci+1 >= getCigarSize()) { // at end of last cigar segment
+                  //cerr << *this << " ri=" << ri << " insert=" << seq << endl;
+                  //cerr << __FILE__ << ":" << __LINE__ << ":ci+1 " << ci+1 << " out of cigar bound\n";
+                  //throw logic_error("ci=" + to_string(ci) + " ci+1 out of cigar bound");
+                  return false;
+               }
                if (getCigarLength(ci+1)+1 == seq.size()) { // same insert size
                   if (QueryBases.substr(j+getCigarLength(ci)-1, seq.size()) == seq) {
                      return true;
@@ -3549,7 +3566,9 @@ void BamAlignment::chopFront(size_t len, int numMismatch) {
       uint8_t NMval = getNMValue();
       if (static_cast<int>(NMval) >= numMismatch) {
          NMval -= static_cast<uint8_t>(numMismatch);
-         EditTag("NM", "C", NMval);
+         if (!EditTag("NM", "C", NMval)) {
+            throw logic_error(string(__func__) + ": Failed to edit NM tag with " + to_string(NMval));
+         }
       }
       else {
          throw runtime_error("NM value update error");
@@ -3720,7 +3739,9 @@ void BamAlignment::chopBack(size_t len, int numMismatch) {
       int8_t NMval = getNMValue();
       if (static_cast<int>(NMval) >= numMismatch) {
          NMval -= static_cast<int8_t>(numMismatch);
-         EditTag("NM", "C", NMval);
+         if (!EditTag("NM", "C", NMval)) {
+            throw logic_error(string(__func__) + ": failed to edit NM tag " + to_string(NMval));
+         }
       }
       else {
          throw runtime_error("NM value update error");
@@ -4488,6 +4509,8 @@ uint8_t BamAlignment::getNMValue() const {
       pair<int,bool> res = getTag<int32_t>("NM");
       //if (res.second) val = res.first;
       if (res.first > static_cast<int>(UINT8_MAX)) {
+         cerr << endl << *this;
+         cerr << __FILE__ << ":" << __LINE__ << ": NM value " << res.first << " too large\n";
          throw logic_error("NM value " + to_string(res.first) + " cannot be stored as uint8_t");
       }
       val = static_cast<uint8_t>(res.first);
@@ -4513,6 +4536,10 @@ int BamAlignment::getTemplateLength() const {
 }
 
 string BamAlignment::getMatchedQuerySequence() const {
+   if (CigarData.empty()) {
+      cerr << endl << *this << endl;
+      throw logic_error("cannot get matched query sequence from unaligned query");
+   }
    int b = 0;
    if (CigarData.front().getType() == 'S' || CigarData.front().getType() == 'H') {
       b = CigarData.front().getLength();
@@ -4558,14 +4585,22 @@ int BamAlignment::numberBaseAligned() const {
 }
 
 void BamAlignment::makeUnmapped() {
-   setUnmapped(); setMateUnmapped();
+   setUnmapped(); // mate maybe mapped! setMateUnmapped();
    setImproperPair();
-   setReferenceId(-1); setMateReferenceId(-1);
-   setPosition(-1); setMatePosition(-1);
+   setReferenceId(-1); // mate may be mapped and have refid setMateReferenceId(-1);
+   setPosition(-1); // setMatePosition(-1);
+   setInsertSize(0);
    CigarData.clear();
    clearAlignedBases();
    // remove tags
    removeTag("NM"); removeTag("MD"); removeTag("MC");
+   removeTag("SA"); removeTag("AS"); removeTag("XS");
+}
+
+void BamAlignment::makeMateUnmapped() {
+   setMateUnmapped();
+   setMateReferenceId(-1);
+   setMatePosition(-1);
 }
 
 int BamAlignment::getAlignLength() const {
