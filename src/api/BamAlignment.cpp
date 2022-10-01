@@ -4423,6 +4423,7 @@ void BamAlignment::patchEnd() {
 }
 
 // regenerate AlignedBases
+// Will clear AlignedBases member after this operation.
 void BamAlignment::updateNMTag(const string& refseq) {
    int b = getPosition();
    int e = GetEndPosition(); // one passed the end [b,e)
@@ -4440,7 +4441,7 @@ void BamAlignment::updateNMTag(const string& refseq) {
          qi += CigarData[ci].Length;
       }
       else if (CigarData[ci].Type == 'M') {
-         AlignedBases += QueryBases.substr(qi, CigarData[ci].Length);
+         //AlignedBases += QueryBases.substr(qi, CigarData[ci].Length);
          cigarIdx=0;
          while (cigarIdx < CigarData[ci].Length) {
             if (toupper(subseq[ri]) != QueryBases[qi]) {
@@ -4452,13 +4453,13 @@ void BamAlignment::updateNMTag(const string& refseq) {
          }
       }
       else if (CigarData[ci].Type == 'I') {
-         AlignedBases += QueryBases.substr(qi, CigarData[ci].Length);
+         //AlignedBases += QueryBases.substr(qi, CigarData[ci].Length);
          //cout << "query insert: " << QueryBases.substr(qi, CigarData[ci].Length) << endl;
          edit += CigarData[ci].Length;
          qi += CigarData[ci].Length;
       }
       else if (CigarData[ci].Type == 'D') {
-         AlignedBases += string(CigarData[ci].Length, '-');
+         //AlignedBases += string(CigarData[ci].Length, '-');
          //cout << "query deletion: " << CigarData[ci].Length << endl;
          edit += CigarData[ci].Length;
          ri += CigarData[ci].Length;
@@ -4469,12 +4470,19 @@ void BamAlignment::updateNMTag(const string& refseq) {
       }
       ++ci;
    }
+   if (edit > UINT8_MAX) {
+      throw logic_error("edit too large may consider using integer type for NM tag if not logic error in code");
+   }
    //cout << "recalculated edit distance: " << edit << endl;
    if (hasTag("NM")) {
-      EditTag("NM", "C", edit);
+      if (!EditTag("NM", "C", edit)) {
+         throw logic_error("Failed to edit NM tag");
+      }
    }
    else {
-      AddTag("NM", "C", edit);
+      if (!AddTag("NM", "C", edit)) {
+         throw logic_error("Failed to add NM tag");
+      }
    }
 }
 
