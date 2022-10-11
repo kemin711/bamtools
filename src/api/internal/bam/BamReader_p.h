@@ -116,14 +116,15 @@ class BamReaderPrivate {
         // general BAM file data
         int64_t     m_alignmentsBeginOffset;
         std::string m_filename;
+        /**
+         * vector of [refname, reflen] index by refid
+         */
         RefVector   m_references;
-
         /** 
          * system data
          * TODO: Should auto detect.
          */
         bool m_isBigEndian;
-
         /**
          * parent BamReader
          * TODO: poor design should remove.
