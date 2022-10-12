@@ -5,9 +5,10 @@
 # src/api/internal/bam
 # ==========================
 
-set( InternalBamDir "${InternalDir}/bam" )
+set(InternalBamDir "${InternalDir}/bam" )
 
-set( InternalBamSources
+
+set(InternalBamSources
          ${InternalBamDir}/BamHeader_p.cpp
          ${InternalBamDir}/BamMultiReader_p.cpp
          ${InternalBamDir}/BamRandomAccessController_p.cpp

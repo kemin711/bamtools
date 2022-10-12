@@ -169,10 +169,6 @@ int BamReaderPrivate::GetReferenceCount(void) const {
     return m_references.size();
 }
 
-const RefVector& BamReaderPrivate::GetReferenceData(void) const {
-    return m_references;
-}
-
 // returns RefID for given RefName (returns References.size() if not found)
 int BamReaderPrivate::GetReferenceID(const string& refName) const {
 

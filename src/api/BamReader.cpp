@@ -8,9 +8,6 @@
 // ***************************************************************************
 
 #include "api/BamReader.h"
-#include "api/internal/bam/BamReader_p.h"
-using namespace BamTools;
-using namespace BamTools::Internal;
 
 #include <algorithm>
 #include <iostream>
@@ -19,6 +16,7 @@ using namespace BamTools::Internal;
 #include <vector>
 
 using namespace std;
+using namespace BamTools;
 
 BamReader::BamReader() 
 : d(new BamTools::Internal::BamReaderPrivate(this)) { }
@@ -74,20 +72,11 @@ BamAlignment* BamReader::next() {
 bool BamReader::GetNextAlignmentCore(BamAlignment& alignment) {
    return d->GetNextAlignmentCore(alignment);
 }
-const SamHeader& BamReader::GetConstSamHeader(void) const {
-   return d->GetConstSamHeader();
-}
-SamHeader BamReader::GetHeader(void) const {
-   return d->GetSamHeader();
-}
 std::string BamReader::GetHeaderText(void) const {
    return d->GetHeaderText();
 }
 int BamReader::GetReferenceCount(void) const {
    return d->GetReferenceCount();
-}
-const RefVector& BamReader::GetReferenceData(void) const {
-   return d->GetReferenceData();
 }
 
 int BamReader::GetReferenceID(const std::string& refName) const {

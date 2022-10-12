@@ -102,8 +102,8 @@ struct API_EXPORT CigarOp {
 // ----------------------------------------------------------------
 // RefData
 
-/*! \struct BamTools::RefData
-    \brief Represents a reference sequence entry
+/**
+ *  Represents a brief reference sequence entry: [name, length].
 */
 struct API_EXPORT RefData {
     std::string RefName;    //!< name of reference sequence

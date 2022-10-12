@@ -22,18 +22,17 @@
 
 #include "api/BamAlignment.h"
 #include "api/BamIndex.h"
-#include "api/BamReader.h"
+//#include "api/BamReader.h" // include this will cause recursive definition!
 #include "api/SamHeader.h"
 #include "api/internal/bam/BamHeader_p.h"
 #include "api/internal/bam/BamRandomAccessController_p.h"
 #include "api/internal/io/BgzfStream_p.h"
 #include <string>
 
+//using namespace BamTools;
 namespace BamTools {
 class BamReader;
 namespace Internal {
-
-using namespace BamTools;
 
 /**
  * Should have a hiarchy of different readers
@@ -76,10 +75,42 @@ class BamReaderPrivate {
 
         // access auxiliary data
         std::string GetHeaderText(void) const;
+        /**
+         * @return a const reference to the internal SamHeader object.
+         */
         const SamHeader& GetConstSamHeader(void) const;
+        /**
+         * @return a const reference to the internal SamHeader stored in
+         *   m_header.
+         */
+        const SamHeader& getSamHeader() const {
+           return m_header.getSamHeader();
+        }
+        /**
+         * @return a reference to the SamHeader stored in m_header.
+         *   The caller can modify the return object which if using
+         *   reference will change this object.
+         */
+        SamHeader& getSamHeader() {
+           return m_header.getSamHeader();
+        }
+        /**
+         * Avoid using this object if you only want to read.
+         */
         SamHeader GetSamHeader(void) const;
         int GetReferenceCount(void) const;
-        const RefVector& GetReferenceData(void) const;
+        /**
+         * @return a const reference to m_references
+         */
+        const RefVector& GetReferenceData(void) const {
+            return m_references;
+        }
+        const RefVector& getReferenceData(void) const {
+            return m_references;
+        }
+        RefVector& getReferenceData(void) {
+            return m_references;
+        }
         int GetReferenceID(const std::string& refName) const;
 
         // index operations
@@ -118,6 +149,7 @@ class BamReaderPrivate {
         std::string m_filename;
         /**
          * vector of [refname, reflen] index by refid
+         * RefVector is a typedef of vector<RefData> in BamAux.h
          */
         RefVector   m_references;
         /** 

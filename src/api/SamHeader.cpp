@@ -216,37 +216,23 @@ bool SamHeader::IsValid(bool verbose) const {
     }
 }
 
-/*! \fn void SamHeader::SetHeaderText(const std::string& headerText)
-    \brief Replaces header contents with \a headerText.
-
-    \param[in] headerText SAM formatted-text that will be parsed into data fields
-*/
 void SamHeader::SetHeaderText(const std::string& headerText) {
-
     // clear prior data
     Clear();
-
     try {
         SamFormatParser parser(*this);
         parser.Parse(headerText);
-    } catch ( BamException& e ) {
-
+    } 
+    catch ( BamException& e ) {
         // clear anything parsed so far
         // no telling what's valid and what's partially parsed
         Clear();
-
         // set error string
         m_errorString = e.what();
+        throw logic_error(string(__func__) + ": Improper same header text: " + headerText);
     }
 }
 
-/*! \fn std::string SamHeader::ToString(void) const
-    \brief Converts data fields to SAM-formatted text.
-
-    Applies any local modifications made since creating this object or calling SetHeaderText().
-
-    \return SAM-formatted header text
-*/
 string SamHeader::ToString(void) const {
     SamFormatPrinter printer(*this);
     return printer.ToString();

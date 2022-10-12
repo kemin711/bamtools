@@ -18,7 +18,7 @@ add_subdirectory( internal )
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # make list of all API source files
-set( BamToolsAPISources
+set(BamToolsAPISources
 	  BamAux.cpp
         BamAlignment.cpp
         BamMultiReader.cpp
@@ -83,4 +83,45 @@ ExportHeader(APIHeaders SamSequence.h            ${ApiIncludeDir})
 ExportHeader(APIHeaders SamSequenceDictionary.h  ${ApiIncludeDir})
 
 set( AlgorithmsIncludeDir "api/algorithms" )
-ExportHeader( AlgorithmsHeaders algorithms/Sort.h ${AlgorithmsIncludeDir} )
+ExportHeader(AlgorithmsHeaders algorithms/Sort.h ${AlgorithmsIncludeDir} )
+
+set(BamIncludeDir  "api/internal/bam" )
+ExportHeader(BamHeaders internal/bam/BamReader_p.h ${BamIncludeDir} )
+ExportHeader(BamHeaders internal/bam/BamWriter_p.h ${BamIncludeDir} )
+ExportHeader(BamHeaders internal/bam/BamRandomAccessController_p.h ${BamIncludeDir} )
+ExportHeader(BamHeaders internal/bam/BamHeader_p.h ${BamIncludeDir} )
+ExportHeader(BamHeaders internal/bam/BamMultiMerger_p.h ${BamIncludeDir} )
+ExportHeader(BamHeaders internal/bam/BamMultiReader_p.h ${BamIncludeDir} )
+
+set(IoIncludeDir  "api/internal/io" )
+ExportHeader(IoHeaders internal/io/BgzfStream_p.h ${IoIncludeDir} )
+ExportHeader(IoHeaders internal/io/BamDeviceFactory_p.h ${IoIncludeDir} )
+ExportHeader(IoHeaders internal/io/BamFtp_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/BamPipe_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/ByteArray_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/HostInfo_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/ILocalIODevice_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/NetWin_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/TcpSocketEngine_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/BamFile_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/BamHttp_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/HostAddress_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/HttpHeader_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/NetUnix_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/RollingBuffer_p.h ${IoIncludeDir})
+ExportHeader(IoHeaders internal/io/TcpSocket_p.h ${IoIncludeDir})
+
+set(IndexIncludeDir  "api/internal/index")
+ExportHeader(IndexHeaders internal/index/BamIndexFactory_p.h ${IndexIncludeDir})
+ExportHeader(IndexHeaders internal/index/BamStandardIndex_p.h ${IndexIncludeDir})
+ExportHeader(IndexHeaders internal/index/BamToolsIndex_p.h ${IndexIncludeDir})
+
+set(SamIncludeDir  "api/internal/sam" )
+ExportHeader(SamHeaders internal/sam/SamFormatParser_p.h ${SamIncludeDir} )
+ExportHeader(SamHeaders internal/sam/SamFormatPrinter_p.h ${SamIncludeDir} )
+ExportHeader(SamHeaders internal/sam/SamHeaderValidator_p.h ${SamIncludeDir} )
+ExportHeader(SamHeaders internal/sam/SamHeaderVersion_p.h ${SamIncludeDir} )
+
+set(UtilsIncludeDir  "api/internal/utils" )
+ExportHeader(BamExceptionHeaders internal/utils/BamException_p.h ${UtilsIncludeDir} )
+

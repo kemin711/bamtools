@@ -9,10 +9,7 @@
 
 #include "api/BamAlignment.h"
 #include "api/BamWriter.h"
-#include "api/SamHeader.h"
-#include "api/internal/bam/BamWriter_p.h"
 using namespace BamTools;
-using namespace BamTools::Internal;
 using namespace std;
 
 /*! \class BamTools::BamWriter
@@ -32,20 +29,10 @@ using namespace std;
     the data.
 */
 
-/*! \fn BamWriter::BamWriter(void)
-    \brief constructor
-*/
-BamWriter::BamWriter(void)
-    : d(new BamWriterPrivate)
-{ }
-
-/*! \fn BamWriter::~BamWriter(void)
-    \brief destructor
-*/
 BamWriter::~BamWriter(void) {
    d->Close();
     delete d;
-    d = 0;
+    d = nullptr;
 }
 
 /*! \fn BamWriter::Close(void)
@@ -74,54 +61,6 @@ std::string BamWriter::GetErrorString(void) const {
 */
 bool BamWriter::IsOpen(void) const {
     return d->IsOpen();
-}
-
-/*! \fn bool BamWriter::Open(const std::string& filename,
-                             const std::string& samHeaderText,
-                             const RefVector& referenceSequences)
-    \brief Opens a BAM file for writing.
-
-    Will overwrite the BAM file if it already exists.
-
-    \param[in] filename           name of output BAM file
-    \param[in] samHeaderText      header data, as SAM-formatted string
-    \param[in] referenceSequences list of reference entries
-
-    \return \c true if opened successfully
-    \sa Close(), IsOpen(), BamReader::GetHeaderText(), BamReader::GetReferenceData()
-*/
-bool BamWriter::Open(const std::string& filename,
-                     const std::string& samHeaderText,
-                     const RefVector& referenceSequences)
-{
-    return d->Open(filename, samHeaderText, referenceSequences);
-}
-
-/*! \fn bool BamWriter::Open(const std::string& filename,
-                             const SamHeader& samHeader,
-                             const RefVector& referenceSequences)
-    \brief Opens a BAM file for writing.
-
-    This is an overloaded function.
-
-    Will overwrite the BAM file if it already exists.
-
-    \param[in] filename           name of output BAM file
-    \param[in] samHeader          header data, wrapped in SamHeader object
-    \param[in] referenceSequences list of reference entries
-
-    \return \c true if opened successfully
-    \sa Close(), IsOpen(), BamReader::GetHeader(), BamReader::GetReferenceData()
-*/
-bool BamWriter::Open(const std::string& filename,
-                     const SamHeader& samHeader,
-                     const RefVector& referenceSequences)
-{
-    return d->Open(filename, samHeader.ToString(), referenceSequences);
-}
-
-bool BamWriter::SaveAlignment(const BamAlignment& alignment) {
-    return d->SaveAlignment(alignment);
 }
 
 /*! \fn void BamWriter::SetCompressionMode(const BamWriter::CompressionMode& compressionMode)

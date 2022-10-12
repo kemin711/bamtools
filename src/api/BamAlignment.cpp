@@ -997,10 +997,10 @@ float BamAlignment::getNGIdentity() const {
          indel += cd.Length;
       }
    }
-   if (indel > numMis) {
-      cerr << *this << endl;
-      throw logic_error("indel " + to_string(indel) + " greater than total edit distance: " + to_string(numMis));
-   }
+   //if (indel > numMis) {
+   //   cerr << *this << endl;
+   //   throw logic_error("indel " + to_string(indel) + " greater than total edit distance: " + to_string(numMis));
+   //}
    return (1-(numMis-indel)/(float)alnlen);
 }
 
@@ -2243,7 +2243,7 @@ int BamAlignment::getMateRefwidth() const {
 }
 
 std::pair<int,int> BamAlignment::getPairedInterval() const {
-   if (!mateOnSameReference() || getInsertSize() == 0) {
+   if (!isPaired() || !mateOnSameReference() || getInsertSize() == 0) {
       return getInterval();
    }
    /*
@@ -3919,9 +3919,9 @@ void BamAlignment::chopBefore(int idx) {
    }
    /*
    bool inbug=false;
-   if (getQueryName() == "S32897") {
-      //cerr << *this << "before chopBefore idx=" << idx << endl;
-      cerr << __LINE__ << "before chopBefore idx=" << idx << endl;
+   if (getQueryName() == "S21785790") {
+      cerr << endl << *this;
+      cerr << __LINE__ << ": before chopBefore idx=" << idx << endl;
       inbug=true;
    }
    */
@@ -4089,14 +4089,16 @@ void BamAlignment::chopAfter(int idx) {
          inscnt += CigarData[c].getLength();
       ++c;
    }
+   int mismatchCnt;
    try {
       // only need to count D and mismatch from MD tag after idx
-      int mismatchCnt = chopMDAfter(idx) + inscnt; // update MD tag
+      mismatchCnt = chopMDAfter(idx) + inscnt; // update MD tag
       reduceNMTag(mismatchCnt);
    }
    catch (const logic_error& ler) {
       //cerr << endl << *this << __LINE__ << ": idx=" << idx << endl << ler.what() << endl;
-      cerr << __LINE__ << ": idx=" << idx << endl << ler.what() << endl;
+      cerr << __LINE__ << ": idx=" << idx << " mismatchCnt=" << mismatchCnt 
+         << " inscnt=" << inscnt << endl << ler.what() << endl;
       throw;
    }
    // insert size, position will not be affected
@@ -4181,10 +4183,10 @@ void BamAlignment::reduceNMTag(int diff) {
    //   throw logic_error(string(__func__) + ":ERROR Bam dose not have NM tab");
    //}
    if (diff > static_cast<int>(UINT8_MAX)) {
-      throw runtime_error("mismatch value too large to be store as uint8_t");
+      throw runtime_error("mismatch value too large to be store as uint8_t consider using int");
    }
    if (diff > static_cast<int>(nmv.first)) {
-      throw logic_error(string(__func__) + ":ERROR diff mismatch more than entire NM tag value");
+      throw logic_error(string(__func__) + ":ERROR diff " + to_string(diff) + " more than NM value=" + to_string(nmv.first));
    }
    //nmval -= diff;
    nmv.first -= static_cast<uint8_t>(diff);
@@ -4428,9 +4430,9 @@ void BamAlignment::updateNMTag(const string& refseq) {
    int b = getPosition();
    int e = GetEndPosition(); // one passed the end [b,e)
    string subseq = refseq.substr(b, e-b);
-   uint8_t edit=0;
+   //uint8_t edit=0;
+   int edit=0;
    size_t ci=0, ri=0, qi=0, cigarIdx;
-   AlignedBases.clear();
    //cout << "reference sequence:\n"
    //   << subseq << "\nquery bases\n"
    //   << getQueryBases() << endl;
@@ -4470,18 +4472,34 @@ void BamAlignment::updateNMTag(const string& refseq) {
       }
       ++ci;
    }
-   if (edit > UINT8_MAX) {
-      throw logic_error("edit too large may consider using integer type for NM tag if not logic error in code");
-   }
-   //cout << "recalculated edit distance: " << edit << endl;
-   if (hasTag("NM")) {
-      if (!EditTag("NM", "C", edit)) {
-         throw logic_error("Failed to edit NM tag");
+   AlignedBases.clear();
+   if (edit > static_cast<int>(UINT8_MAX)) {
+      //throw logic_error("edit too large may consider using integer type for NM tag if not logic error in code");
+      cerr << endl << *this;
+      cerr << __FILE__ << ":" << __LINE__ << ": edit " << edit 
+         << " too large using integer type. Also check for logic error.\n";
+      if (hasTag("NM")) {
+         if (!EditTag("NM", "i", edit)) {
+            throw logic_error("Failed to edit NM tag");
+         }
+      }
+      else {
+         if (!AddTag("NM", "i", edit)) {
+            throw logic_error("Failed to add NM tag");
+         }
       }
    }
    else {
-      if (!AddTag("NM", "C", edit)) {
-         throw logic_error("Failed to add NM tag");
+      //cout << "recalculated edit distance: " << edit << endl;
+      if (hasTag("NM")) {
+         if (!EditTag("NM", "C", static_cast<uint8_t>(edit))) {
+            throw logic_error("Failed to edit NM tag");
+         }
+      }
+      else {
+         if (!AddTag("NM", "C", static_cast<uint8_t>(edit))) {
+            throw logic_error("Failed to add NM tag");
+         }
       }
    }
 }
@@ -4546,7 +4564,7 @@ int BamAlignment::getTemplateLength() const {
 string BamAlignment::getMatchedQuerySequence() const {
    if (CigarData.empty()) {
       cerr << endl << *this << endl;
-      throw logic_error("cannot get matched query sequence from unaligned query");
+      throw logic_error(string(__func__) + ": cannot get matched query sequence from unaligned query");
    }
    int b = 0;
    if (CigarData.front().getType() == 'S' || CigarData.front().getType() == 'H') {

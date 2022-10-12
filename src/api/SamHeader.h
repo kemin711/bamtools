@@ -20,9 +20,7 @@
 
 namespace BamTools {
 
-
 struct API_EXPORT SamHeader {
-
     // ctor & dtor
     SamHeader(const std::string& headerText = "");
     SamHeader(const SamHeader& other);
@@ -34,8 +32,17 @@ struct API_EXPORT SamHeader {
     std::string GetErrorString(void) const;
     bool HasError(void) const;
     bool IsValid(bool verbose = false) const;           // returns true if SAM header is well-formed
+    /**
+     *   \brief Replaces header contents with \a headerText.
+     *   \param[in] headerText SAM formatted-text that will be parsed into data fields
+     */
     void SetHeaderText(const std::string& headerText);  // replaces data fields with contents of SAM-formatted text
-    std::string ToString(void) const;                   // returns the printable, SAM-formatted header text
+    /**
+     *\brief Converts data fields to SAM-formatted text.
+     *Applies any local modifications made since creating this object or calling SetHeaderText().
+     * @returns the printable, SAM-formatted header text
+    */
+    std::string ToString(void) const;
 
     // convenience query methods
     bool HasVersion(void) const;     // returns true if header contains format version entry
@@ -49,27 +56,39 @@ struct API_EXPORT SamHeader {
     // --------------
     // data members
     // --------------
-
     // header metadata (@HD line)
-    std::string Version;             // VN:<Version>  *Required, if @HD record is present*
-    std::string SortOrder;           // SO:<SortOrder>
-    std::string GroupOrder;          // GO:<GroupOrder>
-    std::vector<CustomHeaderTag> CustomTags; // optional custom tags on @HD line
-
-    // header sequences (@SQ entries)
+    /**     
+     * VN:<Version>  Required, if @HD record is present
+     */
+    std::string Version;        
+    /**
+     * SO:<SortOrder>
+     */
+    std::string SortOrder;           
+    /**
+     * GO:<GroupOrder>
+     */
+    std::string GroupOrder;
+    /**
+     * Optional custom tags on @HD line
+     */
+    std::vector<CustomHeaderTag> CustomTags;
+    /** 
+     * header sequences (@SQ entries)
+     */
     SamSequenceDictionary Sequences;
-
     // header read groups (@RG entries)
     SamReadGroupDictionary ReadGroups;
-
     // header program data (@PG entries)
     SamProgramChain Programs;
-
     // header comments (@CO entries)
     std::vector<std::string> Comments;
 
     // internal data
     private:
+        /**
+         * Bad design. TODO: remove and use C++ exception
+         */
         mutable std::string m_errorString;
 };
 

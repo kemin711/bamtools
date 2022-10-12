@@ -28,12 +28,14 @@ namespace Internal {
 
 class BgzfStream;
 
+/**
+ * This is a wrapper to SamHeader.
+ */
 class BamHeader {
-
     // ctor & dtor
     public:
-        BamHeader(void);
-        ~BamHeader(void);
+        BamHeader(void) { }
+        ~BamHeader(void) { }
 
     // BamHeader interface
     public:
@@ -44,8 +46,25 @@ class BamHeader {
         // load BAM header ('magic number' and SAM header text) from BGZF stream
         // returns true if all OK
         void Load(BgzfStream* stream);
-        // returns (read-only) reference to SamHeader data object
-        const SamHeader& ToConstSamHeader(void) const;
+        /**
+         * @returns (read-only) reference to SamHeader data object
+         */
+        const SamHeader& ToConstSamHeader(void) const {
+            return m_header;
+        }
+        /**
+         * @return a const reference to SamHeader
+         */
+        const SamHeader& getSamHeader() const {
+           return m_header;
+        }
+        /**
+         * @return a reference to the internal SamHeader
+         *   The caller can modify this object.
+         */
+        SamHeader& getSamHeader() {
+           return m_header;
+        }
         // returns (editable) copy of SamHeader data object
         SamHeader ToSamHeader(void) const;
         // returns SAM-formatted string of header data

@@ -15,7 +15,7 @@
 #include "api/BamIndex.h"
 #include "api/SamHeader.h"
 #include <string>
-//#include "api/internal/bam/BamReader_p.h"
+#include "api/internal/bam/BamReader_p.h"
 
 using namespace std;
 
@@ -25,6 +25,7 @@ namespace BamTools {
 namespace Internal {
     class BamReaderPrivate;
 } // namespace Internal
+using namespace BamTools::Internal;
 //using namespace BamTools::Internal;
 
 /**
@@ -257,7 +258,21 @@ class API_EXPORT BamReader {
          *  @return const reference to header data object
          *  @see GetHeader(), GetHeaderText()
         */
-        const SamHeader& GetConstSamHeader(void) const;
+        const SamHeader& GetConstSamHeader(void) const {
+            return d->GetConstSamHeader();
+        }
+        const SamHeader& getSamHeader(void) const {
+            return d->getSamHeader();
+        }
+        SamHeader& getSamHeader(void) {
+            return d->getSamHeader();
+        }
+        const SamHeader& getHeader(void) const {
+            return d->getSamHeader();
+        }
+        SamHeader& getHeader(void) {
+            return d->getSamHeader();
+        }
         /** 
          *  Returns SAM header data stand-alone object.
          *
@@ -274,7 +289,9 @@ class API_EXPORT BamReader {
          *  @return an editable copy of SAM header data
          *  @see GetConstSamHeader(), GetHeaderText()
         */
-        SamHeader GetHeader(void) const;
+        SamHeader GetHeader(void) const {
+            return d->GetSamHeader();
+        }
         /** 
          *  Returns SAM header data, as SAM-formatted text.
          *
@@ -314,7 +331,19 @@ class API_EXPORT BamReader {
          *
          * Note: this is a bad design using std vector
          */
-        const RefVector& GetReferenceData(void) const;
+        const RefVector& GetReferenceData(void) const {
+           return d->GetReferenceData();
+        }
+        /**
+         * @return a const reference to vector<RefData> stored in 
+         *  the BamReaderPrivate d pointer.
+         */
+        const RefVector& getReferenceData(void) const {
+           return d->getReferenceData();
+        }
+        RefVector& getReferenceData(void) {
+           return d->getReferenceData();
+        }
 
         /**
          * @return the reference meta data: ref_name, ref_length
