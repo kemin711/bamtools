@@ -856,7 +856,7 @@ class API_EXPORT BamAlignment {
          */
         string getMatchedQuerySequence() const;
         /**
-         * alignment length - (H or S)
+         * alignment length - (I, H or S)
          * did not exclude D, could measure entire aligned part
          */
         int getMatchedQueryLength() const;

@@ -169,7 +169,8 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    ous << "duplicate: " << ba.IsDuplicate() << sep
       << "mate: ";
    if (ba.IsFirstMate()) ous << 1;
-   else ous << 2;
+   else if (ba.IsSecondMate()) ous << 2;
+   else ous << 0;
    ous << sep
       //<< "secondMate: " << ba.IsSecondMate() << sep
       //<< "mapped: " << ba.IsMapped() << sep 
