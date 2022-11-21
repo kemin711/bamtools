@@ -131,6 +131,12 @@ struct API_EXPORT RefData {
     int32_t getReflength() const {
        return RefLength;
     }
+    bool operator==(const string& refn) const {
+       return RefName == refn;
+    }
+    friend bool operator==(const string& refn, const RefData& rd) {
+       return refn == rd.RefName;
+    }
 };
 
 /**

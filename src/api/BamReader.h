@@ -75,6 +75,9 @@ class API_EXPORT BamReader {
          *  @see IsOpen(), Open()
         */
         bool Close(void);
+         bool close(void) {
+            return d->Close();
+         }
         /** 
          *  Returns name of current BAM file.
          *
@@ -88,6 +91,9 @@ class API_EXPORT BamReader {
          *  TODO: should remove the const return type
         */
         const std::string GetFilename(void) const;
+        const std::string getFilename(void) const {
+           return GetFilename();
+        }
         /** 
          *  @return true if a BAM file is open for reading.
          *  An BamReader may be in its unopen state because
@@ -95,6 +101,9 @@ class API_EXPORT BamReader {
          *  started connecting with a file.
         */
         bool IsOpen(void) const;
+        bool isOpen(void) const {
+           return IsOpen();
+        }
 
         // returns true if a BAM file is open for reading
         /** 
@@ -110,6 +119,9 @@ class API_EXPORT BamReader {
          *  @see HasIndex()
          */
         bool Jump(int refID, int position=0);
+        bool jump(int refID, int position) {
+            return d->SetRegion(BamRegion(refID, position));
+        }
         /** 
          *  Opens a BAM file.
          *
@@ -122,6 +134,9 @@ class API_EXPORT BamReader {
          *  @see Close(), IsOpen(), OpenIndex()
         */
         bool Open(const std::string& filename);
+        bool open(const std::string& filename) {
+            return d->Open(filename);
+        }
 
         /** 
          *  Returns the internal file pointer to the first alignment record.
@@ -136,6 +151,9 @@ class API_EXPORT BamReader {
          *  @see Jump(), SetRegion()
         */
         bool Rewind(void);
+        bool rewind(void) {
+            return d->Rewind();
+        }
         /** 
          *  Sets a target region of interest
          *
@@ -161,6 +179,9 @@ class API_EXPORT BamReader {
          *  @see HasIndex(), Jump()
         */
         bool SetRegion(const BamRegion& region);
+        bool setRegion(const BamRegion& region) {
+            return d->SetRegion(region);
+        }
         /** 
          *  Sets a target region of interest.
          * 
@@ -181,6 +202,20 @@ class API_EXPORT BamReader {
          */
         bool SetRegion(const int& leftRefID, const int& leftPos,
                        const int& rightRefID, const int& rightPos);
+        bool setRegion(const int& leftRefID, const int& leftPos,
+                       const int& rightRefID, const int& rightPos)
+        {
+            return d->SetRegion(BamRegion(leftRefID, leftPos, rightRefID, rightPos));
+        }
+        /**
+         * This version is for human interface and use 1-based coordinates.
+         * [leftPos, rightPos) is 1-based half open interval.
+         */
+        bool setRegion(const string& leftName, const int& leftPos,
+                       const string& rightName, const int& rightPos)
+        {
+            return d->SetRegion(BamRegion(getReferenceID(leftName), leftPos-1, getReferenceID(rightName), rightPos-1));
+        }
 
         // ----------------------
         // access alignment data
@@ -215,6 +250,14 @@ class API_EXPORT BamReader {
          *  @see SetRegion()
          */
         bool GetNextAlignment(BamAlignment& alignment);
+        bool getNextAlignment(BamAlignment& alignment) {
+        // uses Internal::BamReaderPrivate to do the work
+            return d->GetNextAlignment(alignment);
+        }
+        bool nextAlignment(BamAlignment& alignment) {
+            return d->GetNextAlignment(alignment);
+        }
+
         /**
          * TODO: implement other typs of BamAlighment such as
          * a derived calss for MultimappedAlign, or ChimeraAlign.
@@ -242,6 +285,9 @@ class API_EXPORT BamReader {
          * @see SetRegion()
          */
         bool GetNextAlignmentCore(BamAlignment& alignment);
+        bool getNextAlignmentCore(BamAlignment& alignment) {
+            return d->GetNextAlignmentCore(alignment);
+        }
 
         // ----------------------
         // access header data
@@ -267,12 +313,6 @@ class API_EXPORT BamReader {
         SamHeader& getSamHeader(void) {
             return d->getSamHeader();
         }
-        const SamHeader& getHeader(void) const {
-            return d->getSamHeader();
-        }
-        SamHeader& getHeader(void) {
-            return d->getSamHeader();
-        }
         /** 
          *  Returns SAM header data stand-alone object.
          *
@@ -289,8 +329,14 @@ class API_EXPORT BamReader {
          *  @return an editable copy of SAM header data
          *  @see GetConstSamHeader(), GetHeaderText()
         */
-        SamHeader GetHeader(void) const {
-            return d->GetSamHeader();
+        const SamHeader& GetHeader(void) const {
+            return d->getSamHeader();
+        }
+        const SamHeader& getHeader(void) const {
+            return d->getSamHeader();
+        }
+        SamHeader& getHeader(void) {
+            return d->getSamHeader();
         }
         /** 
          *  Returns SAM header data, as SAM-formatted text.
@@ -375,6 +421,15 @@ class API_EXPORT BamReader {
         */
         int GetReferenceID(const std::string& refName) const;
         /**
+         * More effient implementation
+         */
+        int getReferenceID(const std::string& refName) const {
+            return d->getReferenceID(refName);
+        }
+        int getReferenceId(const std::string& refName) const {
+            return d->getReferenceID(refName);
+        }
+        /**
          * @return reference name given refid
          */
         const string& getReferenceName(int refid) const;
@@ -390,10 +445,16 @@ class API_EXPORT BamReader {
          *  @see LocateIndex(), OpenIndex()
         */
         bool CreateIndex(const BamIndex::IndexType& type=BamIndex::STANDARD);
+         bool createIndex(const BamIndex::IndexType& type) {
+            return d->CreateIndex(type);
+         }
         /** 
          *  @return true if index data is available.
         */
         bool HasIndex(void) const;
+         bool hasIndex(void) const {
+            return d->HasIndex();
+         }
         /** 
          *  Looks in BAM file's directory for a matching index file.
          *
@@ -414,6 +475,10 @@ class API_EXPORT BamReader {
          *  @return true if (any) index file could be found
         */
         bool LocateIndex(const BamIndex::IndexType& preferredType = BamIndex::STANDARD);
+         bool locateIndex(const BamIndex::IndexType& preferredType)
+         {
+            return d->LocateIndex(preferredType);
+         }
         /** 
          *  Opens a BAM index file.
          *
@@ -423,6 +488,9 @@ class API_EXPORT BamReader {
          *  @see LocateIndex(), Open(), SetIndex()
         */
         bool OpenIndex(const std::string& indexFilename);
+        bool openIndex(const std::string& indexFilename) {
+            return d->OpenIndex(indexFilename);
+        }
         /** 
          *  Sets a custom BamIndex on this reader.
          *
@@ -443,6 +511,9 @@ class API_EXPORT BamReader {
          *  \sa CreateIndex(), LocateIndex(), OpenIndex()
         */
         void SetIndex(BamIndex* index);
+        void setIndex(BamIndex* index) {
+            d->SetIndex(index);
+        }
 
         // ----------------------
         // error handling

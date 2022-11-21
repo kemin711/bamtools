@@ -719,6 +719,18 @@ class API_EXPORT BamAlignment {
         bool contains(int b, int e) const {
             return getPosition() <= b && getEndPosition() >= e;
         }
+        /**
+         * @return true if p in in [b,e] on the refgerence coordinate
+         */
+        bool contains(int p) const {
+            return getPosition() <= p && getEndPosition() >= p;
+        }
+        bool contain(int p) const {
+            return getPosition() <= p && getEndPosition() >= p;
+        }
+        bool contain(int b, int e) const {
+            return getPosition() <= b && getEndPosition() >= e;
+        }
 
         /**
          * @return the [start, end] range of the mapping 
@@ -821,13 +833,13 @@ class API_EXPORT BamAlignment {
          * 'original' sequence (contained in BAM file)
          */
         const std::string& getQueryBases() const { return QueryBases; }
+        std::string& getQueryBases() { return QueryBases; }
         /**
          * @return the query sequence same as getQueryBases.
          * If there is Hard-clip, the only the alignmed part will be 
          * returned. So should tell BWA never use hardclip.
          */
         const std::string& getQuerySequence() const { return QueryBases; }
-        std::string& getQueryBases() { return QueryBases; }
         std::string& accessSequence() {
            return QueryBases;
         }
@@ -1351,12 +1363,15 @@ class API_EXPORT BamAlignment {
          */
         BamAlignment subsequenceByRef(int b, int e) const;
         /**
+         * If [b,e] corresponds to a deletion then will 
+         * use char '-' as base.
          * @return the substring of the query sequence according
          * to closed range [b,e]
          */
         std::string substringByRef(int b, int e) const;
         /**
-         * @return the char at index b according to the reference
+         * @param ri is the reference index [pos, endpos]
+         * @return the char of query at index b according to the reference
          *    sequence index coordinate system.
          */
         char charAtByRef(int ri) const;

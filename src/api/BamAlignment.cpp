@@ -3433,8 +3433,10 @@ int BamAlignment::getMDWidth() const {
          len += stoi(mdval.substr(i, j-i));
       }
       catch (const exception& err) {
-         cerr << " mdval=" << mdval << " i=" << i << " j-i=" << j-i
-            << " " << mdval.substr(i, j-i) << endl;
+         cerr << endl << *this << endl;
+         cerr << __FILE__ << ":" << __LINE__ << ": mdval=" << mdval << " i=" << i << " j-i=" << j-i
+            << " " << mdval.substr(i, j-i) << endl
+            << err.what() << endl;
          throw logic_error(string(__func__) + ": invalid MD " + mdval);
       }
       i = j;  // first base in seg

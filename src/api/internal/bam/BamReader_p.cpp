@@ -25,7 +25,6 @@ using namespace BamTools::Internal;
 #include <iostream>
 #include <iterator>
 #include <vector>
-using namespace std;
 
 // constructor
 BamReaderPrivate::BamReaderPrivate(BamReader* parent)
@@ -75,7 +74,6 @@ bool BamReaderPrivate::CreateIndex(const BamIndex::IndexType& type) {
         cerr << __FILE__ << ":" << __LINE__ << ":ERROR cannot create index on unopened BAM file\n";
         return false;
     }
-
     // attempt to create index
     if ( m_randomAccessController.CreateIndex(this, type) )
         return true;
@@ -170,8 +168,7 @@ int BamReaderPrivate::GetReferenceCount(void) const {
 }
 
 // returns RefID for given RefName (returns References.size() if not found)
-int BamReaderPrivate::GetReferenceID(const string& refName) const {
-
+int BamReaderPrivate::GetReferenceID(const std::string& refName) const {
     // retrieve names from reference data
     vector<string> refNames;
     RefVector::const_iterator refIter = m_references.begin();
@@ -183,6 +180,17 @@ int BamReaderPrivate::GetReferenceID(const string& refName) const {
     int index = distance(refNames.begin(), find(refNames.begin(), refNames.end(), refName));
     if ( index == (int)m_references.size() ) return -1;
     else return index;
+}
+
+// better implementation
+// retrieve names from reference data
+int BamReaderPrivate::getReferenceID(const std::string& refName) const {
+   for (size_t i=0; i < m_references.size(); ++i) {
+      if (m_references[i] == refName) {
+         return i;
+      }
+   }
+   return -1;
 }
 
 bool BamReaderPrivate::HasIndex(void) const {
@@ -332,7 +340,6 @@ bool BamReaderPrivate::Open(const string& filename) {
 }
 
 bool BamReaderPrivate::OpenIndex(const std::string& indexFilename) {
-
     if ( m_randomAccessController.OpenIndex(indexFilename, this) )
         return true;
     else {

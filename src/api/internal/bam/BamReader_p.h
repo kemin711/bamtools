@@ -29,6 +29,7 @@
 #include "api/internal/io/BgzfStream_p.h"
 #include <string>
 
+using namespace std;
 //using namespace BamTools;
 namespace BamTools {
 class BamReader;
@@ -57,6 +58,9 @@ class BamReaderPrivate {
         bool Close(void);
         const std::string Filename(void) const;
         bool IsOpen(void) const;
+        /**
+         * Open the stream only without opening the index.
+         */
         bool Open(const std::string& filename);
         bool Rewind(void);
         bool SetRegion(const BamRegion& region);
@@ -112,11 +116,31 @@ class BamReaderPrivate {
             return m_references;
         }
         int GetReferenceID(const std::string& refName) const;
+        /**
+         * Better implementation, more efficient.
+         */
+        int getReferenceID(const std::string& refName) const;
 
         // index operations
+        /**
+         * Create an index of type and attach to RandomAccessController.
+         */
         bool CreateIndex(const BamIndex::IndexType& type);
+        /**
+         * Delegate to RandomAccessController that has
+         * information about index or mot.
+         */
         bool HasIndex(void) const;
+        /**
+         * delegate to RandomAccessControler
+         */
         bool LocateIndex(const BamIndex::IndexType& preferredType);
+        /**
+         * Open a given index file.
+         * RandomAcessController does the opening
+         * and store the index information.
+         * @return true if successful.
+         */
         bool OpenIndex(const std::string& indexFilename);
         void SetIndex(BamIndex* index);
 
@@ -151,7 +175,7 @@ class BamReaderPrivate {
          * vector of [refname, reflen] index by refid
          * RefVector is a typedef of vector<RefData> in BamAux.h
          */
-        RefVector   m_references;
+        RefVector m_references;
         /** 
          * system data
          * TODO: Should auto detect.
