@@ -5,7 +5,7 @@
 # src/api/internal
 # ==========================
 
-set( InternalDir "internal" )
+set(InternalDir "internal")
 
 add_subdirectory( bam )
 add_subdirectory( index )
@@ -13,7 +13,7 @@ add_subdirectory( io )
 add_subdirectory( sam )
 add_subdirectory( utils )
 
-set( InternalSources
+set(InternalSources
          ${InternalBamSources}
          ${InternalIndexSources}
          ${InternalIOSources}

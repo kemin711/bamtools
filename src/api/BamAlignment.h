@@ -23,6 +23,7 @@
 #include <map>
 #include <typeinfo>
 //#include <mutex>
+#include <mutex>
 
 // to turn off debug mode uncomment the following line
 //#define NDEBUG 
@@ -433,6 +434,18 @@ class API_EXPORT BamAlignment {
         void SetIsFirstMate(bool ok);         // sets value of "alignment is first mate" flag
         void SetIsMapped(bool ok);            // sets value of "alignment is mapped" flag
         void SetIsMateMapped(bool ok);        // sets value of "alignment's mate is mapped" flag
+        void setUnmapped() {
+            AlignmentFlag |= UNMAPPED;
+        }
+        void setMapped() {
+            AlignmentFlag &= ~UNMAPPED;
+        }
+        void setMateUnmapped() {
+           AlignmentFlag |=  MATE_UNMAPPED;
+        }
+        void setMateMapped() {
+           AlignmentFlag &= ~MATE_UNMAPPED;
+        }
         /** 
          * sets value of "alignment mapped to reverse strand" flag
          */
@@ -449,6 +462,12 @@ class API_EXPORT BamAlignment {
          *  resolution" flag
          */
         void SetIsProperPair(bool ok);        
+        void setProperPair() {
+           AlignmentFlag |=  PROPER_PAIR;
+        }
+        void setImproperPair() {
+           AlignmentFlag &= ~PROPER_PAIR;
+        }
         void SetIsSecondMate(bool ok);        // sets value of "alignment is second mate on read" flag
 
         // convenient constants octal number, first digit is 0
@@ -700,6 +719,18 @@ class API_EXPORT BamAlignment {
         bool contains(int b, int e) const {
             return getPosition() <= b && getEndPosition() >= e;
         }
+        /**
+         * @return true if p in in [b,e] on the refgerence coordinate
+         */
+        bool contains(int p) const {
+            return getPosition() <= p && getEndPosition() >= p;
+        }
+        bool contain(int p) const {
+            return getPosition() <= p && getEndPosition() >= p;
+        }
+        bool contain(int b, int e) const {
+            return getPosition() <= b && getEndPosition() >= e;
+        }
 
         /**
          * @return the [start, end] range of the mapping 
@@ -730,6 +761,7 @@ class API_EXPORT BamAlignment {
          * @return the match length on reference.
          */
         int getReferenceWidth() const {
+           if (isUnmapped()) return 0;
            return GetEndPosition(false,false) - getPosition();
         }
         /**
@@ -747,6 +779,7 @@ class API_EXPORT BamAlignment {
          */
         std::pair<int,int> getPairedRange() const;
         /**
+         * This is the start to end regions coverted by the read.
          * Similar to getPairedRange but wihout the informaiton about the
          * direction of the two reads.
          *  |==R1==  ==R2==|
@@ -802,13 +835,13 @@ class API_EXPORT BamAlignment {
          * 'original' sequence (contained in BAM file)
          */
         const std::string& getQueryBases() const { return QueryBases; }
+        std::string& getQueryBases() { return QueryBases; }
         /**
          * @return the query sequence same as getQueryBases.
          * If there is Hard-clip, the only the alignmed part will be 
          * returned. So should tell BWA never use hardclip.
          */
         const std::string& getQuerySequence() const { return QueryBases; }
-        std::string& getQueryBases() { return QueryBases; }
         std::string& accessSequence() {
            return QueryBases;
         }
@@ -837,7 +870,7 @@ class API_EXPORT BamAlignment {
          */
         string getMatchedQuerySequence() const;
         /**
-         * alignment length - (H or S)
+         * alignment length - (I, H or S)
          * did not exclude D, could measure entire aligned part
          */
         int getMatchedQueryLength() const;
@@ -845,6 +878,9 @@ class API_EXPORT BamAlignment {
          * Query bases in alignment excluding S, H, I, and D segments.
          */
         int numberBaseAligned() const;
+        /**
+         * Should call this function after update to CigarData
+         */
         void clearAlignedBases() {
            AlignedBases.clear();
         }
@@ -900,6 +936,7 @@ class API_EXPORT BamAlignment {
          * @return mate mapped position (left mapping point)
          */
         int32_t getMatePosition() const { return MatePosition; }
+        int getMateEndPostion() const;
         /**
          * @return the strand as a single char + or -
          */
@@ -917,11 +954,10 @@ class API_EXPORT BamAlignment {
         /**
          * If read is unpaired, the insert size is also zero.
          * @return length of the template positive for
-         *    plus strand mate and negative for minus strand mate.
+         *    first segment (left most) mate and negative for last (right most)mate.
          *    If the two reads map to different references then
          *    the insert size is set to zero.
-         *
-         *  BamWriter use the InsertSize directly for output.
+         * Note: BamWriter use the InsertSize directly for output.
          */
         int32_t getInsertSize() const { 
            return InsertSize; 
@@ -932,7 +968,7 @@ class API_EXPORT BamAlignment {
          *
          * @return the length of the InsertSize if it is not zero
          *   otherwise return the length of the projected length
-         *   of the read on the reference.
+         *   of the read on the reference. result is non-negative.
          *
          *  This function used getInsertSize()
          */
@@ -1019,28 +1055,21 @@ class API_EXPORT BamAlignment {
         void fixStaggerGap();
         /**
          * Fix cigar with pattern like 57M1I1M1I69M 1M flank I or D
+         * After this operation MD tag will be invalid. Need the
+         * reference sequence to recalculate this tag. NM value is
+         * also approximate. If want to be accurate, also need to
+         * recalculate.
+         * In the case of 15S2M2D59M, 57M2D1M23S, 15S2M2I59M, 95M1I2M15S,
+         * the estimated MD tag may be close.
+         * In the case of ...57M1I1M1I69M... editing MD tag is almost
+         * impossible. So has to be recomputed.
          */
         bool fix1M();
         /**
          * will convert 12I135M into 12S135M
+         * Change ending I to S
          */
-        void fixCigarError() {
-            if (getCigarType(0) == 'I') {
-               CigarData[0].setType('S');
-            }
-            else if (getCigarType(0) == 'S' && getCigarType(1) == 'I') {
-               CigarData[0].expand(getCigarLength(1));
-               CigarData.erase(CigarData.begin()+1);
-            }
-            if (CigarData.back().getType() == 'I') {
-               CigarData.back().setType('S');
-            }
-            else if (CigarData.size() > 2 && CigarData.back().getType() == 'S'
-                  && getCigarType(CigarData.size()-2) == 'I') {
-               CigarData.back().expand(getCigarLength(CigarData.size()-2));
-               CigarData.erase(CigarData.begin()+CigarData.size()-2);
-            }
-        }
+        void fixCigarError();
 
         /**
          * @return true if start with softclip
@@ -1103,6 +1132,12 @@ class API_EXPORT BamAlignment {
          *   Soft clipped regions are not counted.
          */
         float getIdentity() const;
+        /**
+         * @return a normalized score comparable between different alignments.
+         */
+        float getScore() const {
+           return getIdentity() * getAlignLength();
+        }
         /**
          * Same as horizontal coverage of the query.
          * @return the portion of aligned query sequence.
@@ -1174,6 +1209,11 @@ class API_EXPORT BamAlignment {
          * that first soft is off the start of the reference.
          */
         void chopDangleFrontSoft();
+        /**
+         * Chop soft clip that is off the end of the reference.
+         *  ====== ref ref could be circular or assembly not long enough
+         *      ==-- read
+         */
         void chopDangleBackSoft();
 
         ///// setter methods ////
@@ -1190,6 +1230,8 @@ class API_EXPORT BamAlignment {
          * Once query bases is changed the length will also
          * change. There is no need to call setQueryLength()
          * after calling this method.
+         * The Cigar string may also need to be update.
+         * If paired, the mate needs to set MC tag.
          */
         void setQueryBases(const std::string &qseq) { 
            QueryBases = qseq; 
@@ -1199,12 +1241,24 @@ class API_EXPORT BamAlignment {
            QueryBases = std::move(qseq); 
            setQueryLength(QueryBases.size());
         }
+        void appendQueryBases(const string& tail) {
+            QueryBases.append(tail);
+        }
         /** 
          * set quality from string data. Quality and Query sequence
          * modification should always be done in sync.
          * */
         void setQuality(const std::string &qual) { Qualities = qual; }
         void setQuality(std::string &&qual) { Qualities = std::move(qual); }
+        void appendQuality(const string& tail) {
+            Qualities.append(tail);
+        }
+        /**
+         * If the Qualities member is shorter than QueryBases
+         * then will pad to the tail part and fill with the
+         * score+33 ==> char
+         */
+        void fillQuality(int score);
         /** 
          * integer version.
          * Since the internal representation is with char, you cannot
@@ -1254,20 +1308,26 @@ class API_EXPORT BamAlignment {
            setCigarData(cd);
         }
         /**
+         * @return the sum of M,D,I segment length
+         */
+        int getAlignLength() const;
+        /**
          * @param materefid Mate reference id, set to -1 if mate unmapped
          */
         void setMateRefID(int32_t materefid)  {  MateRefID = materefid; } 
+        void setMateRefid(int32_t materefid)  {  MateRefID = materefid; } 
+        void setMateReferenceId(int32_t materefid)  {  MateRefID = materefid; } 
         /**
          * update mate position
          */
         void setMatePosition(int32_t matepos) { MatePosition = matepos; } 
         /**
          * Sets the insert size which is the 
-         * length of the template.
+         * length of the template. For forward strand, it is positive,
+         * for reverse strand it is negative. This function will automaticall
+         * adjust the sign of the value if the user did it wrong.
          */
-        void setInsertSize(int32_t insize) { 
-           InsertSize = insize; 
-        }  
+        void setInsertSize(int32_t insize); 
         /////// end of setter methods ///////
         //
         // mutation functions
@@ -1283,7 +1343,11 @@ class API_EXPORT BamAlignment {
          * @param ci is the index for the cigar segment. Start
          *    from zero for the first cigar element.
          */
-        void nextCigar(int& i, int& j, unsigned int& ci) const;
+        //void nextCigar(int& i, int& j, unsigned int& ci) const;
+        void nextCigar(int& i, int& j, int& ci) const;
+        /**
+         * @return index from reference to that of query.
+         */
         int indexRef2Query(int ri) const;
         /**
          * Pick the subsequence based on the 0-based index
@@ -1301,12 +1365,15 @@ class API_EXPORT BamAlignment {
          */
         BamAlignment subsequenceByRef(int b, int e) const;
         /**
+         * If [b,e] corresponds to a deletion then will 
+         * use char '-' as base.
          * @return the substring of the query sequence according
          * to closed range [b,e]
          */
         std::string substringByRef(int b, int e) const;
         /**
-         * @return the char at index b according to the reference
+         * @param ri is the reference index [pos, endpos]
+         * @return the char of query at index b according to the reference
          *    sequence index coordinate system.
          */
         char charAtByRef(int ri) const;
@@ -1319,28 +1386,96 @@ class API_EXPORT BamAlignment {
         /**
          * The position is followed by a insertion of particular
          *   sequence.
+         * @param ri is the reference index.
          * @param seq is the sequence of last Base of M
          *   plus the entire bases of I.
          */
         bool isInsertionAt(int ri, const string& seq) const;
+        /**
+         * @return true if no syntax error in MD tag.
+         */
+        bool validMD() const;
         /** 
          * even position number, odd position letter last 3 digits
          * for bases 00 A, 01 C, 10 G, 11 T, 100 N, first bit del
-         * MD:Z:20^A127
+         * MD:Z:20^A127 20 match, A in ref deleted, 127 match
          * MD:Z:108^TTCTAAGGCCAGCTCCTGCACC39 =>108 identical deletion of TT...ACC match of 39
-         * MD tag ^AC to represent deletion of AC in query
+         * MD tag ^AC to represent deletion of ref AC in query
+         * MD: ^A0T means A in ref deleted, followed by ref base T mismatch
+         *      0 is used to separate to consecutive position.
+         *     0G154, 0 match, followed by G ref mismatch, then 154 match
+         *     154G0, 154 match, ref G mismatch, 0 match
          * But insertion in query is not recorded.
          * Difference in base is represented by Base
          * identical residues are represented by number.
         */ 
-        pair<vector<int>, vector<string>> getMDArray();
+        pair<vector<int>, vector<string>> getMDArray() const;
+        /**
+         * @return the length of the reference width computed from MD tag
+         * This number should be identical to that of computed from the
+         * Cigar string getReferenceWidth()
+         */
+        int getMDWidth() const;
+        /**
+         * validCigar() method checks whether cigar agree with refwidth
+         * This method checks MD agree with refwidth or not.
+         */
+        bool refwidthAgreeWithMD() const {
+            if (getMDWidth() != getReferenceWidth()) {
+                cerr << __FILE__ << ":" << __LINE__ << " refw=" << getReferenceWidth()
+                    << " mdw=" << getMDWidth() << " not the same\n";
+                return false;
+            }
+            return true;
+           //return getMDWidth() == getReferenceWidth();
+        }
+        /**
+         * QC function.
+         */
+        bool valid() const;
+        /**
+         * Update the MD tag with the value mdvec
+         */
         void updateMDTag(const pair<vector<int>, vector<string>>& mdvec);
+        /**
+         * Given the refernce sequence for this object. The MD tag will 
+         * be refreshed with the recomputed valie.
+         * @param refsq is the whole chromosome sequence.
+         */
+        //void recalMD(const string& refsq, mutex& mtx);
+        void recalMD(const string& refsq);
+        int chopMDBefore(int idx);
+        /**
+         * Helper method used by chopAfter()
+         */
+        int chopMDAfter(int idx);
+        /**  
+         * If align is + strand then insertSize also needs to be updated.
+         * This method cannot change that, needs the mate information.
+         * Usually done when both mates are available by the caller.
+         * @param idx is the 0-based chromosome index.
+         * The position will be changed. The mate needs to update mate position.
+         */
+        void chopBefore(int idx);
+        /**
+         * Remove alignment after idx, idx will be the last aligned base.
+         * If - strand insert size will be changed.
+         * @param idx is the 0-based index on the reference.
+         */
+        void chopAfter(int idx);
+        /**
+         * Helper method not tested
+         */
+        int countFrontMismatch(int len) const;
+        int countBackMismatch(int len) const;
         /**
          * Helper method used by trimFront()
          */
         void chopFront(size_t len, int numMismatch);
         /**
          * Helper used by trimBack()
+         * @param numMismatch is the number of mismatch in the region
+         *   to be chopped between query and reference.
          */
         void chopBack(size_t len, int numMismatch);
         /**
@@ -1379,6 +1514,7 @@ class API_EXPORT BamAlignment {
          *  not just the subsequence for this object.
          */
          void updateNMTag(const string& refseq);
+         void reduceNMTag(int diff);
          /**
          * friendly wrapper for better code.
          * @return -1 if no tag
@@ -1387,7 +1523,7 @@ class API_EXPORT BamAlignment {
          /**
          * @return the NM tag value or -1 if not found NM tag
          */
-         int getNMValue() const;
+         uint8_t getNMValue() const;
          /**
           * @return the length of the reference sequence for this alignment.
           */
@@ -1400,7 +1536,20 @@ class API_EXPORT BamAlignment {
          bool nearReferenceBegin(int d) const {
             return getPosition() < d;
          }
+         /**
+          * @return a positive number of how long does the mate cover
+          *   on the reference sequence based on the MC (mate cigar)
+          *   tag value. 
+          * Note: this method is not very efficient since it has to 
+          * get the tag and parse the tag.
+          */
          int getMateRefwidth() const;
+         /**
+            * Try to calucate mate reference width. If could not then return -1
+            */
+         int getMateReferenceWidth() {
+            return getMateRefwidth();
+         }
          /**
           * must call setRefvector() before using this
           * function.
@@ -1411,10 +1560,51 @@ class API_EXPORT BamAlignment {
             }
             return rsname.at(getReferenceId()).first;
          }
-         /// debug function ///
+         /**
+          * Make this alignment into unaligned status.
+          * flag: ummapped, mate_unmapped, improper_pair
+          * major field: refid, position, mate_refid, mate_position
+          *              CigarData, AlignedBases
+          *      either set to -1 or clear for string values.
+          * tag: NM, MD, MC removed
+          */
+         void makeUnmapped();
+         void makeMateUnmapped();
+         int32_t     Length() const {
+           return SupportData.QuerySequenceLength;
+         }             
+         /**
+          * @return the query sequence length
+          */
+         int32_t     length() const {
+            return SupportData.QuerySequenceLength;
+         }             
+         /**
+          * @return the length of the query sequence.
+          */
+         int32_t getLength() const {
+            assert(QueryBases.size() == SupportData.QuerySequenceLength);
+            return SupportData.QuerySequenceLength;
+         }
+         /**
+          * length setter function.
+          * This should only be use in conjunction of query base 
+          * insertion and deletion.
+          */
+         void setLength(int32_t len) {
+            SupportData.QuerySequenceLength=len;
+            if ((int)QueryBases.size() != len) {
+               cerr << __FILE__ << ":" << __LINE__ << ":WARN QueryBase length being changed\n";
+               QueryBases.resize(len);
+            }
+         }
+
+         ////// debug function ///
+
          void showTagData(ostream& ous) const;
 
          ////// static methods ////
+
          static void setPolishMax(int len) {
             TRIMLEN_MAX = len;
          }
@@ -1462,7 +1652,7 @@ class API_EXPORT BamAlignment {
           * This is used to extract the genomic sequence
           * from external sources.
           */
-         static pair<string,int> getRefnameFromId(int refid) {
+         static const pair<string,int>& getRefnameFromId(int refid) {
             return rsname[refid];
          }
 
@@ -1487,9 +1677,6 @@ class API_EXPORT BamAlignment {
           * @param x desired index to advance i to on refseq. If x happen
           *     to reside in a Deletion, then x will be automatically
           *     advanced to the first base of the next M. Not sure
-          *     this behavior is good or bad. Need to debug.
-          * @param cigarIdx the index inside one Cigar segment
-          *     range from [0, segment.length-1]
           * @param ci cigar segment index [0, NumberOfCigar-1]
           */
          //void advanceIndex(int &i, int &j, int &x, unsigned int &cigarIdx, unsigned int &ci) const;
@@ -1503,34 +1690,6 @@ class API_EXPORT BamAlignment {
          * Use getName() to read this one
          * */
         std::string Name;    
-        int32_t     Length() const {
-           return SupportData.QuerySequenceLength;
-        }             
-        /**
-         * @return the query sequence length
-         */
-        int32_t     length() const {
-           return SupportData.QuerySequenceLength;
-        }             
-        /**
-         * @return the length of the query sequence.
-         */
-        int32_t getLength() const {
-           assert(QueryBases.size() == SupportData.QuerySequenceLength);
-           return SupportData.QuerySequenceLength;
-        }
-        /**
-         * length setter function.
-         * This should only be use in conjunction of query base 
-         * insertion and deletion.
-         */
-        void setLength(int32_t len) {
-           SupportData.QuerySequenceLength=len;
-           if ((int)QueryBases.size() != len) {
-              cerr << __FILE__ << ":" << __LINE__ << ":WARN QueryBase length being changed\n";
-              QueryBases.resize(len);
-           }
-        }
         /** 'original' sequence (contained in BAM file)
          */
         std::string QueryBases;         
@@ -1539,11 +1698,15 @@ class API_EXPORT BamAlignment {
          * 'aligned' sequence (QueryBases plus deletion, padding, clipping
          * chars) This field will be completely empty after reading from
          * BamReader/BamMultiReader when QueryBases is empty.
+         * After any modifcation of the object on the query sequences
+         * this field should be cleared.
          */
         std::string AlignedBases;       
         /** 
          * FASTQ qualities (ASCII characters, not numeric values)
-         * String representation from char 33 to 93
+         * String representation from char 33 to 93 in visible
+         * range. Score = int value of char - 33
+         * Qscore of 30 is char 63 '?'
          */
         std::string Qualities;          
         /** 
@@ -1560,6 +1723,7 @@ class API_EXPORT BamAlignment {
         int32_t     RefID;              
         /**
          * (0-based) where alignment starts on reference.
+         * If unmapped then this value can be set to -1
          */
         int32_t     Position;
         /** 
@@ -1687,7 +1851,6 @@ class API_EXPORT BamAlignment {
           * default 3
           */
          static int GAP_CUT; // = 3;
-
 
     // internal data member
     private:
@@ -2084,15 +2247,16 @@ template<typename T> inline pair<T,bool> BamAlignment::getTag(const std::string&
        return make_pair(0, false);
     }
     // p point to first char of TAG
-    //cerr << "p is at " << p << endl;
+    //cerr << __LINE__ << ":DEBUG p is at " << p << endl;
     p += Constants::BAM_TAG_TAGSIZE;
     //cerr << "p is at " << p << endl;
     if (!TagTypeHelper<T>::CanConvertFrom(*p)) {
        //cerr << __FILE__ << ":" << __LINE__ << ":ERROR " << tag << " stored type " 
-       //   << type << " cannot be converted to " << typeid(T).name() << endl;
+       //   << *p << " cannot be converted to " << typeid(T).name() << endl;
        throw BamTypeException(string(__FILE__) + ":" + to_string(__LINE__) 
-             + ":ERROR Cannot convert from stored data type " + string(*p, 1) 
-             + " in tag " + tag + " to requested type: " + string(typeid(T).name()));
+             + ":ERROR Cannot convert from stored data type " + string(1, *p) 
+             + " in tag " + tag + " to requested type: " + string(typeid(T).name())
+             + " consider using the type of the same signage");
     }
     size_t tagdatalen = getAtomicTagLength(*p);
     T res=0;

@@ -8,9 +8,6 @@
 // ***************************************************************************
 
 #include "api/BamReader.h"
-#include "api/internal/bam/BamReader_p.h"
-using namespace BamTools;
-using namespace BamTools::Internal;
 
 #include <algorithm>
 #include <iostream>
@@ -19,6 +16,7 @@ using namespace BamTools::Internal;
 #include <vector>
 
 using namespace std;
+using namespace BamTools;
 
 BamReader::BamReader() 
 : d(new BamTools::Internal::BamReaderPrivate(this)) { }
@@ -74,20 +72,11 @@ BamAlignment* BamReader::next() {
 bool BamReader::GetNextAlignmentCore(BamAlignment& alignment) {
    return d->GetNextAlignmentCore(alignment);
 }
-const SamHeader& BamReader::GetConstSamHeader(void) const {
-   return d->GetConstSamHeader();
-}
-SamHeader BamReader::GetHeader(void) const {
-   return d->GetSamHeader();
-}
 std::string BamReader::GetHeaderText(void) const {
    return d->GetHeaderText();
 }
 int BamReader::GetReferenceCount(void) const {
    return d->GetReferenceCount();
-}
-const RefVector& BamReader::GetReferenceData(void) const {
-   return d->GetReferenceData();
 }
 
 int BamReader::GetReferenceID(const std::string& refName) const {
@@ -126,8 +115,12 @@ vector<pair<string,int>> BamReader::getReferenceMetaData() const {
 
 const string& BamReader::getReferenceName(int refid) const {
    const RefVector& rd = GetReferenceData();
+   if (rd.empty()) {
+      throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR BamReader::GetReferenceData() returned empty object");
+   }
    if (refid < 0 || refid >= static_cast<int>(rd.size())) {
-      throw logic_error("reference id " + to_string(refid) + " is invalid");
+      cerr << __FILE__ << ":" << __LINE__ << ":ERROR refid:" << refid << " is invalid\n";
+      throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR reference id " + to_string(refid) + " is invalid");
    }
    return rd[refid].getRefname();
 }

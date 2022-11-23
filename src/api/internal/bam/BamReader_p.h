@@ -22,18 +22,18 @@
 
 #include "api/BamAlignment.h"
 #include "api/BamIndex.h"
-#include "api/BamReader.h"
+//#include "api/BamReader.h" // include this will cause recursive definition!
 #include "api/SamHeader.h"
 #include "api/internal/bam/BamHeader_p.h"
 #include "api/internal/bam/BamRandomAccessController_p.h"
 #include "api/internal/io/BgzfStream_p.h"
 #include <string>
 
+using namespace std;
+//using namespace BamTools;
 namespace BamTools {
 class BamReader;
 namespace Internal {
-
-using namespace BamTools;
 
 /**
  * Should have a hiarchy of different readers
@@ -58,6 +58,9 @@ class BamReaderPrivate {
         bool Close(void);
         const std::string Filename(void) const;
         bool IsOpen(void) const;
+        /**
+         * Open the stream only without opening the index.
+         */
         bool Open(const std::string& filename);
         bool Rewind(void);
         bool SetRegion(const BamRegion& region);
@@ -76,16 +79,68 @@ class BamReaderPrivate {
 
         // access auxiliary data
         std::string GetHeaderText(void) const;
+        /**
+         * @return a const reference to the internal SamHeader object.
+         */
         const SamHeader& GetConstSamHeader(void) const;
+        /**
+         * @return a const reference to the internal SamHeader stored in
+         *   m_header.
+         */
+        const SamHeader& getSamHeader() const {
+           return m_header.getSamHeader();
+        }
+        /**
+         * @return a reference to the SamHeader stored in m_header.
+         *   The caller can modify the return object which if using
+         *   reference will change this object.
+         */
+        SamHeader& getSamHeader() {
+           return m_header.getSamHeader();
+        }
+        /**
+         * Avoid using this object if you only want to read.
+         */
         SamHeader GetSamHeader(void) const;
         int GetReferenceCount(void) const;
-        const RefVector& GetReferenceData(void) const;
+        /**
+         * @return a const reference to m_references
+         */
+        const RefVector& GetReferenceData(void) const {
+            return m_references;
+        }
+        const RefVector& getReferenceData(void) const {
+            return m_references;
+        }
+        RefVector& getReferenceData(void) {
+            return m_references;
+        }
         int GetReferenceID(const std::string& refName) const;
+        /**
+         * Better implementation, more efficient.
+         */
+        int getReferenceID(const std::string& refName) const;
 
         // index operations
+        /**
+         * Create an index of type and attach to RandomAccessController.
+         */
         bool CreateIndex(const BamIndex::IndexType& type);
+        /**
+         * Delegate to RandomAccessController that has
+         * information about index or mot.
+         */
         bool HasIndex(void) const;
+        /**
+         * delegate to RandomAccessControler
+         */
         bool LocateIndex(const BamIndex::IndexType& preferredType);
+        /**
+         * Open a given index file.
+         * RandomAcessController does the opening
+         * and store the index information.
+         * @return true if successful.
+         */
         bool OpenIndex(const std::string& indexFilename);
         void SetIndex(BamIndex* index);
 
@@ -116,14 +171,16 @@ class BamReaderPrivate {
         // general BAM file data
         int64_t     m_alignmentsBeginOffset;
         std::string m_filename;
-        RefVector   m_references;
-
+        /**
+         * vector of [refname, reflen] index by refid
+         * RefVector is a typedef of vector<RefData> in BamAux.h
+         */
+        RefVector m_references;
         /** 
          * system data
          * TODO: Should auto detect.
          */
         bool m_isBigEndian;
-
         /**
          * parent BamReader
          * TODO: poor design should remove.

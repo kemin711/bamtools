@@ -102,8 +102,8 @@ struct API_EXPORT CigarOp {
 // ----------------------------------------------------------------
 // RefData
 
-/*! \struct BamTools::RefData
-    \brief Represents a reference sequence entry
+/**
+ *  Represents a brief reference sequence entry: [name, length].
 */
 struct API_EXPORT RefData {
     std::string RefName;    //!< name of reference sequence
@@ -130,6 +130,12 @@ struct API_EXPORT RefData {
     }
     int32_t getReflength() const {
        return RefLength;
+    }
+    bool operator==(const string& refn) const {
+       return RefName == refn;
+    }
+    friend bool operator==(const string& refn, const RefData& rd) {
+       return refn == rd.RefName;
     }
 };
 
@@ -581,6 +587,57 @@ struct RaiiBuffer {
     void Clear(void) {
         memset(Buffer, 0, NumBytes);
     }
+};
+
+/**
+ * ==M0==~~X0~~==M1===~~~X1~~===M2===
+ * Match segment is always one more than mismatch segments.
+ * If no match at start or end then the value is zero.
+ * The match segment stores the number of exact matched 
+ * length of bases between reference and query. the mismatched
+ * segment stores the reference sequences.
+ */
+class Matchdiff {
+   public:
+      Matchdiff() { }
+      Matchdiff(vector<int>&& m, vector<string>&& x)
+        : mseg(m), xseg(x)
+      { }
+      /**
+       * Can be used to update the MD tag value
+       */
+      string toString() const;
+      /**
+       * @param idx is 0 based index from 0 to the length of the
+       * aligment minux one. [0, L-1] where L is the length
+       * of the alignment. idx must > 0.
+       * @return the number of mismatches in removed region.
+       *   mismatch are query deletion and mismatch (excluding query insertion)
+       */
+      int removeBefore(int idx);
+      int removeAfter(int idx);
+      int getMseglen(int i) const {
+         return mseg[i];
+      }
+      int getXseglen(int i) const {
+         if (xseg[i][0] == '^') return xseg[i].size()-1;
+         else return xseg[i].size();
+      }
+      /**
+       * @param x is a valid index ins xseg
+       * @return true If query is deleted for the xth xsegment.
+       */
+      bool isDeletion(int x) const {
+         return xseg[x][0] == '^';
+      }
+      /**
+       * Total legth of the mseg and xseg
+       */
+      int length() const;
+
+   private:
+      vector<int> mseg;
+      vector<string> xseg; // mismatch of refseq
 };
 
 } // namespace BamTools

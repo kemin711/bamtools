@@ -573,7 +573,8 @@ Reader::decodeNumber( Token &token )
                                             : Value::maxUInt;
    Value::UInt threshold = maxIntegerValue / 10;
    Value::UInt lastDigitThreshold = maxIntegerValue % 10;
-   assert( lastDigitThreshold >=0  &&  lastDigitThreshold <= 9 );
+   //assert( lastDigitThreshold >=0  &&  lastDigitThreshold <= 9 );
+   assert(lastDigitThreshold <= 9); // unsigned int >= 0 no need to test!
    Value::UInt value = 0;
    while ( current < token.end_ )
    {

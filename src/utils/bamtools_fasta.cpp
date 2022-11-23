@@ -230,8 +230,6 @@ bool Fasta::FastaPrivate::GetBase(const int& refId, const int& position, char& b
   
     // use index if available
     if ( HasIndex && !Index.empty() ) {
-        
-        // validate reference id 
         if ( (refId < 0) || (refId >= (int)Index.size()) ) {
             cerr << "FASTA error: invalid refId specified: " << refId << endl;
             return false;
@@ -403,8 +401,6 @@ bool Fasta::FastaPrivate::GetSequence(const int& refId, const int& start, const 
   
     // use index if available
     if ( HasIndex && !Index.empty() ) {
-      
-        // validate reference id 
         if ( (refId < 0) || (refId >= (int)Index.size()) ) {
             cerr << "FASTA error: invalid refId specified: " << refId << endl;
             return false;
