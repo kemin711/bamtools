@@ -973,7 +973,7 @@ pair<int,int> BamAlignment::getMismatchCount() const {
    return make_pair(numdiff-indel, alnlen);
 }
 
-int BamAlignment::numberOfIdelsoft() const {
+int BamAlignment::numberOfIndelsoft() const {
    int res=0;
    for (auto& cd : CigarData) {
       if (cd.Type == 'D' || cd.Type == 'I' || cd.getType() == 'S') {
@@ -983,7 +983,7 @@ int BamAlignment::numberOfIdelsoft() const {
    return res;
 }
 
-int BamAlignment::numberOfIdel() const {
+int BamAlignment::numberOfIndel() const {
    int res=0;
    for (auto& cd : CigarData) {
       if (cd.Type == 'D' || cd.Type == 'I') {

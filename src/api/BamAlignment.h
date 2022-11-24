@@ -1045,11 +1045,11 @@ class API_EXPORT BamAlignment {
         /**
          * @return the number of indel + softclip
          */
-        int numberOfIdelsoft() const;
+        int numberOfIndelsoft() const;
         /**
          * @return the number of indels
          */
-        int numberOfIdel() const;
+        int numberOfIndel() const;
         /**
          * Has indel near < 22 nt from the end
          */
