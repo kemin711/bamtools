@@ -1041,6 +1041,14 @@ class API_EXPORT BamAlignment {
            return CigarData.size();
         }
         /**
+         * @return the number of indel + softclip
+         */
+        int numberOfIdelsoft() const;
+        /**
+         * @return the number of indels
+         */
+        int numberOfIdel() const;
+        /**
          * Has indel near < 22 nt from the end
          */
         bool hasEndIndel() const;
@@ -1363,8 +1371,8 @@ class API_EXPORT BamAlignment {
          */
         BamAlignment subsequenceByRef(int b, int e) const;
         /**
-         * If [b,e] corresponds to a deletion then will 
-         * use char '-' as base.
+         * If [b,e] contains a deletion then the returned query substring
+         * will be shorter than length([b,e]) 
          * @return the substring of the query sequence according
          * to closed range [b,e]
          */

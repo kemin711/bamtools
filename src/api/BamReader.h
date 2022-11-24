@@ -445,9 +445,9 @@ class API_EXPORT BamReader {
          *  @see LocateIndex(), OpenIndex()
         */
         bool CreateIndex(const BamIndex::IndexType& type=BamIndex::STANDARD);
-         bool createIndex(const BamIndex::IndexType& type) {
+        bool createIndex(const BamIndex::IndexType& type=BamIndex::STANDARD) {
             return d->CreateIndex(type);
-         }
+        }
         /** 
          *  @return true if index data is available.
         */
@@ -475,10 +475,9 @@ class API_EXPORT BamReader {
          *  @return true if (any) index file could be found
         */
         bool LocateIndex(const BamIndex::IndexType& preferredType = BamIndex::STANDARD);
-         bool locateIndex(const BamIndex::IndexType& preferredType)
-         {
+        bool locateIndex(const BamIndex::IndexType& preferredType = BamIndex::STANDARD) {
             return d->LocateIndex(preferredType);
-         }
+        }
         /** 
          *  Opens a BAM index file.
          *

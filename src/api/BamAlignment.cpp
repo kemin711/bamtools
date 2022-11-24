@@ -973,6 +973,26 @@ pair<int,int> BamAlignment::getMismatchCount() const {
    return make_pair(numdiff-indel, alnlen);
 }
 
+int BamAlignment::numberOfIdelsoft() const {
+   int res=0;
+   for (auto& cd : CigarData) {
+      if (cd.Type == 'D' || cd.Type == 'I' || cd.getType() == 'S') {
+         ++res;
+      }
+   }
+   return res;
+}
+
+int BamAlignment::numberOfIdel() const {
+   int res=0;
+   for (auto& cd : CigarData) {
+      if (cd.Type == 'D' || cd.Type == 'I') {
+         ++res;
+      }
+   }
+   return res;
+}
+
 // if no NM tag then assume 0% identity, could be unaligned read
 float BamAlignment::getNGIdentity() const {
    int32_t numMis = -1;
@@ -2549,7 +2569,9 @@ void BamAlignment::advanceIndex(int &i, int &j, int &b,
          if (ci >= CigarData.size()) {
             cerr << __FILE__ << ":" << __LINE__ 
                << " walked off the cigar string\n";
-            exit(1);
+            //exit(1);
+            throw logic_error("i=" + to_string(i) + " j=" + to_string(j) + " b=" 
+                  + to_string(b));
          }
          char newState = CigarData[ci].Type;
          if ((cigarState == 'I' && newState == 'D')
@@ -3031,7 +3053,11 @@ BamAlignment BamAlignment::subsequenceByRef(int b, int e) const {
 } 
 
 std::string BamAlignment::substringByRef(int b, int e) const {
-   assert(b>=Position);
+   if (e <= Position) {
+      throw runtime_error("e=" + to_string(e) + " is before bamalign begin=" + to_string(Position));
+   }
+   //assert(b>=Position); // e can be off the end of the sequence, we padd with -
+   if (b<Position) b = Position; 
    // InsertSize, CigarData
    int i=Position, j=0; //i on reference, j index on query
    char cigarState = 'M';
@@ -3045,7 +3071,18 @@ std::string BamAlignment::substringByRef(int b, int e) const {
       ++ci;
    }
    if (i<b) {
-      advanceIndex(i, j, b, cigarIdx, ci, cigarState);
+      try {
+         advanceIndex(i, j, b, cigarIdx, ci, cigarState);
+      }
+      catch (const logic_error& err) {
+         //cerr << __LINE__ << ": failed advanceIdx for cigarIdx=" + to_string(cigarIdx)
+         //   + " ci=" + to_string(ci) + " cigarState=" + string(1, cigarState))
+         cerr << err.what() << endl;
+         cerr << __LINE__ << ": failed advanceIdx for cigarIdx=" << cigarIdx
+            << " ci=" << ci << " cigarState=" << cigarState << endl
+            << *this << " b=" << b << " e=" << e << endl;
+         throw;
+      }
       subqseqBegin=j;
    }
    // bring i to e on reference, j follows on query
@@ -3070,10 +3107,12 @@ std::string BamAlignment::substringByRef(int b, int e) const {
          //cout << "Next cigar segment\n";
          ++ci;
          if (ci >= CigarData.size()) {
-            cerr << __FILE__ << ":" << __LINE__ 
-               << " walked off the cigar string: ci=" << ci 
-               << endl;
-            exit(1);
+            //cerr << *this << " b=" << b << " e=" << e << " i=" << i << " j=" << j << endl;
+            //cerr << __FILE__ << ":" << __LINE__ 
+            //   << " Special case e is after the end. ci=" << ci << endl;
+               //<< " trunkated: " << QueryBases.substr(subqseqBegin) << endl;
+            //throw logic_error("ci is off the last cigar segment");
+            return QueryBases.substr(subqseqBegin);
          }
          char newState = CigarData[ci].Type;
          if ((cigarState == 'I' && newState == 'D')
@@ -3081,7 +3120,6 @@ std::string BamAlignment::substringByRef(int b, int e) const {
             cerr << __FILE__ << ":" << __LINE__ << ":" << __func__
                << ":WARN I/D or D/I transition in cigarop need more coding.\n";
             throw runtime_error("Cigar I|D or D|I transition");
-            //exit(1);
          }
          cigarIdx = 0;
          cigarState = newState;

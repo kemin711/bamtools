@@ -28,7 +28,9 @@ class BamIndexFactory {
          */
         static BamIndex* CreateIndexFromFilename(const std::string& indexFilename,
                                                  BamReaderPrivate* reader);
-        // creates a new BamIndex object, of requested @type
+        /**
+         *  creates a new BamIndex object, of requested @type
+         */
         static BamIndex* CreateIndexOfType(const BamIndex::IndexType& type,
                                            BamReaderPrivate* reader);
         // returns name of existing index file that corresponds to @bamFilename
