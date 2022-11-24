@@ -790,7 +790,9 @@ class API_EXPORT BamAlignment {
          */
         std::pair<int,int> getPairedInterval() const;
 
-        // retrieves the size, read locations and reference locations of soft-clip operations
+        /**
+         * retrieves the size, read locations and reference locations of soft-clip operations
+         */
         bool GetSoftClips(std::vector<int>& clipSizes,
                           std::vector<int>& readPositions,
                           std::vector<int>& genomePositions,
@@ -1026,7 +1028,7 @@ class API_EXPORT BamAlignment {
            return CigarData[i].getType();
         }
         /**
-         * @return the length of the Cigar setment at index i
+         * @return the length of the Cigar segment at index i
          */
         unsigned int getCigarLength(unsigned int i) const {
            return CigarData[i].getLength();
@@ -1196,7 +1198,7 @@ class API_EXPORT BamAlignment {
          */
         int getSoftclipLength() const;
         /**
-         * @return the longer of the softclip length.
+         * @return the longer of the left and right softclip lengths.
          *   If no softlcip, the return 0
          */
         int getMaxSoftclipLength() const;
@@ -1538,6 +1540,9 @@ class API_EXPORT BamAlignment {
          }
          bool nearReferenceEnd(int d) const {
             return abs(getReferenceLength() - getEndPosition()) < d;
+         }
+         bool nearReferenceBegin(int d) const {
+            return getPosition() < d;
          }
          /**
           * @return a positive number of how long does the mate cover
