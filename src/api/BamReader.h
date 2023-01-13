@@ -288,6 +288,9 @@ class API_EXPORT BamReader {
         bool getNextAlignmentCore(BamAlignment& alignment) {
             return d->GetNextAlignmentCore(alignment);
         }
+        bool nextAlignmentCore(BamAlignment& alignment) {
+            return d->GetNextAlignmentCore(alignment);
+        }
 
         // ----------------------
         // access header data
