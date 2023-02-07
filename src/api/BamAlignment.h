@@ -368,6 +368,9 @@ class API_EXPORT BamAlignment {
         bool isPaired() const { 
             return (AlignmentFlag & PAIRED) == PAIRED;
         }
+        bool isUnpaired() const { 
+            return (AlignmentFlag & PAIRED) != PAIRED;
+        }
         /** 
          * @return true if reported position is primary alignment
          */
@@ -855,6 +858,7 @@ class API_EXPORT BamAlignment {
          * @return the formated aligned query sequence.
          *   if not present, could return empty string.
          * see: getMatchedQuerySequence()
+         * TODO: Need a method to build the aligned bases when it is empty.
          */
         const std::string& getAlignedQueryBases() const { 
            //if (AlignedBases.empty()) {
@@ -1028,7 +1032,7 @@ class API_EXPORT BamAlignment {
            return CigarData[i].getType();
         }
         /**
-         * @return the length of the Cigar segment at index i
+         * @return the length of the Cigar segment at 0-based index i
          */
         unsigned int getCigarLength(unsigned int i) const {
            return CigarData[i].getLength();
