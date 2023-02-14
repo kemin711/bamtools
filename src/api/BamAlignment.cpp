@@ -364,6 +364,10 @@ bool BamAlignment::valid() const {
       cerr << __LINE__ << ": query sequence and quality not the same length\n";
       return false;
    }
+   if (getReferenceId() == -1 && isMapped()) {
+      cerr << __FILE__ << ":" << __LINE__ << ": flag not set to unmapped\n";
+      return false;
+   }
    //return validCigar() && refwidthAgreeWithMD() && QueryBases.size() == Qualities.size();
    return validCigar() && refwidthAgreeWithMD();
 }
