@@ -67,6 +67,9 @@ class API_EXPORT BamWriter {
             return d->Open(filename, samHeaderText, referenceSequences);
         }
         /** 
+         * Typical usage:
+         *  Open(outBamFile, br.getHeader(), br.getReferenceData());
+         *
          *  Opens a BAM file for writing from a SamHeaer object.
          *  Will overwrite the BAM file if it already exists.
          *  \param[in] filename           name of output BAM file

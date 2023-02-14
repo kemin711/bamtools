@@ -3613,10 +3613,10 @@ void BamAlignment::recalMD(const string& refsq) {
 void BamAlignment::chopFront(size_t len, int numMismatch) {
    // if InsertSize is zero do nothing
    if (numMismatch > 0) {
-      uint8_t NMval = getNMValue();
+      uint16_t NMval = getNMValue();
       if (static_cast<int>(NMval) >= numMismatch) {
-         NMval -= static_cast<uint8_t>(numMismatch);
-         if (!EditTag("NM", "C", NMval)) {
+         NMval -= static_cast<uint16_t>(numMismatch);
+         if (!EditTag("NM", "S", NMval)) {
             throw logic_error(string(__func__) + ": Failed to edit NM tag with " + to_string(NMval));
          }
       }
@@ -3786,10 +3786,10 @@ void BamAlignment::chopFront(size_t len, int numMismatch) {
 void BamAlignment::chopBack(size_t len, int numMismatch) {
    // if InsertSize is zero do nothing
    if (numMismatch > 0) {
-      int8_t NMval = getNMValue();
+      uint16_t NMval = getNMValue();
       if (static_cast<int>(NMval) >= numMismatch) {
-         NMval -= static_cast<int8_t>(numMismatch);
-         if (!EditTag("NM", "C", NMval)) {
+         NMval -= static_cast<uint16_t>(numMismatch);
+         if (!EditTag("NM", string(1,Constants::BAM_TAG_TYPE_UINT16), NMval)) { // BAM_TAG_TYPE_UINT16 is S
             throw logic_error(string(__func__) + ": failed to edit NM tag " + to_string(NMval));
          }
       }
@@ -4433,7 +4433,7 @@ void BamAlignment::patchEnd() {
          mdvec.first.front() += trimlen;
          mdvec.second.erase(mdvec.second.begin(), mdvec.second.begin()+m);
          updateMDTag(mdvec);
-         uint8_t nmval = getNMValue();
+         uint16_t nmval = getNMValue();
          assert(m < nmval);
          nmval -= m;
          EditTag("NM", "C", nmval);
@@ -4464,7 +4464,7 @@ void BamAlignment::patchEnd() {
 //#endif
    }
    if (m < mdvec.first.size()-1) {
-      uint8_t nmval = getNMValue();
+      uint16_t nmval = getNMValue();
       nmval -= (mdvec.first.size()-1 - m);
       EditTag("NM", "C", nmval);
       mdvec.first.erase(mdvec.first.begin()+m+1, mdvec.first.end());
@@ -4573,23 +4573,26 @@ int BamAlignment::getASValue() const {
    return val;
 }
 
-uint8_t BamAlignment::getNMValue() const {
+uint16_t BamAlignment::getNMValue() const {
    //if (!hasTag("NM")) return -1;
-   uint8_t val = 0;
+   uint16_t val = 0;
    //int val = -1;
    try {
-      pair<uint8_t,bool> res = getTag<uint8_t>("NM");
+      pair<uint16_t,bool> res = getTag<uint16_t>("NM");
       if (res.second) val = res.first;
    }
    catch (const BamTypeException& ler) {
       pair<int,bool> res = getTag<int32_t>("NM");
       //if (res.second) val = res.first;
-      if (res.first > static_cast<int>(UINT8_MAX)) {
+      if (res.first > static_cast<int>(UINT16_MAX)) {
          cerr << endl << *this;
          cerr << __FILE__ << ":" << __LINE__ << ": NM value " << res.first << " too large\n";
-         throw logic_error("NM value " + to_string(res.first) + " cannot be stored as uint8_t");
+         throw logic_error("NM value " + to_string(res.first) + " cannot be stored as uint16_t");
       }
-      val = static_cast<uint8_t>(res.first);
+      if (res.first > UINT16_MAX) {
+         throw logic_error("consider make getNMValue() return int32_t");
+      }
+      val = static_cast<uint16_t>(res.first);
    }
    catch (const exception& err) {
       cerr << __FILE__ << ":" << __LINE__ << ":ERROR failed to get NM tag value\n";

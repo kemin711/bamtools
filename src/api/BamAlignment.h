@@ -69,7 +69,7 @@ class API_EXPORT BamAlignment {
     /////// constructors & destructor //////////
     public:
         /** 
-         *   Default constructor
+         *   Default constructor of empty objects.
          */
         BamAlignment()
             : Name(), QueryBases(), AlignedBases(), Qualities(), 
@@ -1033,6 +1033,9 @@ class API_EXPORT BamAlignment {
         unsigned int getCigarLength(unsigned int i) const {
            return CigarData[i].getLength();
         }
+        /**
+         * Same as getCigarSize()
+         */
         unsigned int getCigarOperationCount() const {
            return CigarData.size();
         }
@@ -1529,9 +1532,11 @@ class API_EXPORT BamAlignment {
          */
          int getASValue() const;
          /**
-         * @return the NM tag value or -1 if not found NM tag
-         */
-         uint8_t getNMValue() const;
+          * Not sure limiting to uisnged int16 is good or not.
+          * @return the NM tag value or -1 if not found NM tag
+          */
+         //uint8_t getNMValue() const;
+         uint16_t getNMValue() const;
          /**
           * @return the length of the reference sequence for this alignment.
           */
