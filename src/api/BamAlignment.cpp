@@ -655,7 +655,18 @@ bool BamAlignment::fix1M() {
    }
    if (getCigarSize() < 5) {
       if (oldnm != nmvalue) {
-         EditTag("NM", "C", static_cast<uint8_t>(nmvalue)); 
+         if (nmvalue < UINT8_MAX) {
+            EditTag("NM", "C", static_cast<uint8_t>(nmvalue)); 
+         }
+         else if (nmvalue < UINT16_MAX) {
+            EditTag("NM", "S", static_cast<uint16_t>(nmvalue)); 
+         }
+         else if (nmvalue < INT32_MAX) {
+            EditTag("NM", "S", static_cast<int32_t>(nmvalue)); 
+         }
+         else {
+            throw logic_error("nmvalue large than INT32_MAX");
+         }
          SupportData.NumCigarOperations = CigarData.size();
          clearAlignedBases();
          return true;
@@ -716,14 +727,17 @@ bool BamAlignment::fix1M() {
    if (oldnm != nmvalue) {
       if (nmvalue > -1 && nmvalue < UINT8_MAX) {
          EditTag("NM", "C", static_cast<uint8_t>(nmvalue)); // approximate, exact computation too expensive
-         SupportData.NumCigarOperations = CigarData.size();
-         clearAlignedBases();
+      }
+      else if (nmvalue > -1 && nmvalue < UINT16_MAX) {
+         EditTag("NM", "S", static_cast<uint16_t>(nmvalue)); // approximate, exact computation too expensive
       }
       else {
          cerr << *this << endl;
          cerr << __FILE__ << ":" << __LINE__ << ": nmvalue=" << nmvalue << " too big\n";
          throw logic_error("nmvalue " + to_string(nmvalue) + " greater than UMI8_MAX");
       }
+      SupportData.NumCigarOperations = CigarData.size();
+      clearAlignedBases();
       /* Will create invalid object for this operation
       if (!validCigar()) { // only check if changed
          cerr << __FILE__ << ":" << __LINE__ << ":ERROR CigarData and len mismatch\n" << *this << endl;
@@ -1002,7 +1016,7 @@ float BamAlignment::getNGIdentity() const {
    int32_t numMis = -1;
    try {
       //pair<uint32_t,bool> res = getTag<uint32_t>("NM");
-      pair<uint8_t,bool> res = getTag<uint8_t>("NM");
+      pair<uint16_t,bool> res = getTag<uint16_t>("NM");
       if (res.second) numMis = res.first;
    }
    catch (const BamTypeException& err) {
@@ -1041,7 +1055,7 @@ float BamAlignment::getNGIdentity() const {
 float BamAlignment::getIdentity() const {
    int32_t numdiff = -1;
    try {
-      pair<uint8_t,bool> res = getTag<uint8_t>("NM");
+      pair<uint16_t,bool> res = getTag<uint16_t>("NM");
       if (res.second) numdiff = res.first;
    }
    catch (const BamTypeException& err) {
@@ -3620,6 +3634,7 @@ void BamAlignment::chopFront(size_t len, int numMismatch) {
       uint16_t NMval = getNMValue();
       if (static_cast<int>(NMval) >= numMismatch) {
          NMval -= static_cast<uint16_t>(numMismatch);
+         assert(numMismatch > -1 && numMismatch < UINT16_MAX);
          if (!EditTag("NM", "S", NMval)) {
             throw logic_error(string(__func__) + ": Failed to edit NM tag with " + to_string(NMval));
          }
@@ -3790,6 +3805,7 @@ void BamAlignment::chopFront(size_t len, int numMismatch) {
 void BamAlignment::chopBack(size_t len, int numMismatch) {
    // if InsertSize is zero do nothing
    if (numMismatch > 0) {
+      //assert(getNMValue() < UINT16_MAX);
       uint16_t NMval = getNMValue();
       if (static_cast<int>(NMval) >= numMismatch) {
          NMval -= static_cast<uint16_t>(numMismatch);
@@ -4210,9 +4226,9 @@ int BamAlignment::chopMDAfter(int idx) {
 }
 
 void BamAlignment::reduceNMTag(int diff) {
-   pair<uint8_t, bool> nmv;
+   pair<uint16_t, bool> nmv;
    try {
-      nmv = getTag<uint8_t>("NM");
+      nmv = getTag<uint16_t>("NM");
       if (!nmv.second) {
          cerr << endl << *this << endl;
          throw logic_error(to_string(__LINE__) + ": No NM tag");
@@ -4243,7 +4259,7 @@ void BamAlignment::reduceNMTag(int diff) {
       throw logic_error(string(__func__) + ":ERROR diff " + to_string(diff) + " more than NM value=" + to_string(nmv.first));
    }
    //nmval -= diff;
-   nmv.first -= static_cast<uint8_t>(diff);
+   nmv.first -= static_cast<uint16_t>(diff);
    if (!EditTag("NM", "C", nmv.first)) {
       throw logic_error(string(__func__) + ":ERROR Failed to edit NM tag");
    }
@@ -4578,16 +4594,13 @@ int BamAlignment::getASValue() const {
 }
 
 uint16_t BamAlignment::getNMValue() const {
-   //if (!hasTag("NM")) return -1;
    uint16_t val = 0;
-   //int val = -1;
    try {
       pair<uint16_t,bool> res = getTag<uint16_t>("NM");
       if (res.second) val = res.first;
    }
    catch (const BamTypeException& ler) {
       pair<int,bool> res = getTag<int32_t>("NM");
-      //if (res.second) val = res.first;
       if (res.first > static_cast<int>(UINT16_MAX)) {
          cerr << endl << *this;
          cerr << __FILE__ << ":" << __LINE__ << ": NM value " << res.first << " too large\n";
