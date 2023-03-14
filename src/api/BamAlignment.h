@@ -696,6 +696,7 @@ class API_EXPORT BamAlignment {
          *      0-based end coordinate. Default is false, so that his value
          *      represents a standard, half-open interval.
          *  @return alignment end position on the reference.
+         *      If unmapped, then return -1.
          */
         int GetEndPosition(bool usePadded = false, bool closedInterval = false) const;
         /**
@@ -744,9 +745,10 @@ class API_EXPORT BamAlignment {
            return std::pair<int,int>(getPosition(), GetEndPosition(false, true)); 
         }
         /**
-         * the first is always smaller than the second
+         * The first is always smaller than the second position.
          * @return the [begin,end] of the closed range for the mapping of this sequence
          *    on the genomic DNA. 0-based index. 
+         *    If unmapped, then return [-1,-1].
          */
         std::pair<int,int> getInterval() const;
         bool sameInterval(const BamAlignment& ba) const;
@@ -926,6 +928,8 @@ class API_EXPORT BamAlignment {
          * sequence.
          * Soft clips at the beginning does not count, the 
          * position is that of the reference.
+         * @return the 0-based index on the reference.
+         *    In case of unmapped, -1 is returned.
          */
         int32_t getPosition() const { return Position; }
         /**

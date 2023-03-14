@@ -4052,14 +4052,15 @@ void BamAlignment::chopBefore(int idx) {
       newcigar.push_back(*it);
       ++it;
    }
+   int mismatchCnt;
    try { // must do this first before editing other fields
       //if (inbug)
       //   cerr << "before chopMDBefore() idx=" << idx << endl;
-      int mismatchCnt = chopMDBefore(idx) + inscnt; // update MD tag
+      mismatchCnt = chopMDBefore(idx) + inscnt; // update MD tag
       reduceNMTag(mismatchCnt);
    }
    catch (const logic_error& ler) {
-      cerr << __LINE__ << ": idx=" << idx << " pos=" << getPosition() << endl;
+      cerr << *this << endl << __LINE__ << ": idx=" << idx << " pos=" << getPosition() << " inscnt=" << inscnt << " mismatchCnt=" << mismatchCnt << endl;
       cerr << ler.what() << endl;
       throw;
    }
@@ -4244,25 +4245,40 @@ void BamAlignment::reduceNMTag(int diff) {
       if (nmval < static_cast<int32_t>(UINT8_MAX)) {
          nmv.first = static_cast<uint8_t>(nmval);
       }
+      else if (nmval < static_cast<int32_t>(UINT16_MAX)) {
+         nmv.first = static_cast<uint16_t>(nmval);
+      }
       else {
-         throw runtime_error("NM value " + to_string(nmval) + " is greater than UINT8_MAX");
+         throw runtime_error("NM value nmval=" + to_string(nmval) + " is greater than UINT16_MAX");
       }
    }
    //if (!nmv.second) {
    //   cerr << *this << __FILE__ << ":" << __LINE__ << "Failed to get NM tag\n";
    //   throw logic_error(string(__func__) + ":ERROR Bam dose not have NM tab");
    //}
-   if (diff > static_cast<int>(UINT8_MAX)) {
-      throw runtime_error("mismatch value too large to be store as uint8_t consider using int");
+   if (diff > static_cast<int>(UINT16_MAX)) {
+      throw runtime_error("diff value too large: " + to_string(diff));
    }
    if (diff > static_cast<int>(nmv.first)) {
-      throw logic_error(string(__func__) + ":ERROR diff " + to_string(diff) + " more than NM value=" + to_string(nmv.first));
+      throw logic_error(string(__func__) + ":ERROR diff=" + to_string(diff) + " more than NM value=" + to_string(nmv.first));
    }
    //nmval -= diff;
    nmv.first -= static_cast<uint16_t>(diff);
-   if (!EditTag("NM", "C", nmv.first)) {
-      throw logic_error(string(__func__) + ":ERROR Failed to edit NM tag");
+   if (nmv.first < UINT8_MAX) {
+      if (!EditTag("NM", "C", static_cast<uint8_t>(nmv.first))) {
+         throw logic_error(string(__func__) + ":" + to_string(__LINE__) + ":ERROR Failed to edit NM tag");
+      }
    }
+   else { // if (nmv.first < UINT16_MAX) {
+      if (!EditTag("NM", "S", nmv.first)) {
+         throw logic_error(string(__func__) + ":" + to_string(__LINE__) + ":ERROR Failed to edit NM tag");
+      }
+   }
+   //else {
+   //   if (!EditTag("NM", "i", static_cast<int32_t>(nmv.first))) {
+   //      throw logic_error(string(__func__) + ":" + to_string(__LINE__) + ":ERROR Failed to edit NM tag");
+   //   }
+   //}
 }
 
 // len is ref count only
@@ -4688,6 +4704,7 @@ void BamAlignment::makeUnmapped() {
    setInsertSize(0);
    CigarData.clear();
    clearAlignedBases();
+   setMapQuality(0);
    // remove tags
    removeTag("NM"); removeTag("MD"); removeTag("MC");
    removeTag("SA"); removeTag("AS"); removeTag("XS");
