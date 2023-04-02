@@ -436,6 +436,13 @@ class API_EXPORT BamReader {
          * @return reference name given refid
          */
         const string& getReferenceName(int refid) const;
+        /**
+         * @return random_refid => main_refid (chr2:1) for GRCh38decoy or empty
+         *   for reference genome GRCh37decoy
+         */
+        map<int,int> getRefidMatch() const {
+           return d->getRefidMatch();
+        }
         // ----------------------
         // BAM index operations
         // ----------------------

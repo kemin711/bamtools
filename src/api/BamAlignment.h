@@ -338,6 +338,12 @@ class API_EXPORT BamAlignment {
         bool isMateForwardStrand() const {
             return !((AlignmentFlag & MATE_REVERSE_STRAND) == MATE_REVERSE_STRAND);
         }
+        void setMateForwardStrand() {
+           AlignmentFlag &= ~MATE_REVERSE_STRAND;
+        }
+        void setMateReverseStrand() {
+           AlignmentFlag |= MATE_REVERSE_STRAND;
+        }
         bool isMateOppositeStrand() const {
            return  (isForwardStrand() && isMateReverseStrand())
               || (isReverseStrand() && isMateForwardStrand()); 
@@ -402,6 +408,10 @@ class API_EXPORT BamAlignment {
         bool isSupplementary() const { 
            return (AlignmentFlag & SUPPLEMENTARY) == SUPPLEMENTARY; 
         }
+        void unsetSupplementary() {
+           AlignmentFlag &= ~SUPPLEMENTARY; 
+        }
+
         /** 
          * @return true if alignment is part of read that satisfied paired-end resolution
          */
@@ -1146,6 +1156,12 @@ class API_EXPORT BamAlignment {
          */
         pair<int,int> getMismatchCount() const;
         /**
+         * @return the number of exact matches for this alignment.
+         */
+        int getIdentical() const {
+           return getAlignLength() - getNMValue();
+        }
+        /**
          * @return NM/alnlen as a fraction number that
          *   represents the local alignment identity.
          *   Soft clipped regions are not counted.
@@ -1224,6 +1240,11 @@ class API_EXPORT BamAlignment {
          */
         void chopLastSoftclip();
         /**
+         * Chop first and last softclip if they exist.
+         */
+        void chopSoftclip();
+
+        /**
          * Same as chopFirstSoftclip() except for checking 
          * that first soft is off the start of the reference.
          */
@@ -1263,6 +1284,12 @@ class API_EXPORT BamAlignment {
         void appendQueryBases(const string& tail) {
             QueryBases.append(tail);
         }
+        /**
+         * At this point I have only implemented the operation on
+         * unmapped object. For mapped, the Cigar, position will 
+         * also need to be changed. Not sure this is meaninful or not.
+         */
+        void revcomp();
         /** 
          * set quality from string data. Quality and Query sequence
          * modification should always be done in sync.
@@ -1590,6 +1617,11 @@ class API_EXPORT BamAlignment {
           * tag: NM, MD, MC removed
           */
          void makeUnmapped();
+         /**
+          * Will do all the operation as makeUnmapped() except for
+          * refid, and position
+          */
+         void markUnmapped();
          void makeMateUnmapped();
          int32_t     Length() const {
            return SupportData.QuerySequenceLength;
@@ -1706,6 +1738,11 @@ class API_EXPORT BamAlignment {
 
     // public data fields, TODO: these fileds should all become private in the future
     public:
+        /**
+         * The standard bases and their complements. A->T, C->G, G->C, T->A, ....,
+         * N->N
+         */
+        static map<char,char> complementBase;
         /** 
          * read or query name 
          * Use getName() to read this one
@@ -1938,6 +1975,9 @@ class API_EXPORT BamAlignment {
                return *this;
             }
         };
+        /**
+         * Terrible data duplication! REMOVE.
+         */
         BamAlignmentSupportData SupportData;
         friend class Internal::BamReaderPrivate;
         friend class Internal::BamWriterPrivate;

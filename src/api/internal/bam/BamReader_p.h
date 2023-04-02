@@ -53,7 +53,6 @@ class BamReaderPrivate {
 
     // BamReader interface
     public:
-
         // file operations
         bool Close(void);
         const std::string Filename(void) const;
@@ -64,7 +63,6 @@ class BamReaderPrivate {
         bool Open(const std::string& filename);
         bool Rewind(void);
         bool SetRegion(const BamRegion& region);
-
         /**
          * Take alignment data from file stream and 
          * fill up the Alignment object.
@@ -143,6 +141,24 @@ class BamReaderPrivate {
          */
         bool OpenIndex(const std::string& indexFilename);
         void SetIndex(BamIndex* index);
+        /**
+         * Return a look up table for refid => master_refid
+         * As an example:
+         * chr2_KI270715v1_random (refid:34) => chr2 (refid:1)
+         * For GRCh38decoy 
+         * chr1, ..., chr21, chr22, chrX, chrY, chrM, 
+         * chr1_KI270706v1_random,  chr1_KI270707v1_random, chr1_KI270708v1_random,
+         * , ... ,
+         * chrUn_JTFH01001992v1_decoy can be ignored
+         * chrEBV  AC:AJ507799.2  gi:86261677  LN:171823  rl:decoy  M5:6743bd63b3ff2b5b8985d8933c53290a  SP:Human_herpesvirus_4  tp:circular
+         * ========================
+         * For human_g1k_v37_decoy.fasta the format is different 
+         * and there is no such naming method of random chromosomes
+         * so can ignore.
+         * @return chr_random => chr refid mapping for GRCh38decopy only
+         *    For human_g1k_v37_decoy will return empty container.
+         */
+        map<int,int> getRefidMatch() const;
 
     // internal methods, but available as a BamReaderPrivate 'interface'
     //
@@ -174,6 +190,7 @@ class BamReaderPrivate {
         /**
          * vector of [refname, reflen] index by refid
          * RefVector is a typedef of vector<RefData> in BamAux.h
+         * RefData { string, int32_t }
          */
         RefVector m_references;
         /** 

@@ -410,3 +410,26 @@ bool BamReaderPrivate::SetRegion(const BamRegion& region) {
 int64_t BamReaderPrivate::Tell(void) const {
     return m_stream.Tell();
 }
+
+map<int,int> BamReaderPrivate::getRefidMatch() const {
+   map<int,int> res;
+   // chr1, chr2, ..., chrX, chrY, chrM.
+   map<string,int> name2index;
+   for (size_t i = 0; i < 25; ++i ) {
+      name2index.insert(make_pair(m_references[i].getRefname(), i));
+   }
+   for (size_t i = 25; i < m_references.size(); ++i ) {
+      const string& rn = m_references[i].getRefname();
+      string::size_type x = rn.find('_');
+      if (x != string::npos) {
+         string tmp = rn.substr(0, x);
+         if (tmp == "chrUn") continue; // ignore genomic DNA like chrUn_KI270418v1
+         auto it = name2index.find(tmp);
+         if (it != name2index.end()) {
+            res.insert(make_pair(i, it->second));
+         }
+      }
+   }
+   return res;
+}
+

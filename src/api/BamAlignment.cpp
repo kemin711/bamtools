@@ -25,6 +25,9 @@ int BamAlignment::TRIMLEN_MAX = 6;
 int BamAlignment::GAP_CUT = 3;
 vector<pair<string,int>> BamAlignment::rsname;
 map<string,int> BamAlignment::refname2id;
+map<char,char> BamAlignment::complementBase{{'A', 'T'}, {'C', 'G'}, {'G', 'C'}, {'T', 'A'},
+   {'W', 'W'}, {'S', 'S'}, {'M', 'K'}, {'R', 'Y'}, {'Y', 'R'}, {'B', 'V'},
+   {'D', 'H'}, {'H', 'D'}, {'V', 'B'}, {'N', 'N'}, {'-', '-'}};
 
 void BamAlignment::setRefvector(vector<pair<string,int>>&& refvec) {
    rsname=refvec;
@@ -152,8 +155,8 @@ BamAlignment& BamAlignment::operator=(BamAlignment&& other) {
 namespace BamTools {
 std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    const string sep="\t";
-   ous << ba.getQueryName() << sep << ba.getQueryLength() << sep
-      << ba.getPosition() << sep
+   ous << ba.getQueryName() << sep << ba.getAlignmentFlag() << sep 
+      << ba.getQueryLength() << sep << ba.getPosition() << sep
       << "primary: " << ba.IsPrimaryAlignment() << sep
       //<< "reverseStrand: " << ba.IsReverseStrand() << sep
       << "strand: ";
@@ -3372,7 +3375,6 @@ void BamAlignment::chopFirstSoftclip() {
 }
 
 void BamAlignment::chopLastSoftclip() {
-   //assert(CigarData.back().getType() == 'S');
    if (CigarData.back().getType() == 'S') {
       int tmplen = CigarData.back().getLength();
       SupportData.QuerySequenceLength -= tmplen;
@@ -3382,6 +3384,12 @@ void BamAlignment::chopLastSoftclip() {
       CigarData.resize(CigarData.size()-1);
    }
 }
+
+void BamAlignment::chopSoftclip() {
+   chopFirstSoftclip();
+   chopLastSoftclip();
+}
+
 // same operaton as chopFirstSoftclip except will make sure
 // the soft clip is dangling off the reference.
 void BamAlignment::chopDangleFrontSoft() {
@@ -3625,7 +3633,6 @@ void BamAlignment::recalMD(const string& refsq) {
    }
    updateMDTag(make_pair(matchPart, mismatchPart));
 }
-
 
 // len is the length to trim from query
 void BamAlignment::chopFront(size_t len, int numMismatch) {
@@ -4708,6 +4715,21 @@ void BamAlignment::makeUnmapped() {
    // remove tags
    removeTag("NM"); removeTag("MD"); removeTag("MC");
    removeTag("SA"); removeTag("AS"); removeTag("XS");
+   removeTag("XA");
+}
+
+void BamAlignment::markUnmapped() {
+   setUnmapped(); // mate maybe mapped! setMateUnmapped();
+   setImproperPair();
+   //setReferenceId(-1); // mate may be mapped and have refid setMateReferenceId(-1);
+   //setPosition(-1); // setMatePosition(-1);
+   setInsertSize(0);
+   CigarData.clear();
+   clearAlignedBases();
+   setMapQuality(0);
+   // remove tags
+   removeTag("NM"); removeTag("MD"); removeTag("MC");
+   removeTag("SA"); removeTag("AS"); removeTag("XS");
 }
 
 void BamAlignment::makeMateUnmapped() {
@@ -4723,4 +4745,27 @@ int BamAlignment::getAlignLength() const {
          res += c.getLength();
    }
    return res;
+}
+
+// TODO: write more code for full revcomp operation
+void BamAlignment::revcomp() {
+   //if (isMapped()) {
+   //   //throw logic_error(string(__func__) + ": cannot reverse mapped object, only permitted on unmapped");
+   //   cerr << "WARN: cannot reverse mapped object is only limited to Qualities and QueryBases\n";
+   //}
+   size_t b = 0; 
+   size_t e = QueryBases.size()-1;
+   while (b < e) {
+      char RB=complementBase[QueryBases[b]];
+      char LB=complementBase[QueryBases[e]];
+      QueryBases[b] = LB;
+      QueryBases[e] = RB;
+      swap(Qualities[b], Qualities[e]);
+      ++b; --e;
+   }
+   if (b == e) { // odd number of bases, flip the middle
+      QueryBases[b]=complementBase[QueryBases[b]];
+   }
+   if (isForwardStrand()) setReverseStrand();
+   else setForwardStrand();
 }
