@@ -62,7 +62,16 @@ bool BamReader::GetNextAlignment(BamAlignment& alignment) {
 
 BamAlignment* BamReader::next() {
    BamAlignment* ptr = new BamAlignment();
-   if (d->GetNextAlignment(*ptr)) {
+   if (nextAlignment(*ptr)) {
+      return ptr;
+   }
+   delete ptr;
+   return nullptr;
+}
+
+BamAlignment* BamReader::nextCore() {
+   BamAlignment* ptr = new BamAlignment();
+   if (nextAlignmentCore(*ptr)) {
       return ptr;
    }
    delete ptr;

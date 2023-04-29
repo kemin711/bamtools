@@ -267,6 +267,7 @@ class API_EXPORT BamReader {
          *  otherwise return nullptr
          */
         BamAlignment* next();
+        BamAlignment* nextCore();
         /** 
          * TODO: Should create a base class to read core only.
          * Retrieves next available alignment, without populating the

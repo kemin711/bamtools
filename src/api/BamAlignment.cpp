@@ -497,6 +497,17 @@ int BamAlignment::getMaxSoftclipLength() const {
    return res;
 }
 
+string BamAlignment::getReverseQuality() const {
+   string res; 
+   res.reserve(Qualities.size());
+   auto it=Qualities.crbegin();
+   while (it != Qualities.crend()) {
+      res.push_back(*it);
+      ++it;
+   }
+   return res;
+}
+
 // 221M4I2M1D38M
 void BamAlignment::setCigar(const string& cstr) {
    if (!CigarData.empty()) CigarData.clear();
@@ -4742,6 +4753,28 @@ int BamAlignment::getAlignLength() const {
    int res=0;
    for (auto& c : CigarData) {
       if (c.getType() != 'S' && c.getType() != 'H') 
+         res += c.getLength();
+   }
+   return res;
+}
+
+int BamAlignment::getQueryAlignLength() const {
+   int res=0;
+   for (auto& c : CigarData) {
+      if (c.getType() == 'S' || c.getType() == 'H') 
+         continue;
+      if (c.getType() == 'M' && c.getType() == 'I') 
+         res += c.getLength();
+   }
+   return res;
+}
+
+int BamAlignment::getReferenceAlignLength() const {
+   int res=0;
+   for (auto& c : CigarData) {
+      if (c.getType() == 'S' || c.getType() == 'H') 
+         continue;
+      if (c.getType() == 'M' && c.getType() == 'D') 
          res += c.getLength();
    }
    return res;

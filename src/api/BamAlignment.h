@@ -85,14 +85,24 @@ class API_EXPORT BamAlignment {
          */
         BamAlignment(const std::string& qname, int32_t refid, int32_t refpos, uint32_t alnflag, 
               int32_t mrefid, int32_t mrefpos, const std::string& queryseq, const std::string& qstring)
-           : 
-              Name(qname), 
-             QueryBases(queryseq), AlignedBases(), Qualities(qstring),
+           : Name(qname), QueryBases(queryseq), AlignedBases(), Qualities(qstring),
              TagData(), RefID(refid), Position(refpos), Bin(0), MapQuality(0),
              AlignmentFlag(alnflag), CigarData(),
             MateRefID(mrefid), MatePosition(mrefpos), InsertSize(0),
             SupportData()
-        {}
+        {
+           SupportData.QuerySequenceLength=QueryBases.size(); // is this duplicate of QueryLength?
+        }
+        BamAlignment(const std::string& qname, int32_t refid, int32_t refpos, uint32_t alnflag, 
+              int32_t mrefid, int32_t mrefpos, std::string&& queryseq, std::string&& qstring)
+           : Name(qname), QueryBases(std::move(queryseq)), AlignedBases(), Qualities(std::move(qstring)),
+             TagData(), RefID(refid), Position(refpos), Bin(0), MapQuality(0),
+             AlignmentFlag(alnflag), CigarData(),
+            MateRefID(mrefid), MatePosition(mrefpos), InsertSize(0),
+            SupportData()
+        {
+           SupportData.QuerySequenceLength=QueryBases.size(); // is this duplicate of QueryLength?
+        }
         /**
          * Convenient constructor with Cigar input for testing
          */
@@ -105,8 +115,27 @@ class API_EXPORT BamAlignment {
              AlignmentFlag(alnflag), CigarData(),
             MateRefID(mrefid), MatePosition(mrefpos), InsertSize(0),
             SupportData()
-        { setCigar(cigarstr); }
-
+        { 
+           setCigar(cigarstr); 
+           SupportData.QuerySequenceLength=QueryBases.size(); // is this duplicate of QueryLength?
+        }
+        /**
+         * Using move as much as possible.
+         */
+        BamAlignment(const std::string& qname, int32_t refid, int32_t refpos, uint32_t alnflag, 
+              int32_t mrefid, int32_t mrefpos, std::string&& queryseq, std::string&& qstring,
+              const string& cigarstr)
+           : Name(qname), 
+             QueryBases(std::move(queryseq)), AlignedBases(), 
+             Qualities(std::move(qstring)),
+             TagData(), RefID(refid), Position(refpos), Bin(0), MapQuality(0),
+             AlignmentFlag(alnflag), CigarData(),
+            MateRefID(mrefid), MatePosition(mrefpos), InsertSize(0),
+            SupportData()
+        { 
+           setCigar(cigarstr); 
+           SupportData.QuerySequenceLength=QueryBases.size(); // is this duplicate of QueryLength?
+        }
         /** 
          *  Copy constructor
          */
@@ -917,6 +946,7 @@ class API_EXPORT BamAlignment {
          */
         const std::string& getQuality() const { return Qualities; }
         std::string& getQuality() { return Qualities; }
+        string getReverseQuality() const;
         /**
          * @return the fastq quality as integer value from 0 to 63
          * This is the Phred score after ASCII - 33
@@ -1111,6 +1141,12 @@ class API_EXPORT BamAlignment {
          */
         bool endWithSoftclip() const {
             return !CigarData.empty() && getCigar().back().Type == 'S';
+        }
+        bool bothEndSoft() const {
+            return !CigarData.empty() && getCigar().front().Type == 'S' && getCigar().back().Type == 'S';
+        }
+        bool bothEndsSoft() const {
+            return !CigarData.empty() && getCigar().front().Type == 'S' && getCigar().back().Type == 'S';
         }
         /**
          * @param startR is the starting value for reference index.
@@ -1354,9 +1390,18 @@ class API_EXPORT BamAlignment {
            setCigarData(cd);
         }
         /**
-         * @return the sum of M,D,I segment length
+         * @return the sum of M,D,I segment length that is the
+         *    total aligned length.
          */
         int getAlignLength() const;
+        /**
+         * @return the suma of M,I length of query aligned.
+         */
+        int getQueryAlignLength() const;
+        /**
+         * @return the suma of M,D length of reference aligned.
+         */
+        int getReferenceAlignLength() const;
         /**
          * @param materefid Mate reference id, set to -1 if mate unmapped
          */
@@ -1474,6 +1519,14 @@ class API_EXPORT BamAlignment {
             }
             return true;
            //return getMDWidth() == getReferenceWidth();
+        }
+        string getSAString() const {
+           return getReferenceName() +
+               to_string(getPosition()) +
+               string(1, getStrandChar()) +
+               getCigarString() +
+               to_string(getMapQuality()) +
+               to_string(getNMValue());
         }
         /**
          * QC function.
