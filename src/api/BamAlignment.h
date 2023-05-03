@@ -499,6 +499,9 @@ class API_EXPORT BamAlignment {
         /** sets value of "alignment part of paired-end read" flag
          */
         void SetIsPaired(bool ok);            
+        void setUnpaired() {
+           AlignmentFlag &= (~PAIRED);
+        }
         void SetIsPrimaryAlignment(bool ok);  // sets value of "position is primary alignment" flag
         /** sets value of "alignment is part of read that satisfied paired-end 
          *  resolution" flag
