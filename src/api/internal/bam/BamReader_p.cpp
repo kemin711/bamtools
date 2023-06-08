@@ -423,7 +423,7 @@ map<int,int> BamReaderPrivate::getRefidMatch() const {
       string::size_type x = rn.find('_');
       if (x != string::npos) {
          string tmp = rn.substr(0, x);
-         if (tmp == "chrUn") continue; // ignore genomic DNA like chrUn_KI270418v1
+         if (tmp == "chrUn" || tmp == "Un") continue; // ignore genomic DNA like chrUn_KI270418v1
          auto it = name2index.find(tmp);
          if (it != name2index.end()) {
             res.insert(make_pair(i, it->second));
