@@ -787,6 +787,14 @@ class API_EXPORT BamAlignment {
            return std::pair<int,int>(getPosition(), GetEndPosition(false, true)); 
         }
         /**
+         * @return the 0-based close interval on the Query sequence.
+         *    --===--
+         */
+        std::pair<int,int> getQInterval() const { 
+            return std::pair<int,int>(getFirstSoftclipLength(), getQueryLength()-getLastSoftclipLength()-1); 
+        }
+
+        /**
          * The first is always smaller than the second position.
          * @return the [begin,end] of the closed range for the mapping of this sequence
          *    on the genomic DNA. 0-based index. 
