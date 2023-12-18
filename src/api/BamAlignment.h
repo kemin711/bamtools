@@ -791,7 +791,12 @@ class API_EXPORT BamAlignment {
          *    --===--
          */
         std::pair<int,int> getQInterval() const { 
+           if (isForwardStrand()) {
             return std::pair<int,int>(getFirstSoftclipLength(), getQueryLength()-getLastSoftclipLength()-1); 
+           }
+           else {
+            return std::pair<int,int>(getLastSoftclipLength(), getQueryLength()-getFirstSoftclipLength()-1); 
+           }
         }
 
         /**
@@ -900,6 +905,10 @@ class API_EXPORT BamAlignment {
         std::string& accessSequence() {
            return QueryBases;
         }
+        std::string getRevcompQueryBases() const {
+           return getRevcompQuerySequence();
+        }
+        std::string getRevcompQuerySequence() const;
         bool sameQuerySequence(const BamAlignment& ba) const {
            return getQueryBases() == ba.getQueryBases();
         }
@@ -959,11 +968,15 @@ class API_EXPORT BamAlignment {
         std::string& getQuality() { return Qualities; }
         string getReverseQuality() const;
         /**
-         * @return the fastq quality as integer value from 0 to 63
-         * This is the Phred score after ASCII - 33
+         * @return the fastq quality as integer value from 0 to 93
+         * This is the Phred score after int(ASCII) - 33
          */
         vector<int> getQualityScore() const;
         int getAverageQualityScore() const;
+        /**
+         * Make sure all score are not less than '!' which is 33
+         */
+        bool validQScore() const;
         /**
          * @return ID number for reference sequence
          * use this id and RefVector to get reference name.
@@ -1003,7 +1016,6 @@ class API_EXPORT BamAlignment {
            if (IsMateReverseStrand()) return '-';
            else return '+';
         }
-
         /**
          * @return true if mate is mapped to the same reference.
          *   If no mate or mate is not mapped will return false.
@@ -1334,7 +1346,7 @@ class API_EXPORT BamAlignment {
         /**
          * At this point I have only implemented the operation on
          * unmapped object. For mapped, the Cigar, position will 
-         * also need to be changed. Not sure this is meaninful or not.
+         * also need to be changed. Not sure this is meaningful or not.
          */
         void revcomp();
         /** 
@@ -1355,8 +1367,9 @@ class API_EXPORT BamAlignment {
         /** 
          * integer version.
          * Since the internal representation is with char, you cannot
-         * user rreference.
-         * @param qual is a vector of Phred scores from 0-63
+         * use r_reference.
+         * @param qual is a vector of Phred scores from 0-93. 
+         *   This function will char(+33) 33-126 all are visible characters.
          */
         void setQuality(const std::vector<int> &qual);
         void setRefID(int32_t refid) { RefID = refid; }

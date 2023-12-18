@@ -2154,7 +2154,8 @@ bool BamAlignment::SkipToNextTag(char*& pTagData, unsigned int& numBytesParsed) 
 vector<int> BamAlignment::getQualityScore() const {
    vector<int> qual(Qualities.size());
    for (string::size_type i=0; i<Qualities.size(); ++i) {
-      qual[i] = Qualities[i] - 33;
+      // static_cast<int>(char) is not safe 
+      qual[i] = Qualities[i] - '!'; // ! is 33
    }
    return qual;
 }
@@ -2163,6 +2164,14 @@ vector<int> BamAlignment::getQualityScore() const {
 int BamAlignment::getAverageQualityScore() const {
    vector<int> q = getQualityScore();
    return accumulate(q.begin(), q.end(), 0)/float(q.size());
+}
+
+// restrict to 33-93 range to be visible
+bool BamAlignment::validQScore() const {
+   for (string::size_type i=0; i<Qualities.size(); ++i) {
+      if (Qualities[i] < '!' || Qualities[i] > ']') return false;
+   }
+   return true;
 }
 
 std::pair<int,int> BamAlignment::getInterval() const { 
@@ -4801,4 +4810,46 @@ void BamAlignment::revcomp() {
    }
    if (isForwardStrand()) setReverseStrand();
    else setForwardStrand();
+}
+
+// convention is to in upper case so eliminiate lower case
+std::string BamAlignment::getRevcompQuerySequence() const {
+   string tmp;
+   tmp.reserve(getQueryLength());
+   auto it = QueryBases.crbegin();
+   while (it != QueryBases.crend()) {
+      if (*it == 'A') { tmp.push_back('T'); }
+      else if (*it == 'C') { tmp.push_back('G'); }
+      else if (*it == 'G') { tmp.push_back('C'); }
+      else if (*it == 'T') { tmp.push_back('A'); }
+      else if (*it == 'N') { tmp.push_back('N'); }
+      //else if (*it == 'a') { tmp.push_back('t'); }
+      //else if (*it == 'c') { tmp.push_back('g'); }
+      //else if (*it == 'g') { tmp.push_back('c'); }
+      //else if (*it == 't') { tmp.push_back('a'); }
+      //else if (*it == 'n') { tmp.push_back('n'); }
+      else if (*it == 'a') { tmp.push_back('T'); }
+      else if (*it == 'c') { tmp.push_back('G'); }
+      else if (*it == 'g') { tmp.push_back('C'); }
+      else if (*it == 't') { tmp.push_back('A'); }
+      else if (*it == 'n') { tmp.push_back('N'); }
+      else {
+         char b=toupper(*it);
+         if (b == 'R') { tmp.push_back('Y'); }
+         else if (b == 'Y') { tmp.push_back('R'); }
+         else if (b == 'K') { tmp.push_back('M'); }
+         else if (b == 'M') { tmp.push_back('K'); }
+         else if (b == 'S') { tmp.push_back('W'); }
+         else if (b == 'W') { tmp.push_back('S'); }
+         else if (b == 'B') { tmp.push_back('V'); }
+         else if (b == 'V') { tmp.push_back('B'); }
+         else if (b == 'H') { tmp.push_back('D'); }
+         else if (b == 'D') { tmp.push_back('H'); }
+         else {
+            throw runtime_error("Invalid base: " + string(1, *it));
+         }
+      }
+      ++it;
+   }
+   return tmp;
 }
