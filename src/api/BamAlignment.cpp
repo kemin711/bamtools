@@ -2169,7 +2169,10 @@ int BamAlignment::getAverageQualityScore() const {
 // restrict to 33-93 range to be visible
 bool BamAlignment::validQScore() const {
    for (string::size_type i=0; i<Qualities.size(); ++i) {
-      if (Qualities[i] < '!' || Qualities[i] > ']') return false;
+      if (Qualities[i] < '!' || Qualities[i] > '~') { // 33 ! - 126 ~
+         cerr << __LINE__ << ": invalid Q CHAR |" << Qualities[i] << "| " << static_cast<int>(Qualities[i]) << endl;
+         return false;
+      }
    }
    return true;
 }
