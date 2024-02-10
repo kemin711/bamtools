@@ -128,7 +128,13 @@ struct API_EXPORT RefData {
     const string& getRefname() const {
        return RefName;
     }
+    const string& getName() const {
+       return RefName;
+    }
     int32_t getReflength() const {
+       return RefLength;
+    }
+    int32_t getLength() const {
        return RefLength;
     }
     bool operator==(const string& refn) const {
@@ -169,7 +175,7 @@ struct API_EXPORT BamRegion {
     /**
      * constructor from full information.
      * @param leftId left reference id, zero-based index
-     * @param leftPos left position zero-indexed position.
+     * @param leftPos left position zero-indexed position. -1 means to the end.
      */
     BamRegion(const int& leftID   = -1, const int& leftPos  = -1,
               const int& rightID  = -1, const int& rightPos = -1)
@@ -218,7 +224,12 @@ struct API_EXPORT BamRegion {
        LeftPosition = itv.first;
        RightPosition = itv.second;
     }
-    
+    void set(const array<int,4>& rawreg) {
+       LeftRefID = rawreg[0];
+       LeftPosition = rawreg[1];
+       RightRefID = rawreg[2];
+       RightPosition = rawreg[3];
+    }
     //! Clears region boundaries
     void clear(void) {
         LeftRefID  = -1; LeftPosition  = -1;

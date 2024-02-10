@@ -169,7 +169,7 @@ class API_EXPORT BamReader {
          *  that all alignments that lie downstream of the left boundary are
          *  considered valid, continuing to the end of the BAM file.
          *
-         *  @warning BamRegion now represents a zero-based, HALF-OPEN interval.
+         *  @warning BamRegion now represents a zero-based, HALF-OPEN interval [L, R).
          *  In previous versions of BamTools (0.x & 1.x) all intervals were treated
          *  as zero-based, CLOSED.
          *
@@ -425,7 +425,7 @@ class API_EXPORT BamReader {
         */
         int GetReferenceID(const std::string& refName) const;
         /**
-         * More effient implementation
+         * More efficient implementation
          */
         int getReferenceID(const std::string& refName) const {
             return d->getReferenceID(refName);

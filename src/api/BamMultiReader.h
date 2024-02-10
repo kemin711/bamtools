@@ -119,6 +119,9 @@ class API_EXPORT BamMultiReader {
         const BamTools::RefVector GetReferenceData(void) const;
         // returns the ID of the reference with this name.
         int GetReferenceID(const std::string& refName) const;
+        int getReferenceId(const std::string& refName) const {
+           return GetReferenceID(refName);
+        }
 
         // ----------------------
         // BAM index operations

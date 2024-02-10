@@ -706,14 +706,12 @@ bool FilterTool::FilterToolPrivate::ParseScript(void) {
 }
 
 bool FilterTool::FilterToolPrivate::Run(void) {
-    
     // set to default input if none provided
     if ( !m_settings->HasInput && !m_settings->HasInputFilelist )
         m_settings->InputFiles.push_back(Options::StandardIn());
 
     // add files in the filelist to the input file list
     if ( m_settings->HasInputFilelist ) {
-
         ifstream filelist(m_settings->InputFilelist.c_str(), ios::in);
         if ( !filelist.is_open() ) {
             cerr << "bamtools filter ERROR: could not open input BAM file list... Aborting." << endl;
@@ -740,7 +738,6 @@ bool FilterTool::FilterToolPrivate::Run(void) {
     // retrieve reader header & reference data
     const string headerText = reader.GetHeaderText();
     filterToolReferences = reader.GetReferenceData();
-    
     // determine compression mode for BamWriter
     bool writeUncompressed = ( m_settings->OutputFilename == Options::StandardOut() &&
                               !m_settings->IsForceCompression );
@@ -766,7 +763,6 @@ bool FilterTool::FilterToolPrivate::Run(void) {
     }
     // otherwise attempt to use region as constraint
     else {
-        
         // if region string parses OK
         BamRegion region;
         if ( Utilities::ParseRegionString(m_settings->Region, reader, region) ) {
@@ -804,7 +800,6 @@ bool FilterTool::FilterToolPrivate::Run(void) {
                 }
             }
         } 
-        
         // error parsing REGION string
         else {
             cerr << "bamtools filter ERROR: could not parse REGION: " << m_settings->Region << endl;
