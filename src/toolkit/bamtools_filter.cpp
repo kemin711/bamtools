@@ -766,10 +766,8 @@ bool FilterTool::FilterToolPrivate::Run(void) {
         // if region string parses OK
         BamRegion region;
         if ( Utilities::ParseRegionString(m_settings->Region, reader, region) ) {
-
             // attempt to find index files
             reader.LocateIndexes();
-
             // if index data available for all BAM files, we can use SetRegion
             if ( reader.HasIndexes() ) {
 

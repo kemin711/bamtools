@@ -59,9 +59,10 @@ struct API_EXPORT Sort {
 
     /** 
      * Base class for our sorting function objects
+     * call by value, is this too slow?
      */
-    typedef std::binary_function<BamAlignment, BamAlignment, bool> AlignmentSortBase;
-
+    //typedef std::binary_function<BamAlignment, BamAlignment, bool> AlignmentSortBase;
+    typedef std::function<bool(const BamAlignment&, const BamAlignment&)> AlignmentSortBase;
     /*! \struct BamTools::Algorithms::Sort::ByName
         \brief Function object for comparing alignments by name
 
@@ -78,22 +79,22 @@ struct API_EXPORT Sort {
             std::sort( a.begin(), a.end(), Sort::ByName(Sort::DescendingOrder) );
         \endcode
     */
-    struct ByName : public AlignmentSortBase {
-        // ctor
-        ByName(const Sort::Order& order = Sort::AscendingOrder)
-            : m_order(order)
-        { }
-
-        // comparison function
-        bool operator()(const BamTools::BamAlignment& lhs, const BamTools::BamAlignment& rhs) const {
-            return sort_helper(m_order, lhs.Name, rhs.Name);
-        }
-
-        // used by BamMultiReader internals
-        static inline bool UsesCharData(void) { return true; }
+    //struct ByName : public AlignmentSortBase {
+    class ByName : public AlignmentSortBase {
+       public:
+           // ctor
+           ByName(const Sort::Order& order = Sort::AscendingOrder)
+               : m_order(order)
+           { }
+           // comparison function
+           bool operator()(const BamTools::BamAlignment& lhs, const BamTools::BamAlignment& rhs) const {
+               return sort_helper(m_order, lhs.Name, rhs.Name);
+           }
+           // used by BamMultiReader internals
+           static inline bool UsesCharData(void) { return true; }
 
         // data members
-        private:
+       private:
             const Sort::Order m_order;
     };
 
@@ -113,29 +114,34 @@ struct API_EXPORT Sort {
      *      std::sort( a.begin(), a.end(), Sort::ByPosition(Sort::DescendingOrder) );
      *  </pre>
     */
-    struct ByPosition : public AlignmentSortBase {
-        // ctor
-        ByPosition(const Sort::Order& order = Sort::AscendingOrder)
-            : m_order(order)
-        { }
+    //struct ByPosition : public AlignmentSortBase {
+    class ByPosition : public AlignmentSortBase {
+       public:
+           // ctor
+           ByPosition(const Sort::Order& order = Sort::AscendingOrder)
+               : m_order(order)
+           { }
+           // comparison function
+           bool operator()(const BamTools::BamAlignment& lhs, const BamTools::BamAlignment& rhs) const {
+               // force unmapped aligmnents to end
+               if ( lhs.RefID == -1 ) return false;
+               if ( rhs.RefID == -1 ) return true;
+               // if on same reference, sort on position
+               if (lhs.getReferenceId() != rhs.getReferenceId()) {
+                  return sort_helper(m_order, lhs.RefID, rhs.RefID);
+               }
+               else {
+                   return sort_helper(m_order, lhs.getPosition(), rhs.getPosition());
+               }
+               //return sort_helper(m_order, lhs.RefID, rhs.RefID);
+               //if ( lhs.RefID == rhs.RefID )
+               //    return sort_helper(m_order, lhs.Position, rhs.Position);
+               //// otherwise sort on reference ID
+               //return sort_helper(m_order, lhs.RefID, rhs.RefID);
+           }
 
-        // comparison function
-        bool operator()(const BamTools::BamAlignment& lhs, const BamTools::BamAlignment& rhs) const {
-
-            // force unmapped aligmnents to end
-            if ( lhs.RefID == -1 ) return false;
-            if ( rhs.RefID == -1 ) return true;
-
-            // if on same reference, sort on position
-            if ( lhs.RefID == rhs.RefID )
-                return sort_helper(m_order, lhs.Position, rhs.Position);
-
-            // otherwise sort on reference ID
-            return sort_helper(m_order, lhs.RefID, rhs.RefID);
-        }
-
-        // used by BamMultiReader internals
-        static inline bool UsesCharData(void) { return false; }
+           // used by BamMultiReader internals
+           static inline bool UsesCharData(void) { return false; }
 
         // data members
         private:
@@ -159,30 +165,27 @@ struct API_EXPORT Sort {
         \endcode
     */
     template<typename T>
-    struct ByTag : public AlignmentSortBase {
-
-        // ctor
-        ByTag(const std::string& tag,
-              const Sort::Order& order = Sort::AscendingOrder)
-            : m_tag(tag)
-            , m_order(order)
-        { }
-
-        // comparison function
-        bool operator()(const BamTools::BamAlignment& lhs, const BamTools::BamAlignment& rhs) const {
-
-            // force alignments without tag to end
-            T lhsTagValue;
-            T rhsTagValue;
-            if ( !lhs.GetTag(m_tag, lhsTagValue) ) return false;
-            if ( !rhs.GetTag(m_tag, rhsTagValue) ) return true;
-
-            // otherwise compare on tag values
-            return sort_helper(m_order, lhsTagValue, rhsTagValue);
-        }
-
-        // used by BamMultiReader internals
-        static inline bool UsesCharData(void) { return true; }
+    //struct ByTag : public AlignmentSortBase {
+    class ByTag : public AlignmentSortBase {
+       public:
+           // ctor
+           ByTag(const std::string& tag,
+                 const Sort::Order& order = Sort::AscendingOrder)
+               : m_tag(tag)
+               , m_order(order)
+           { }
+           // comparison function
+           bool operator()(const BamTools::BamAlignment& lhs, const BamTools::BamAlignment& rhs) const {
+               // force alignments without tag to end
+               T lhsTagValue;
+               T rhsTagValue;
+               if ( !lhs.GetTag(m_tag, lhsTagValue) ) return false;
+               if ( !rhs.GetTag(m_tag, rhsTagValue) ) return true;
+               // otherwise compare on tag values
+               return sort_helper(m_order, lhsTagValue, rhsTagValue);
+           }
+           // used by BamMultiReader internals
+           static inline bool UsesCharData(void) { return true; }
 
         // data members
         private:
@@ -201,13 +204,12 @@ struct API_EXPORT Sort {
             std::set<BamAlignment, Sort::Unsorted>; // STL set, unsorted (but probably insertion order)
         \endcode
     */
-    struct Unsorted : public AlignmentSortBase {
-
+    //struct Unsorted : public AlignmentSortBase {
+    class Unsorted : public AlignmentSortBase {
         // comparison function
         inline bool operator()(const BamTools::BamAlignment&, const BamTools::BamAlignment&) const {
             return false;   // returning false tends to retain insertion order
         }
-
         // used by BamMultiReader internals
         static inline bool UsesCharData(void) { return false; }
     };

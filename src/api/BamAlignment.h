@@ -2373,6 +2373,7 @@ inline bool BamAlignment::GetTag(const std::string& tag, T& destination) const {
 }
 
 // should not use this for vector version
+// Will automatically convert from stored type to T if possible.
 template<typename T> inline pair<T,bool> BamAlignment::getTag(const std::string& tag) const {
     // skip if alignment is core-only
     if (SupportData.HasCoreOnly || TagData.empty()) {
@@ -2387,19 +2388,24 @@ template<typename T> inline pair<T,bool> BamAlignment::getTag(const std::string&
     // p point to first char of TAG
     //cerr << __LINE__ << ":DEBUG p is at " << p << endl;
     p += Constants::BAM_TAG_TAGSIZE;
+    char typechar = *p;
     //cerr << "p is at " << p << endl;
+    /*
     if (!TagTypeHelper<T>::CanConvertFrom(*p)) {
+       //cerr << *this << endl;
        //cerr << __FILE__ << ":" << __LINE__ << ":ERROR " << tag << " stored type " 
-       //   << *p << " cannot be converted to " << typeid(T).name() << endl;
+       //   << *p << " cannot be converted to " << string(typeid(T).name()) << endl;
        throw BamTypeException(string(__FILE__) + ":" + to_string(__LINE__) 
-             + ":ERROR Cannot convert from stored data type " + string(1, *p) 
+             + ":ERROR Cannot convert from stored data type " + string(1, typechar) 
              + " in tag " + tag + " to requested type: " + string(typeid(T).name())
              + " consider using the type of the same signage");
     }
-    size_t tagdatalen = getAtomicTagLength(*p);
+    */
+    //size_t tagdatalen = getAtomicTagLength(*p);
+    size_t tagdatalen = getAtomicTagLength(typechar); // for numeric type
     T res=0;
-    if (sizeof(T) > tagdatalen) {
-       char typechar = *p;
+    if (sizeof(T) >= tagdatalen) { // return type is longer or same than stored type 
+       //char typechar = *p;
        p += Constants::BAM_TAG_TYPESIZE;
        //cerr << "output data size is larger than stored value\n";
        if (typechar == Constants::BAM_TAG_TYPE_ASCII ||
@@ -2442,10 +2448,81 @@ template<typename T> inline pair<T,bool> BamAlignment::getTag(const std::string&
        }
     }
     else {
+       //cerr << "WARN: Tag type " << typechar << " longer than return type " << typeid(T).name() << endl;
+       //if (!TagTypeHelper<T>::CanConvertFrom(typechar)) {
+       //   //cerr << *this << endl;
+       //   //cerr << __FILE__ << ":" << __LINE__ << ":ERROR " << tag << " stored type " 
+       //   //   << *p << " cannot be converted to " << string(typeid(T).name()) << endl;
+       //   throw BamTypeException(string(__FILE__) + ":" + to_string(__LINE__) 
+       //         + ":ERROR Cannot convert from stored data type " + string(1, typechar) 
+       //         + " in tag " + tag + " to requested type: " + string(typeid(T).name())
+       //         + " consider using the type of the same signage");
+       //}
       //cerr << "tagatalen=" << tagdatalen << endl;
-      p += Constants::BAM_TAG_TYPESIZE;
+      //p += Constants::BAM_TAG_TYPESIZE;
       //cerr << "p is at " << p << endl;
-      memcpy(&res, p, tagdatalen);
+      //memcpy(&res, p, tagdatalen);
+
+       p += Constants::BAM_TAG_TYPESIZE;
+       //cerr << "output data size is larger than stored value\n";
+       if (typechar == Constants::BAM_TAG_TYPE_ASCII || typechar == Constants::BAM_TAG_TYPE_INT8) 
+       {
+            int8_t x;
+            memcpy(&x, p, sizeof(int8_t));
+            if (x > static_cast<int8_t>(numeric_limits<T>::max())) {
+               throw runtime_error("tag value " + to_string(x) + " cannot be store in user request type: " + string(typeid(T).name()));
+            }
+            res = x;
+       }
+       else if (typechar == Constants::BAM_TAG_TYPE_UINT8) {
+            uint8_t x;
+            memcpy(&x, p, sizeof(uint8_t));
+            if (x > static_cast<uint8_t>(numeric_limits<T>::max())) {
+               throw runtime_error("tag value " + to_string(x) + " cannot be store in user request type: " + string(typeid(T).name()));
+            }
+            res = x;
+       }
+       else if (typechar == Constants::BAM_TAG_TYPE_INT16) {
+            int16_t x;
+            memcpy(&x, p, sizeof(int16_t));
+            if (x > static_cast<int16_t>(numeric_limits<T>::max())) {
+               throw runtime_error("tag value " + to_string(x) + " cannot be store in user request type: " + string(typeid(T).name()));
+            }
+            res = x;
+       }
+       else if (typechar == Constants::BAM_TAG_TYPE_UINT16) {
+            uint16_t x;
+            memcpy(&x, p, sizeof(uint16_t));
+            if (x > static_cast<uint16_t>(numeric_limits<T>::max())) {
+               throw runtime_error("tag value " + to_string(x) + " cannot be store in user request type: " + string(typeid(T).name()));
+            }
+            res = x;
+       }
+       else if (typechar == Constants::BAM_TAG_TYPE_INT32) {
+            int32_t x;
+            memcpy(&x, p, sizeof(int32_t));
+            if (x > static_cast<int32_t>(numeric_limits<T>::max())) {
+               throw runtime_error("tag value " + to_string(x) + " cannot be store in user request type: " + string(typeid(T).name()));
+            }
+            res = x;
+       }
+       else if (typechar == Constants::BAM_TAG_TYPE_UINT32) {
+            uint32_t x;
+            memcpy(&x, p, sizeof(uint32_t));
+            if (x > static_cast<uint32_t>(numeric_limits<T>::max())) {
+               throw runtime_error("tag value " + to_string(x) + " cannot be store in user request type: " + string(typeid(T).name()));
+            }
+            res = x;
+       }
+       else { //if (typechar == Constants::BAM_TAG_TYPE_FLOAT) {
+          assert(typechar == Constants::BAM_TAG_TYPE_FLOAT);
+            float x;
+            memcpy(&x, p, sizeof(float));
+            if (x > static_cast<float>(numeric_limits<T>::max())) {
+               throw runtime_error("tag value " + to_string(x) + " cannot be store in user request type: " + string(typeid(T).name()));
+            }
+            res = x;
+       }
     }
     //cerr << "res=" << res << endl;
     return make_pair(res, true);
@@ -2625,7 +2702,7 @@ inline bool BamAlignment::GetTag(const std::string& tag, std::vector<T>& destina
 template<typename T>
 inline bool BamAlignment::getTag(const std::string& tag, std::vector<T>& destination) const {
     // skip if alignment is core-only
-    if (SupportData.HasCoreOnly ) {
+    if (SupportData.HasCoreOnly) {
         cerr << __FILE__ << ":" << __LINE__ << ": bam has only core data failed to get tag: "
             << tag << "\n";
         // TODO: set error string?

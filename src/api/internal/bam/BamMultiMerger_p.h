@@ -58,8 +58,8 @@ struct MergeItem {
  * to compare two items and return true or false
  */
 template<typename Compare>
-struct MSortfunc : public std::binary_function<MergeItem, MergeItem, bool> {
-
+//struct MSortfunc : public std::binary_function<MergeItem, MergeItem, bool> {
+class MSortfunc : public std::function<bool(const MergeItem&, const MergeItem&)> {
     public:
        /**
         * Constructor for the sorting function
@@ -69,7 +69,6 @@ struct MSortfunc : public std::binary_function<MergeItem, MergeItem, bool> {
         MSortfunc(const Compare& comp = Compare())
             : m_comp(comp)
         { }
-
         bool operator()(const MergeItem& lhs, const MergeItem& rhs) const {
             const BamAlignment& l = *lhs.Alignment;
             const BamAlignment& r = *rhs.Alignment;
@@ -88,7 +87,6 @@ struct MSortfunc : public std::binary_function<MergeItem, MergeItem, bool> {
  * Pure base class not templated.
  */
 class IMultiMerger {
-
     public:
         IMultiMerger(void) { }
         virtual ~IMultiMerger(void) { }
