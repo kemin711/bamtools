@@ -13,6 +13,8 @@
 #include "api/api_global.h"
 #include <cassert>
 #include <string>
+#include <limits>
+#include <iostream>
 
 /*! \namespace BamTools::Constants
     \brief Provides basic constants for handling BAM files.
@@ -310,6 +312,74 @@ struct TagTypeHelper<std::string> {
     }
     static char TypeCode(void) { return Constants::BAM_TAG_TYPE_STRING; }
 };
+
+    /**
+     * @param c is one of the integer fixed types types
+     */
+template<class T>
+bool canStore(const char c, const T& val) {
+    if (c == Constants::BAM_TAG_TYPE_ASCII) {
+       if (typeid(T) == typeid(char)) return true;
+       else return false;
+    }
+    else if (c == Constants::BAM_TAG_TYPE_INT8) {
+       if (val < static_cast<T>(INT8_MAX)) return true;
+       return false;
+    }
+    else if (c == Constants::BAM_TAG_TYPE_UINT8) {
+       if (val < static_cast<T>(UINT8_MAX)) return true;
+       return false;
+    }
+    else if (c == Constants::BAM_TAG_TYPE_INT16) {
+       if (val < static_cast<T>(INT16_MAX)) return true;
+       return false;
+    }
+    else if (c == Constants::BAM_TAG_TYPE_UINT16) {
+       if (val < static_cast<T>(UINT16_MAX)) return true;
+       return false;
+    }
+    else if (c == Constants::BAM_TAG_TYPE_INT32) {
+       if (val < static_cast<T>(INT32_MAX)) return true;
+       return false;
+    }
+    else if (c == Constants::BAM_TAG_TYPE_UINT32) {
+       if (val < static_cast<T>(UINT32_MAX)) return true;
+       return false;
+    }
+    else if (c == Constants::BAM_TAG_TYPE_FLOAT) {
+       if (val < std::numeric_limits<float>::max())
+          return true;
+       return false;
+    }
+    else if (c == Constants::BAM_TAG_TYPE_STRING) {
+       if (typeid(T) == typeid(std::string)) 
+          return true;
+       return false;
+    }
+    else if (c == Constants::BAM_TAG_TYPE_HEX) {
+       // TODO: need to research more about this tag
+       if (typeid(T) == typeid(std::string)) 
+          return true;
+       return false;
+    }
+    else if (c == Constants::BAM_TAG_TYPE_ARRAY) {
+       std::cerr << __FILE__ << ":" << __LINE__ << ": write more complicated code\n";
+       /*
+       try {
+          T::value_type dummy=0;
+          if (dummy < 1) return true;
+          return false;
+       }
+       catch (exception& er) {
+          throw logic_error("write array type");
+       }
+       */
+       return false;
+    }
+    else {
+       return false;
+    }
+ }
 
 //! \endcond
 

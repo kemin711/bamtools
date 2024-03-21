@@ -24,6 +24,7 @@
 #include <typeinfo>
 //#include <mutex>
 #include <mutex>
+#include <limits>
 
 // to turn off debug mode uncomment the following line
 //#define NDEBUG 
@@ -176,6 +177,13 @@ class API_EXPORT BamAlignment {
          * same query mapped to multiple locations.
          */
         bool operator==(const BamAlignment& other) const;
+        bool operator<=(const BamAlignment& other) const {
+           return operator<(other) || sameLocation(other);
+        }
+        bool operator>=(const BamAlignment& other) const {
+           return operator>(other) || sameLocation(other);
+        }
+        bool sameLocation(const BamAlignment& o) const;
         /**
          * interface function should never be used by this class
          * Should be implemented by derived classes.
@@ -199,7 +207,6 @@ class API_EXPORT BamAlignment {
          */
         virtual void findBestLocation() {
         }
-
         /**
          * This object has not been populated with real data.
          */
@@ -440,7 +447,6 @@ class API_EXPORT BamAlignment {
         void unsetSupplementary() {
            AlignmentFlag &= ~SUPPLEMENTARY; 
         }
-
         /** 
          * @return true if alignment is part of read that satisfied paired-end resolution
          */
@@ -570,6 +576,10 @@ class API_EXPORT BamAlignment {
          *     supported tag types, etc.
          */
         template<typename T> bool AddTag(const std::string& tag, const std::string& type, const T& value);
+        /**
+         * Version not returning bool.
+         * Will throw exception.
+         */
         template<typename T> void addTag(const std::string& tag, const std::string& type, const T& value);
         /**
          * Adds a numeric array field to the BAM tags.
@@ -582,6 +592,9 @@ class API_EXPORT BamAlignment {
          *  @sa samSpecURL for more details on reserved tag names, supported tag types, etc.
          */
         template<typename T> bool AddTag(const std::string& tag, const std::vector<T>& values);
+        /**
+         * Version use exception without return value.
+         */
         template<typename T> void addTag(const std::string& tag, const std::vector<T>& values);
         template<typename T> void addOrReplaceTag(const std::string& tag, const std::vector<T>& values) {
            if (hasTag(tag)) {
@@ -609,6 +622,10 @@ class API_EXPORT BamAlignment {
         */
         template<typename T> bool EditTag(const std::string& tag, const std::string& type, const T& value);
         /**
+         * Morden version throwing exception.
+         */
+        template<typename T> void editTag(const std::string& tag, const std::string& type, const T& value);
+        /**
          *  Edits a BAM tag field containing a numeric array.
          *
          *  If \a tag does not exist, a new entry is created.
@@ -620,6 +637,7 @@ class API_EXPORT BamAlignment {
          *  \sa \samSpecURL for more details on reserved tag names, supported tag types, etc.
          */
         template<typename T> bool EditTag(const std::string& tag, const std::vector<T>& values);
+        template<typename T> void editTag(const std::string& tag, const std::vector<T>& values);
 
         // retrieves tag data
         /** 
@@ -1008,7 +1026,7 @@ class API_EXPORT BamAlignment {
          * @return mate mapped position (left mapping point)
          */
         int32_t getMatePosition() const { return MatePosition; }
-        int getMateEndPostion() const;
+        int getMateEndPosition() const;
         /**
          * @return the strand as a single char + or -
          */
@@ -1047,7 +1065,7 @@ class API_EXPORT BamAlignment {
         /**
          * @return a const reference to the CIGAR operations for this alignment
          * CigarData is a typedef of vector<CigarOp>
-         * DigarOp: struc { char Type; uint32_t Length; }
+         * CigarOp: struc { char Type; uint32_t Length; }
          */
         const std::vector<CigarOp>& getCigar() const { return CigarData; } 
         std::vector<CigarOp>& getCigar() { return CigarData; } 
@@ -1060,6 +1078,7 @@ class API_EXPORT BamAlignment {
          * @return a string version of Cigar.
          */
         string getCigarString() const;
+        uint32_t getCigarHash() const;
         /**
          * @return true if the CigarData of this object is the same as 
          *    the argument cigar
@@ -1523,6 +1542,12 @@ class API_EXPORT BamAlignment {
          * But insertion in query is not recorded.
          * Difference in base is represented by Base
          * identical residues are represented by number.
+         * If the alignment does not have MD tag then
+         * the return vectors will be empty. The caller must
+         * test that.
+         * Usually the first vector is one element more than the second one.
+         * @return the mathed and difference sequence in reference
+         *    in two vectors. 
         */ 
         pair<vector<int>, vector<string>> getMDArray() const;
         /**
@@ -1535,15 +1560,7 @@ class API_EXPORT BamAlignment {
          * validCigar() method checks whether cigar agree with refwidth
          * This method checks MD agree with refwidth or not.
          */
-        bool refwidthAgreeWithMD() const {
-            if (getMDWidth() != getReferenceWidth()) {
-                cerr << __FILE__ << ":" << __LINE__ << " refw=" << getReferenceWidth()
-                    << " mdw=" << getMDWidth() << " not the same\n";
-                return false;
-            }
-            return true;
-           //return getMDWidth() == getReferenceWidth();
-        }
+        bool refwidthAgreeWithMD() const;
         string getSAString() const {
            return getReferenceName() +
                to_string(getPosition()) +
@@ -1565,18 +1582,35 @@ class API_EXPORT BamAlignment {
          * be refreshed with the recomputed valie.
          * @param refsq is the whole chromosome sequence.
          */
-        //void recalMD(const string& refsq, mutex& mtx);
         void recalMD(const string& refsq);
+        /**
+         * @param refsq is a subsequence from [pos to endpos]
+         */
+        void recalMDSubseq(const string& refsq);
+        /**
+         * @return the difference betwee reference and the query
+         *   in chopped region (before idx).
+         *   NM value should be reduce by this amount plus 
+         *   the sum of insertion length.
+         */
         int chopMDBefore(int idx);
         /**
          * Helper method used by chopAfter()
          */
         int chopMDAfter(int idx);
+        /**
+         * Helper function.
+         * @param mtag is either XM or XW. Actaully it can be any
+         *   array tag. TODO: rename to a more generic one.
+         */
+         void chopMethyTagBefore(const string& mtag, int idx);
+         void chopMethyTagAfter(const string& mtag, int idx);
         /**  
          * If align is + strand then insertSize also needs to be updated.
          * This method cannot change that, needs the mate information.
          * Usually done when both mates are available by the caller.
-         * @param idx is the 0-based chromosome index.
+         * @param idx is the 0-based chromosome index and is retained
+         *    in the resulting object.
          * The position will be changed. The mate needs to update mate position.
          */
         void chopBefore(int idx);
@@ -1586,6 +1620,13 @@ class API_EXPORT BamAlignment {
          * @param idx is the 0-based index on the reference.
          */
         void chopAfter(int idx);
+        /**
+         *      idx
+         *    ==|===  -> { ==, |=== }
+         *      + goes to the second object
+         * @return two alignments by breaking this object into two.
+         */
+        pair<BamAlignment,BamAlignment> cut(int idx) const;
         /**
          * Helper method not tested
          */
@@ -1645,9 +1686,10 @@ class API_EXPORT BamAlignment {
          int getASValue() const;
          /**
           * Not sure limiting to uisnged int16 is good or not.
+          * This is OK for short reads, but maybe too small.
+          * Performance may not be better if using smaller types.
           * @return the NM tag value or -1 if not found NM tag
           */
-         //uint8_t getNMValue() const;
          uint16_t getNMValue() const;
          /**
           * @return the length of the reference sequence for this alignment.
@@ -2123,9 +2165,12 @@ inline void BamAlignment::addTag(const std::string& tag, const std::string& type
     }
     // check that storage type code is OK for T
     //if ( !TagTypeHelper<T>::CanConvertTo(type.at(0)) ) {
-    if ( !TagTypeHelper<T>::CanConvertTo(type.front()) ) {
+    //if (!TagTypeHelper<T>::CanConvertTo(type.front())) {
+    //if (!TagTypeHelper<T>::canStore(type.front(), value)) {
+    if (!canStore<T>(type.front(), value)) {
+       cerr << *this << endl;
        throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR type "
-             + type + " incompatible with value while adding tag: " + tag);
+             + type + " cannot store value " + to_string(value) + " in tag: " + tag);
     }
     char *p = findTag(tag);
     if (p != nullptr) {
@@ -2143,7 +2188,45 @@ inline void BamAlignment::addTag(const std::string& tag, const std::string& type
        throw logic_error("write more code to deal with addTag type and T not same length");
     }
     p += Constants::BAM_TAG_TYPESIZE;
-    memcpy(p, &value, sizeof(T));
+    if (!TagTypeHelper<T>::CanConvertTo(type.front())) {
+       memcpy(p, &value, sizeof(T));
+    }
+    else {
+       if (type.front() == Constants::BAM_TAG_TYPE_INT8) {
+          int8_t tmpv = value;
+          memcpy(p, &tmpv, 1);
+       }
+       else if (type.front() == Constants::BAM_TAG_TYPE_UINT8) {
+          uint8_t tmpv = value;
+          memcpy(p, &tmpv, 1);
+       }
+       else if (type.front() == Constants::BAM_TAG_TYPE_INT16) {
+          int16_t tmpv = value;
+          memcpy(p, &tmpv, 2);
+       }
+       else if (type.front() == Constants::BAM_TAG_TYPE_UINT16) {
+          uint16_t tmpv = value;
+          memcpy(p, &tmpv, 2);
+       }
+       else if (type.front() == Constants::BAM_TAG_TYPE_INT32) {
+          int32_t tmpv = value;
+          memcpy(p, &tmpv, 3);
+       }
+       else if (type.front() == Constants::BAM_TAG_TYPE_UINT32) {
+          uint32_t tmpv = value;
+          memcpy(p, &tmpv, 3);
+       }
+       else if (type.front() == Constants::BAM_TAG_TYPE_FLOAT) {
+          float tmpv = value;
+          memcpy(p, &tmpv, sizeof(float));
+       }
+       else if (type.front() == Constants::BAM_TAG_TYPE_STRING) {
+          throw logic_error("strin as template specializaiton should not get here");
+       }
+       else {
+          throw logic_error("write more code for new tag type: " + type);
+       }
+    }
 }
 
 // string specialization
@@ -2307,10 +2390,29 @@ inline bool BamAlignment::EditTag(const std::string& tag, const std::string& typ
     if ( SupportData.HasCoreOnly )
         BuildCharData();
     // remove existing tag if present, then append tag with new value
-    if ( HasTag(tag) )
-        RemoveTag(tag);
+    //if ( HasTag(tag) )
+    if (hasTag(tag)) {
+        //RemoveTag(tag);
+        removeTag(tag);
+    }
     return AddTag(tag, type, value);
 }
+
+template<typename T>
+inline void BamAlignment::editTag(const std::string& tag, const std::string& type, const T& value) 
+{
+    // if char data not populated, do that first
+    if ( SupportData.HasCoreOnly )
+        BuildCharData();
+    // remove existing tag if present, then append tag with new value
+    //if ( HasTag(tag) )
+    if (hasTag(tag)) {
+        //RemoveTag(tag);
+        removeTag(tag);
+    }
+    return addTag(tag, type, value);
+}
+
 
 template<typename T>
 inline bool BamAlignment::EditTag(const std::string& tag, const std::vector<T>& values) {
@@ -2321,6 +2423,18 @@ inline bool BamAlignment::EditTag(const std::string& tag, const std::vector<T>& 
     if ( HasTag(tag) )
         RemoveTag(tag);
     return AddTag(tag, values);
+}
+
+template<typename T>
+inline void BamAlignment::editTag(const std::string& tag, const std::vector<T>& values) {
+    // if char data not populated, do that first
+    if ( SupportData.HasCoreOnly )
+        BuildCharData();
+    // remove existing tag if present, then append tag with new values
+    if (hasTag(tag))
+        removeTag(tag);
+    //return AddTag(tag, values);
+    addTag(tag, values);
 }
 
 /**

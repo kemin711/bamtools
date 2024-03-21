@@ -25,6 +25,7 @@ namespace BamTools {
 namespace Internal {
     class BamReaderPrivate;
 } // namespace Internal
+  
 using namespace BamTools::Internal;
 //using namespace BamTools::Internal;
 

@@ -111,7 +111,7 @@ int Matchdiff::removeBefore(int idx) {
 
 int Matchdiff::removeAfter(int idx) {
    //assert(idx > 0 && idx < length()-1);
-   if (idx <= 0 || idx > length()-1) {
+   if (idx < 0 || idx > length()-1) {
       cerr << __FILE__ << ":" << __LINE__ << ":ERROR idx out of range\n";
       throw out_of_range(to_string(idx) + " is outof range in " + string(__func__));
    }
