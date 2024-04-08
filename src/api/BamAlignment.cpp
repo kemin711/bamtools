@@ -642,7 +642,7 @@ bool BamAlignment::fix1M() {
       return false;
       */
    if (getCigarSize() < 4) return false;
-   //bool changed=false;
+   bool changed=false;
    int oldnm=getNMValue();
    //int nmvalue=getNMValue();
    int nmvalue=oldnm;
@@ -650,26 +650,10 @@ bool BamAlignment::fix1M() {
       // 15S2M2D59M...
       if (getCigarLength(1) < 3) { // approximation, we assum 1M is mismatch to new location
          int Lm = getCigarLength(1);
-         //int Ld = getCigarLength(2);
-         // to avoid to recompute idnentity
-         /* fixing MD is almost impossible
-         if (hasTag("MD")) { // do approximate fixing of MD could be only off by 1
-            // same is try for NM tag
-            pair<vector<int>,vector<string>> mdarr = getMDArray();
-            assert(mdarr.second.front().front() == '^');
-            if (Lm >= Ld) { // Lm >= Ld
-               mdarr.first.front() = Lm - Ld;
-               mdarr.second.front() = mdarr.second.front().substr(1); // remove ^
-            }
-            else { // Lm < Ld
-               mdarr.first.front() = 0;
-               mdarr.second.front() = mdarr.second.front().substr(Ld-Lm+1); // remove ^
-            }
-         }
-         */
          CigarData[3].expand(getCigarLength(1));
          CigarData.erase(CigarData.begin()+1, CigarData.begin()+3);
          nmvalue += Lm;
+         changed = true;
       }
    }
    else if (getCigarType(0) == 'S' && getCigarType(1) == 'M' && getCigarType(2) == 'I' && getCigarType(3) == 'M') {
@@ -682,6 +666,7 @@ bool BamAlignment::fix1M() {
          CigarData[3].expand(getCigarLength(1));
          CigarData[0].expand(getCigarLength(2)); // I merge with S
          CigarData.erase(CigarData.begin()+1, CigarData.begin()+3);
+         changed = true;
       }
    }
    else if (getCigarType(getCigarSize()-1) == 'S' && getCigarType(getCigarSize()-2) == 'M' 
@@ -691,25 +676,10 @@ bool BamAlignment::fix1M() {
       if (getCigarLength(getCigarSize()-2) < 3) { // approximation, we assum 1M is mismatch to new location
          // to avoid to recompute idnentity
          int Lm = getCigarLength(getCigarSize()-2);
-         //int Ld = getCigarLength(getCigarSize()-3);
-         /*
-         if (hasTag("MD")) { // do approximate fixing of MD could be only off by 1
-            // same is try for NM tag
-            pair<vector<int>,vector<string>> mdarr = getMDArray();
-            assert(mdarr.second.back().front() == '^');
-            if (Lm >= Ld) { // Lm >= Ld
-               mdarr.first.back() = Lm - Ld;
-               mdarr.second.front() = mdarr.second.back().substr(1); // remove ^
-            }
-            else { // Lm < Ld
-               mdarr.first.front() = 0;
-               mdarr.second.front() = mdarr.second.front().substr(Ld-Lm+1); // remove ^
-            }
-         }
-         */
          CigarData[getCigarSize()-4].expand(getCigarLength(getCigarSize()-2));
          CigarData.erase(CigarData.begin()+getCigarSize()-3, CigarData.begin()+getCigarSize()-1);
          nmvalue += Lm;
+         changed = true;
       }
    }
    else if (getCigarType(getCigarSize()-1) == 'S' && getCigarType(getCigarSize()-2) == 'M' 
@@ -723,6 +693,7 @@ bool BamAlignment::fix1M() {
          CigarData[3].expand(getCigarLength(getCigarSize()-2));
          CigarData[getCigarSize()-1].expand(getCigarLength(getCigarSize()-3));
          CigarData.erase(CigarData.begin()+getCigarSize()-3, CigarData.begin()+getCigarSize()-1);
+         changed = true;
       }
    }
    if (getCigarSize() < 5) {
@@ -741,9 +712,10 @@ bool BamAlignment::fix1M() {
          }
          SupportData.NumCigarOperations = CigarData.size();
          clearAlignedBases();
-         return true;
+         //return true;
       }
-      return false;
+      //return false;
+      return changed;
    }
    // Check for M_I/D_M_I/D_M case
    for (int i=2; i+2 < getCigarSize(); ++i) {
@@ -765,6 +737,7 @@ bool BamAlignment::fix1M() {
                CigarData[i+1].expand(CigarData[i-1].getLength());
                CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+1);
             }
+            return changed;
          }
          else if (((getCigarType(i-1) == 'I' && getCigarType(i+1) == 'D') ||
                      (getCigarType(i-1) == 'D' && getCigarType(i+1) == 'I'))) 
@@ -793,6 +766,7 @@ bool BamAlignment::fix1M() {
                CigarData[i-2].expand(lenC + lenL + getCigarLength(i+2));
                CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+3);
             }
+            return changed;
          }
       }
    }
@@ -816,9 +790,10 @@ bool BamAlignment::fix1M() {
          throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR CigarData and query sequence length does not match");
       }
       */
-      return true;
+      //return true;
    }
-   return false;
+   //return false;
+   return changed;
 }
 
 void BamAlignment::fixCigarError() {
