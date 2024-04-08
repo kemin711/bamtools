@@ -1748,7 +1748,7 @@ class API_EXPORT BamAlignment {
          /**
           * @return the query sequence length
           */
-         int32_t     length() const {
+         int32_t length() const {
             return SupportData.QuerySequenceLength;
          }             
          /**

@@ -631,6 +631,9 @@ void BamAlignment::fixStaggerGap() {
 // problem, this will not be able to update MD to make it consistent
 // with the cigar string. will leave MD unchanged thus invalid
 bool BamAlignment::fix1M() {
+   if (getName() == "S1009276") {
+      cerr << *this << endl << __LINE__ << ": there is a bug in this function\n";
+   }
    /*
    short int numseg=CigarData.size();
    if (startWithSoftclip()) --numseg;
