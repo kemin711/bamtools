@@ -395,6 +395,38 @@ bool BamAlignment::valid() const {
       return false;
    }
    //return validCigar() && refwidthAgreeWithMD() && QueryBases.size() == Qualities.size();
+   // check D segment from MD tag agree with Cigar D if MD tag is present
+   if (hasTag("MD")) {
+      vector<int> del_len;
+      for (auto& c : CigarData) {
+         if (c.isDeletion()) {
+            del_len.push_back(c.getLength());
+         }
+      }
+      if (!del_len.empty()) {
+         vector<int> md_del_len;
+         string mdstr = getStringTag("MD");
+         // 92tc15^cgtttctatccgatgatgattccgt1c0^g4g27t1c6
+         string::size_type i=0;
+         while (i < mdstr.size()) {
+            if (mdstr[i] == '^') {
+               ++i;
+               string::size_type b=i;
+               while (!isdigit(mdstr[i])) { ++i; }
+               md_del_len.push_back(i-b);
+            }
+            else ++i;
+         }
+         if (del_len != md_del_len) {
+            cerr << __FILE__ << ":" << __LINE__ << ": query deletion length from Cigar: ";
+            for (int l : del_len) cerr << l << " ";
+            cerr << " different from those in MD tag: ";
+            for (int l : md_del_len) cerr << l << " ";
+            cerr << endl;
+            return false;
+         }
+      }
+   }
    return validCigar() && refwidthAgreeWithMD();
 }
 
@@ -1768,10 +1800,10 @@ bool BamAlignment::GetTagType(const std::string& tag, char& type) const {
         return false;
     }
     if (!isValidTagName(tag)) {
-       cerr << *this << endl;
-       cerr << __FILE__ << ":" << __LINE__ << ":ERROR tag " << tag 
-          << " is not valid\n";
-       //showTagData(cerr);
+       //cerr << *this << endl; infinite recursion
+       cerr << __FILE__ << ":" << __LINE__ << ":ERROR Bam tag " << tag 
+          << " is not valid for qname=" << getName() << endl;
+       showTagData(cerr);
        throw BamNotagException("invalide tag name");
     }
     // localize the tag data
@@ -3525,15 +3557,13 @@ pair<vector<int>, vector<string>> BamAlignment::getMDArray() const {
 }
 
 bool BamAlignment::refwidthAgreeWithMD() const {
-   try {
+   if (hasTag("MD")) {
       if (getMDWidth() != getReferenceWidth()) {
-          //cerr << __FILE__ << ":" << __LINE__ << " refw=" << getReferenceWidth()
-          //    << " mdw=" << getMDWidth() << " not the same\n";
+         //cerr << *this << endl;
+         // cerr << __FILE__ << ":" << __LINE__ << " refw=" << getReferenceWidth()
+         //     << " mdw=" << getMDWidth() << " not the same\n";
           return false;
       }
-   }
-   catch (logic_error& er) {
-      //cerr << __FILE__ << ":" << __LINE__ << ":WARN there is no MD tag so returning true\n";
    }
    return true;
   //return getMDWidth() == getReferenceWidth();
@@ -4209,9 +4239,13 @@ void BamAlignment::chopBefore(int idx) {
       throw logic_error("idx not greater than position in ChopBefore()");
    }
    if (!valid()) {
-      cerr << *this << endl;
-      cerr << __FILE__ << ":" << __LINE__ << ": invalid BamAlignment object cannot chopBefore\n";
-      throw runtime_error("invalid BamAlignment before doing chopBefore()");
+      //cerr << *this << endl;
+      //cerr << __FILE__ << ":" << __LINE__ << ": invalid BamAlignment object cannot chopBefore\n";
+      removeTag("MD");
+      if (!valid()) {
+         cerr << "still invalid after dropping MD tag\n";
+         throw runtime_error("invalid BamAlignment before doing chopBefore()");
+      }
    }
    //assert(hasTag("NM"));
    // truncate XM and XW tag first if they exists
@@ -4336,21 +4370,26 @@ void BamAlignment::chopAfter(int idx) {
       throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ": " + to_string(idx) + " after end " + to_string(getEndPosition()) + " invalid operation");
    }
    if (!valid()) {
-      cerr << *this << endl;
-      cerr << __FILE__ << ":" << __LINE__ << ": invalid BamAlignment object cannot chopAfter\n";
-      throw runtime_error("invalid BamAlignment before doing chopAfter()");
+      //cerr << *this << endl;
+      //cerr << __FILE__ << ":" << __LINE__ << ": invalid BamAlignment object cannot chopAfter\n";
+      removeTag("MD");
+      if (!valid()) {
+         cerr << "still invalid after dropping MD tag\n";
+         throw runtime_error("invalid BamAlignment before doing chopAfter()");
+      }
    }
-   assert(hasTag("NM"));
-   chopMethyTagAfter("XM", idx-1);
-   chopMethyTagAfter("XW", idx);
+   //assert(hasTag("NM"));
    size_t c = 0;
    int ri = getPosition();
    int qi = 0;
    vector<CigarOp> newcigar;
 #ifdef DEBUG
-   if (getName() == "S419029") {
+   bool inbug=false;
+   if (getName() == "S236158592_left") {
+      cerr << *this << endl;
       cerr << __LINE__ << ":  at start of chopAfter() ri=" << ri
          << " idx=" << idx << " current end " << getEndPosition() << endl;
+      inbug=true;
    }
 #endif
    while (c < CigarData.size()) {
@@ -4397,8 +4436,13 @@ void BamAlignment::chopAfter(int idx) {
             // will not add D to newcigar, D will be discarded
             ++c;
             //cerr << endl << *this;
-            //cerr << __LINE__ << ": c=" << c << " ri=" << ri << " qi=" << qi
-            //   << " idx=" << idx << " inside deletion will discard" << endl;
+#ifdef DEBUG
+            if (inbug) {
+               cerr << __LINE__ << ": c=" << c << " ri=" << ri << " qi=" << qi
+                  << " idx=" << idx << " inside deletion will be discarded. new_idx=" 
+                  << ri - 1 << endl;
+            }
+#endif
             // new idx will be ri-1, ri is now the first base in the DEL
             idx = ri-1;
             --qi;
@@ -4417,6 +4461,9 @@ void BamAlignment::chopAfter(int idx) {
          inscnt += CigarData[c].getLength();
       ++c;
    }
+   //chopMethyTagAfter("XM", idx-1); // after making sure no cut between CG
+   chopMethyTagAfter("XM", idx); // after making sure no cut between CG
+   chopMethyTagAfter("XW", idx);
    int mismatchCnt;
    try {
       if (hasTag("MD")) {
@@ -4426,7 +4473,7 @@ void BamAlignment::chopAfter(int idx) {
       }
       else {
          if (inscnt > 0) {
-            cerr << __LINE__ << ":WARN no MD tag cannot calculate mismatch without using reference sequence\n";
+            //cerr << __LINE__ << ":WARN no MD tag cannot calculate mismatch without using reference sequence\n";
             reduceNMTag(inscnt);
          }
       }
@@ -4454,7 +4501,8 @@ void BamAlignment::chopAfter(int idx) {
    CigarData = std::move(newcigar);
    clearAlignedBases();
    if (!valid()) {
-      cerr << *this << __FILE__ << ":" << __LINE__ << ": invalid bam after " << __func__ << endl;
+      cerr << *this << __FILE__ << ":" << __LINE__ << ": invalid bam after " << __func__ << endl
+         << " idx=" << idx << endl;
       throw logic_error("invalid bam end of chopAfter()");
    }
    assert(hasTag("NM"));
@@ -4468,15 +4516,23 @@ pair<BamAlignment,BamAlignment> BamAlignment::cut(int idx) const {
          << " outside alignment: " << getPosition() << "-" << getEndPosition() << endl;
       throw out_of_range("cut point not inside alignment");
    }
+   //if (getName() == "S20179460") {
+   //   cerr << *this << endl;
+   //   cerr << __LINE__ << ": cut this align\n";
+   //}
    string oldName = getQueryName();
    BamAlignment b1(*this);
    BamAlignment b2(*this);
    b1.setQueryName(oldName + "_left");
    b2.setQueryName(oldName + "_right");
-   b1.chopAfter(idx-1);
+   b1.chopAfter(idx-1); // there is no overlap after the cut
    b2.chopBefore(idx);
    if (b1.isPaired()) b1.setUnpaired();
    if (b2.isPaired()) b2.setUnpaired();
+   //if (getName() == "S20179460") {
+   //   cerr << b1 << endl << b2 << endl;
+   //   cerr << __LINE__ << ": after cutting\n";
+   //}
    return make_pair(std::move(b1), std::move(b2));
 }
 

@@ -78,6 +78,18 @@ struct API_EXPORT CigarOp {
      * @return the cigar operation one of MIDNSHPX=
      */
     char getType() const { return Type; }
+    bool isDeletion() const {
+       return Type == 'D';
+    }
+    bool isInsertion() const {
+       return Type == 'I';
+    }
+    bool isMatch() const {
+       return Type == 'M';
+    }
+    bool isSoft() const {
+       return Type == 'S';
+    }
     /**
      * change the length for the cigar segment to l.
      * @param l new length.
@@ -606,11 +618,17 @@ struct RaiiBuffer {
  * If no match at start or end then the value is zero.
  * The match segment stores the number of exact matched 
  * length of bases between reference and query. the mismatched
- * segment stores the reference sequences.
+ * segment stores the reference sequences either as mismatch
+ * taht is represented by base character or insertion started
+ * with the ^ character.
  */
 class Matchdiff {
    public:
       Matchdiff() { }
+      /**
+       * BamAlignment::getMDArray() can parse the MD tag
+       * and convert it to the two vectors used here.
+       */
       Matchdiff(vector<int>&& m, vector<string>&& x)
         : mseg(m), xseg(x)
       { }
