@@ -631,20 +631,16 @@ void BamAlignment::fixStaggerGap() {
 // problem, this will not be able to update MD to make it consistent
 // with the cigar string. will leave MD unchanged thus invalid
 bool BamAlignment::fix1M() {
-   if (getName() == "S1009276") {
-      cerr << *this << endl << __LINE__ << ": there is a bug in this function\n";
-   }
    /*
    short int numseg=CigarData.size();
    if (startWithSoftclip()) --numseg;
    if (endWithSoftclip()) --numseg;
    if (numseg < 5) 
       return false;
-      */
+   */
    if (getCigarSize() < 4) return false;
    bool changed=false;
    int oldnm=getNMValue();
-   //int nmvalue=getNMValue();
    int nmvalue=oldnm;
    if (getCigarType(0) == 'S' && getCigarType(1) == 'M' && getCigarType(2) == 'D' && getCigarType(3) == 'M') {
       // 15S2M2D59M...
@@ -714,7 +710,6 @@ bool BamAlignment::fix1M() {
          clearAlignedBases();
          //return true;
       }
-      //return false;
       return changed;
    }
    // Check for M_I/D_M_I/D_M case
@@ -737,7 +732,7 @@ bool BamAlignment::fix1M() {
                CigarData[i+1].expand(CigarData[i-1].getLength());
                CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+1);
             }
-            return changed;
+            changed = true;
          }
          else if (((getCigarType(i-1) == 'I' && getCigarType(i+1) == 'D') ||
                      (getCigarType(i-1) == 'D' && getCigarType(i+1) == 'I'))) 
@@ -766,7 +761,7 @@ bool BamAlignment::fix1M() {
                CigarData[i-2].expand(lenC + lenL + getCigarLength(i+2));
                CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+3);
             }
-            return changed;
+            changed = true;
          }
       }
    }
@@ -792,7 +787,6 @@ bool BamAlignment::fix1M() {
       */
       //return true;
    }
-   //return false;
    return changed;
 }
 
