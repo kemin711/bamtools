@@ -418,11 +418,11 @@ bool BamAlignment::valid() const {
             else ++i;
          }
          if (del_len != md_del_len) {
-            cerr << __FILE__ << ":" << __LINE__ << ": query deletion length from Cigar: ";
-            for (int l : del_len) cerr << l << " ";
-            cerr << " different from those in MD tag: ";
-            for (int l : md_del_len) cerr << l << " ";
-            cerr << endl;
+            //cerr << __FILE__ << ":" << __LINE__ << ": query deletion length from Cigar: ";
+            //for (int l : del_len) cerr << l << " ";
+            //cerr << " different from those in MD tag: ";
+            //for (int l : md_del_len) cerr << l << " ";
+            //cerr << endl;
             return false;
          }
       }
@@ -3532,9 +3532,9 @@ bool BamAlignment::refwidthAgreeWithMD() const {
    if (hasTag("MD")) {
       if (getMDWidth() != getReferenceWidth()) {
          //cerr << *this << endl;
-         // cerr << __FILE__ << ":" << __LINE__ << " refw=" << getReferenceWidth()
+         //cerr << __FILE__ << ":" << __LINE__ << " refw=" << getReferenceWidth()
          //     << " mdw=" << getMDWidth() << " not the same\n";
-          return false;
+         return false;
       }
    }
    return true;
@@ -3556,23 +3556,30 @@ int BamAlignment::getMDWidth() const {
    size_t i=0; 
    while (i < mdval.size()) {
       size_t j=i+1;
-      while (j < mdval.size() && isdigit(mdval[j])) ++j;
-      try {
-         len += stoi(mdval.substr(i, j-i));
+      if (isdigit(mdval[i])) {
+         while (j < mdval.size() && isdigit(mdval[j])) ++j;
+         try {
+            len += stoi(mdval.substr(i, j-i));
+         }
+         catch (const exception& err) {
+            cerr << endl << *this << endl;
+            cerr << __FILE__ << ":" << __LINE__ << ": mdval=" << mdval << " i=" << i << " j-i=" << j-i
+               << " " << mdval.substr(i, j-i) << endl
+               << err.what() << endl;
+            throw logic_error(string(__func__) + ": invalid MD " + mdval);
+         }
       }
-      catch (const exception& err) {
-         cerr << endl << *this << endl;
-         cerr << __FILE__ << ":" << __LINE__ << ": mdval=" << mdval << " i=" << i << " j-i=" << j-i
-            << " " << mdval.substr(i, j-i) << endl
-            << err.what() << endl;
-         throw logic_error(string(__func__) + ": invalid MD " + mdval);
+      else if (mdval[i] == '^') { // insertion of reference
+         ++i;
+         j = i+1;
+         while (j < mdval.size() && isalpha(mdval[j])) 
+            ++j;
+         len += (j-i);
       }
-      i = j;  // first base in seg
-      if (i >= mdval.size()) break;
-      if (mdval[i] == '^') ++i;
-      j = i+1;
-      while (j < mdval.size() && isalpha(mdval[j])) ++j;
-      len += (j-i);
+      else {
+         while (j < mdval.size() && isalpha(mdval[j])) ++j;
+         len += (j-i);
+      }
       i=j;
    }
    return len;
@@ -4357,7 +4364,7 @@ void BamAlignment::chopAfter(int idx) {
    vector<CigarOp> newcigar;
 #ifdef DEBUG
    bool inbug=false;
-   if (getName() == "S236158592_left") {
+   if (getName() == "S612820054") {
       cerr << *this << endl;
       cerr << __LINE__ << ":  at start of chopAfter() ri=" << ri
          << " idx=" << idx << " current end " << getEndPosition() << endl;
@@ -4407,18 +4414,9 @@ void BamAlignment::chopAfter(int idx) {
             // alignment cannot end with D state
             // will not add D to newcigar, D will be discarded
             ++c;
-            //cerr << endl << *this;
-#ifdef DEBUG
-            if (inbug) {
-               cerr << __LINE__ << ": c=" << c << " ri=" << ri << " qi=" << qi
-                  << " idx=" << idx << " inside deletion will be discarded. new_idx=" 
-                  << ri - 1 << endl;
-            }
-#endif
             // new idx will be ri-1, ri is now the first base in the DEL
             idx = ri-1;
             --qi;
-            //throw logic_error("BamAlignment::chopAfter() idx fall inside D of query sequence");
             break;
          }
       } 
@@ -4473,11 +4471,14 @@ void BamAlignment::chopAfter(int idx) {
    CigarData = std::move(newcigar);
    clearAlignedBases();
    if (!valid()) {
-      cerr << *this << __FILE__ << ":" << __LINE__ << ": invalid bam after " << __func__ << endl
-         << " idx=" << idx << endl;
-      throw logic_error("invalid bam end of chopAfter()");
+   //   cerr << *this << __FILE__ << ":" << __LINE__ << ": invalid bam after " << __func__ << endl
+   //      << " idx=" << idx << endl;
+    //  throw logic_error("invalid bam end of chopAfter()");
+      if (hasTag("MD")) {
+         removeTag("MD");
+      }
    }
-   assert(hasTag("NM"));
+   //assert(hasTag("NM"));
 }
 
 pair<BamAlignment,BamAlignment> BamAlignment::cut(int idx) const {
@@ -4488,9 +4489,9 @@ pair<BamAlignment,BamAlignment> BamAlignment::cut(int idx) const {
          << " outside alignment: " << getPosition() << "-" << getEndPosition() << endl;
       throw out_of_range("cut point not inside alignment");
    }
-   //if (getName() == "S20179460") {
+   //if (getName() == "S612820054") {
    //   cerr << *this << endl;
-   //   cerr << __LINE__ << ": cut this align\n";
+   //   cerr << __LINE__ << ": cut this align at " << idx << "\n\n";
    //}
    string oldName = getQueryName();
    BamAlignment b1(*this);
@@ -4539,6 +4540,10 @@ int BamAlignment::chopMDAfter(int idx) {
       cerr << __LINE__ << ":WARN there is no MD tag chopMDAfter() has no effect!\n";
       return -1;
    }
+   //if (getName() == "S612820054") {
+   //   string mdold = getStringTag("MD");
+   //   cerr << __LINE__ << " chopMD " << mdold << " after " << idx << endl;
+   //}
    Matchdiff mdchopper(std::move(mdvec.first), std::move(mdvec.second));
    idx -= getPosition(); // convert to 0-index from chromosome index
    int diff_intail = mdchopper.removeAfter(idx);
@@ -4583,8 +4588,8 @@ void BamAlignment::reduceNMTag(int diff) {
    }
    if (diff > static_cast<int>(nmv.first)) {
       //throw logic_error(string(__func__) + ":ERROR diff=" + to_string(diff) + " more than NM value=" + to_string(nmv.first));
-      cerr << __LINE__ << ":WARN diff=" << diff << " more than NM value=" << nmv.first 
-         << " we set to zero\n";
+      //cerr << __LINE__ << ":WARN diff=" << diff << " more than NM value=" << nmv.first 
+      //   << " we set to zero\n";
       nmv.first = 0;
    }
    else {
