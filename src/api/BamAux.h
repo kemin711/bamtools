@@ -586,13 +586,19 @@ API_EXPORT inline unsigned short UnpackUnsignedShort(char* buffer) {
 // 'internal' helper structs
 
 /**
- * struct RaiiBuffer
- *   internal.
+ * struct RaiiBuffer internal.
  *  Work with n allocated, not n+1.
+ *  Insuffient method provided worse than managing your own memory.
  */
 struct RaiiBuffer {
     // data members
+   /**
+    * Internal buffer
+    */
     char* Buffer;
+    /**
+     * Number of bytes allocated
+     */
     const size_t NumBytes;
 
     /** 

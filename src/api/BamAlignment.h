@@ -555,13 +555,17 @@ class API_EXPORT BamAlignment {
          * A valid array tag is one that after moving
          * tag_width to the right, p will land on the 
          * first char of another tag or on the '\0' terminator.
+         * [TAG][B][T][L]{ data }
+         * |
+         * p
+         * @param p is at start of the TAG.
          * @return true if the array tag pointed to by p
          *   is valid.  
          */
         bool isValidArrayTag(const char* p) const;
         bool isValidArrayTag(const string& tag) const;
         /** 
-         * Adds a field to the BAM tags.
+         * Adds a field to the BAM tags. Deprecated.
          * Does NOT modify an existing tag - use \link BamAlignment::EditTag() 
          *    \endlink instead.
          * @param[in] tag   2-character tag name
@@ -582,7 +586,7 @@ class API_EXPORT BamAlignment {
          */
         template<typename T> void addTag(const std::string& tag, const std::string& type, const T& value);
         /**
-         * Adds a numeric array field to the BAM tags.
+         * Adds a numeric array field to the BAM tags. Deprecated.
          *
          *  Does NOT modify an existing tag - use \link BamAlignment::EditTag() \endlink instead.
          *
@@ -604,7 +608,7 @@ class API_EXPORT BamAlignment {
         }
 
         /** 
-         *  Edits a BAM tag field.
+         *  Edits a BAM tag field. Deprecated.
          *
          *  If \a tag does not exist, a new entry is created.
          *  If tag exists then it will be removed first. So the same tag
@@ -637,6 +641,9 @@ class API_EXPORT BamAlignment {
          *  \sa \samSpecURL for more details on reserved tag names, supported tag types, etc.
          */
         template<typename T> bool EditTag(const std::string& tag, const std::vector<T>& values);
+        /**
+         * Not need to check. Always return. If not will throw exception.
+         */
         template<typename T> void editTag(const std::string& tag, const std::vector<T>& values);
 
         // retrieves tag data
@@ -1887,6 +1894,14 @@ class API_EXPORT BamAlignment {
          */
         std::string Qualities;          
         /** 
+         * [TAG][T]{ data } for atomic type where data length is sizeof(T)
+         * for array
+         * [TAG][B][T][L]{ data } data length is sizeof(T)*L
+         * TAG is two bytes long, BAM_TAG_TAGSIZE 2
+         * T is a single char (byte) one of BAM_TAGTYPE_xxx
+         *    length is defined by BAM_TAG_TYPESIZE 1
+         * L is sizeof(int32_t) 4
+         * BAM_TAG_ARRAYBASE_SIZE=8 is the array metadata length.
          * tag data (use provided methods to query/modify)
          * String encoding of everything. Should consider using
          * a proper data structure. 
@@ -1964,6 +1979,9 @@ class API_EXPORT BamAlignment {
         short getAtomicTagLength(const char tagt) const;
         /**
          * Only work with Atomic, String, or Hex types.
+         * [TAG][T]{ data } data length is the sizeof(T)
+         *      |
+         *      p
          * @param p poiner at tag type position, 1 before tag data string.
          *     p at 3rd char.
          * @return the length of the data length in number of chars.
@@ -1971,16 +1989,26 @@ class API_EXPORT BamAlignment {
          */
         size_t getBasicTagLength(const char* p) const;
         /**
-         * @param p at the element type char position (4th char)
-         * @return the number of char from element type char to the end
+         * [TAG:2][B:1][T:1][L:4]{ data }
+         *             |<--   result -->|
+         *             p
+         * @param p at the array-element type char position (4th char)
+         * @return the number of char from the array-element type char to the end of array.
          *   including the element type char.
          */
         size_t getArrayTagLength(const char* p) const;
         /**
+         * @param p is at the first byte for the Tag data which is 
+         *    [TAG][TYEP]{  data } 
+         *    [TAG][B][T][LENGTH]{ array data }  for array
+         *    |<---                        -->|
+         *    p points to the first byte
          * @return the full width of a tag pointed to by the pointer
          */
         size_t getTagWidth(const char* p) const;
         /**
+         * This is much more efficient implementation and design
+         * compared to FindTag().
          * @param tag is the two letter tag name
          * @return pointer to the first char of the desired tag
          *   if success otherwise return nullptr.
@@ -1991,6 +2019,8 @@ class API_EXPORT BamAlignment {
          *  Searches for requested tag in BAM tag data.
          *  @param  tag            requested 2-character tag name
          *  @param  pTagData       pointer to current position in BamAlignment::TagData
+         *     After the call it will be pointing to the first char for tag
+         *     in TagDATA.
          *  @param  tagDataLength  length of BamAlignment::TagData
          *  @param  numBytesParsed number of bytes parsed so far before TAG
          *  @return true if found
@@ -2299,6 +2329,7 @@ template<> inline void BamAlignment::addTag<std::string>(
     memcpy(p, value.c_str(), value.size()+1); // copy the trailing null char terminator of value
 }
 
+// implementation had a bug, fixed, will deprecate this version
 template<typename T>
 inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& values) {
     // if char data not populated, do that first
@@ -2324,19 +2355,24 @@ inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& v
     char newTagBase[Constants::BAM_TAG_ARRAYBASE_SIZE];
     // c_str() is '\0' terminated
     std::memcpy(newTagBase, tag.c_str(), Constants::BAM_TAG_TAGSIZE); // BAM_TAG_TAGSIZE=2
-    newTagBase[2] = Constants::BAM_TAG_TYPE_ARRAY; // 'B'
-    newTagBase[3] = TagTypeHelper<T>::TypeCode(); // uint32_t => 'I'
+    newTagBase[Constants::BAM_TAG_TAGSIZE] = Constants::BAM_TAG_TYPE_ARRAY; // 'B'
+    newTagBase[Constants::BAM_TAG_TAGSIZE+1] = TagTypeHelper<T>::TypeCode(); // uint32_t => 'I'
 
     // add number of array elements to newTagBase
     const int32_t numElements  = values.size();
     std::memcpy(newTagBase + 4, &numElements, sizeof(int32_t)); // 32 bits is 4 bytes
     // copy current TagData string to temp buffer, leaving room for new tag's contents
     const size_t newTagDataLength = 
-       prevTDLen + Constants::BAM_TAG_ARRAYBASE_SIZE + numElements*sizeof(T);
-    RaiiBuffer originalTagData(newTagDataLength);
-    std::memcpy(originalTagData.Buffer, TagData.c_str(), prevTDLen+1); // '+1' for TagData's null-term
-    // write newTagBase (removes old null term)
-    std::strcat(originalTagData.Buffer + prevTDLen, (const char*)newTagBase);
+       prevTDLen + Constants::BAM_TAG_ARRAYBASE_SIZE + numElements*sizeof(T); // C++ string does not
+       // need the last extra '\0', but this library manipulate data() as C null 
+       // terminate string, so we have to add this extra. TODO: future versions
+       // will eliminate the need to work in C space.
+    RaiiBuffer originalTagData(newTagDataLength+1);
+    //std::memcpy(originalTagData.Buffer, TagData.c_str(), prevTDLen+1); // '+1' for TagData's null-term
+    std::memcpy(originalTagData.Buffer, TagData.c_str(), prevTDLen); // '+1' for TagData's null-term
+    // write newTagBase (removes old null term), strcat need '\0' from originalTagData.Buffer
+    //std::strcat(originalTagData.Buffer + prevTDLen, (const char*)newTagBase);
+    std::memcpy(originalTagData.Buffer + prevTDLen, newTagBase, Constants::BAM_TAG_ARRAYBASE_SIZE);
     // add vector elements to tag
     int elementsBeginOffset = prevTDLen + Constants::BAM_TAG_ARRAYBASE_SIZE;
     for (int i = 0 ; i < numElements; ++i) {
@@ -2345,8 +2381,10 @@ inline bool BamAlignment::AddTag(const std::string& tag, const std::vector<T>& v
         memcpy(originalTagData.Buffer + elementsBeginOffset + i*sizeof(T), &value, sizeof(T));
     }
     // store temp buffer back in TagData
-    const char* newTagData = (const char*)originalTagData.Buffer;
-    TagData.assign(newTagData, newTagDataLength);
+    //const char* newTagData = (const char*)originalTagData.Buffer;
+    originalTagData.Buffer[newTagDataLength]='\0';
+    //TagData.assign(newTagData, newTagDataLength); // not sure about the '\0' null terminator
+    TagData.assign(originalTagData.Buffer, newTagDataLength); // not sure about the '\0' null terminator
     return true;
 }
 
@@ -2405,15 +2443,14 @@ inline void BamAlignment::editTag(const std::string& tag, const std::string& typ
     if ( SupportData.HasCoreOnly )
         BuildCharData();
     // remove existing tag if present, then append tag with new value
-    //if ( HasTag(tag) )
     if (hasTag(tag)) {
-        //RemoveTag(tag);
         removeTag(tag);
     }
-    return addTag(tag, type, value);
+    //return addTag(tag, type, value);
+    addTag(tag, type, value);
 }
 
-
+// this versin has a bug need to fix
 template<typename T>
 inline bool BamAlignment::EditTag(const std::string& tag, const std::vector<T>& values) {
     // if char data not populated, do that first
@@ -2421,7 +2458,8 @@ inline bool BamAlignment::EditTag(const std::string& tag, const std::vector<T>& 
         BuildCharData();
     // remove existing tag if present, then append tag with new values
     if ( HasTag(tag) )
-        RemoveTag(tag);
+        //RemoveTag(tag);
+        removeTag(tag);
     return AddTag(tag, values);
 }
 
@@ -2862,7 +2900,7 @@ inline vector<T> BamAlignment::getArrayTag(const std::string& tag) const {
        //throw BamNotagException("There is no BamTag: " + tag);
        return vector<T>(); // return empty vector object
     }
-    if (!isValidArrayTag(p)) {
+    if (!isValidArrayTag(p)) { // p at start of TAG
        throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Invalid array tag: " + tag);
     }
     p += (Constants::BAM_TAG_TAGSIZE + Constants::BAM_TAG_TYPESIZE);

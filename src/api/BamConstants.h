@@ -90,7 +90,7 @@ namespace Constants {
     * TAG   BAM_TAG_TYPE_ other than _ARRAY
     *  !    !
     * |--|B|-|----| toal 8 bytes
-    *          | exactly 32 bits = 4 bytes
+    *          | exactly 32 bits = 4 bytes x 8 bit
     *         int32_t fixed type
     */
    const uint8_t BAM_TAG_ARRAYBASE_SIZE = 8;

@@ -403,9 +403,9 @@ bool BamAlignment::valid() const {
             del_len.push_back(c.getLength());
          }
       }
+      string mdstr = getStringTag("MD");
       if (!del_len.empty()) {
          vector<int> md_del_len;
-         string mdstr = getStringTag("MD");
          // 92tc15^cgtttctatccgatgatgattccgt1c0^g4g27t1c6
          string::size_type i=0;
          while (i < mdstr.size()) {
@@ -423,6 +423,13 @@ bool BamAlignment::valid() const {
             //cerr << " different from those in MD tag: ";
             //for (int l : md_del_len) cerr << l << " ";
             //cerr << endl;
+            return false;
+         }
+      }
+      else { 
+         if (mdstr.find('^') != string::npos) {
+            cerr << __FILE__ << ":" << __LINE__ << ":WARN invalid bam MD tag " 
+               << mdstr << " has query deletion but cigar does not\n";
             return false;
          }
       }
@@ -767,10 +774,12 @@ bool BamAlignment::fix1M() {
    }
    if (oldnm != nmvalue) {
       if (nmvalue > -1 && nmvalue < UINT8_MAX) {
-         EditTag("NM", "C", static_cast<uint8_t>(nmvalue)); // approximate, exact computation too expensive
+         //EditTag("NM", "C", static_cast<uint8_t>(nmvalue)); // approximate, exact computation too expensive
+         editTag("NM", "C", static_cast<uint8_t>(nmvalue)); // approximate, exact computation too expensive
       }
       else if (nmvalue > -1 && nmvalue < UINT16_MAX) {
-         EditTag("NM", "S", static_cast<uint16_t>(nmvalue)); // approximate, exact computation too expensive
+         //EditTag("NM", "S", static_cast<uint16_t>(nmvalue)); // approximate, exact computation too expensive
+         editTag("NM", "S", static_cast<uint16_t>(nmvalue)); // approximate, exact computation too expensive
       }
       else {
          cerr << *this << endl;
@@ -2121,11 +2130,22 @@ bool BamAlignment::isValidTag(const char* p) const {
 
 bool BamAlignment::isValidArrayTag(const char* p) const {
    try {
-      size_t w = getArrayTagLength(p+3) + 3;
+      size_t w = getArrayTagLength(p+3) + 3; // whoel tag length
+      // getArrayTagLength(p+3) [TAG][B][T][L]{ data } T to end length
       p += w;
+      //if (*p == '\0' || isValidTag(p) || static_cast<string::size_type>(p - TagData.data()) == TagData.size()) {
       if (*p == '\0' || isValidTag(p)) {
+         // p is obtained by data(), should also use the same here
          return true;
       }
+      string::size_type x = p - TagData.data();
+      if (x == TagData.size()) {
+         cerr << "look good enough\n";
+      }
+      cerr << getName() << " w=" << w << " p to begin: " << x << " TagData.size=" << TagData.size() << endl;
+      cerr << "TagData: " << TagData << endl;
+      cerr << __LINE__ << ": invalid p starting location " << (p-w) 
+         << " p current location: " << p << endl;
       return false;
    }
    catch (const BamTypeException& ler) {
@@ -2135,13 +2155,15 @@ bool BamAlignment::isValidArrayTag(const char* p) const {
    }
 }
 
-// p ponter at array element type char (4th char)
+// p pointer at array element type char (4th char)
+// [TAG][B][T][L]{ data }
+//         |<--      -->|
 size_t BamAlignment::getArrayTagLength(const char* p) const {
    try {
       short elemlen = getAtomicTagLength(*p);
-      const char* x=p+1; // [ 4 byte int32_t ] for number of elements
+      //const char* x=p+1; // [L: 4 byte int32_t ] for number of elements
       int32_t numelement;
-      memcpy(&numelement, x, sizeof(uint32_t)); // already endian-swapped, if needed
+      memcpy(&numelement, (p+1), sizeof(int32_t)); // already endian-swapped, if needed
       return numelement*elemlen + Constants::BAM_TAG_ARRAYBASE_SIZE - 3;
    }
    catch (const BamTypeException& ler) {
@@ -2154,12 +2176,12 @@ size_t BamAlignment::getArrayTagLength(const char* p) const {
    return 0;
 }
 
-// pTagData at first char of data, for array is at element type char.
+// pTagData at first char of data, for array is at array-element type char.
 //bool BamAlignment::SkipToNextTag(const char storageType, char*& pTagData, unsigned int& numBytesParsed) const
 bool BamAlignment::SkipToNextTag(char*& pTagData, unsigned int& numBytesParsed) const
 {
-   size_t dlen;
    try {
+      size_t dlen;
       if (*(pTagData-1) != Constants::BAM_TAG_TYPE_ARRAY) {
          dlen = getBasicTagLength(pTagData-1);
       }
@@ -2171,6 +2193,7 @@ bool BamAlignment::SkipToNextTag(char*& pTagData, unsigned int& numBytesParsed) 
    }
    catch (logic_error& err) {
       cerr << __FILE__ << ":" << __LINE__ << ":ERROR " << err.what() 
+         //<< " dlen=" << dlen << " cannot skip to next tag " << endl;
          << " cannot skip to next tag " << endl;
       return false;
    }
@@ -3813,9 +3836,10 @@ void BamAlignment::chopFront(size_t len, int numMismatch) {
       if (static_cast<int>(NMval) >= numMismatch) {
          NMval -= static_cast<uint16_t>(numMismatch);
          assert(numMismatch > -1 && numMismatch < UINT16_MAX);
-         if (!EditTag("NM", "S", NMval)) {
-            throw logic_error(string(__func__) + ": Failed to edit NM tag with " + to_string(NMval));
-         }
+         //if (!EditTag("NM", "S", NMval)) {
+         //   throw logic_error(string(__func__) + ": Failed to edit NM tag with " + to_string(NMval));
+         //}
+         editTag("NM", "S", NMval);
       }
       else {
          throw runtime_error("NM value update error");
@@ -3987,9 +4011,10 @@ void BamAlignment::chopBack(size_t len, int numMismatch) {
       uint16_t NMval = getNMValue();
       if (static_cast<int>(NMval) >= numMismatch) {
          NMval -= static_cast<uint16_t>(numMismatch);
-         if (!EditTag("NM", string(1,Constants::BAM_TAG_TYPE_UINT16), NMval)) { // BAM_TAG_TYPE_UINT16 is S
-            throw logic_error(string(__func__) + ": failed to edit NM tag " + to_string(NMval));
-         }
+         //if (!EditTag("NM", string(1,Constants::BAM_TAG_TYPE_UINT16), NMval)) { // BAM_TAG_TYPE_UINT16 is S
+         //   throw logic_error(string(__func__) + ": failed to edit NM tag " + to_string(NMval));
+         //}
+         editTag("NM", string(1,Constants::BAM_TAG_TYPE_UINT16), NMval);
       }
       else {
          throw runtime_error("NM value update error");
@@ -4161,34 +4186,35 @@ void BamAlignment::chopBack(size_t len, int numMismatch) {
 
 // mtag is either XM or XW
 void BamAlignment::chopMethyTagBefore(const string& mtag, int idx) {
-   if (hasTag(mtag)) {
-      vector<int32_t> methy = getArrayTag<int32_t>(mtag);
-      int newBegin=idx-getPosition();
-      //assert(newBegin < mehy[methy.size()-2]);
-      size_t i=0;
-      while (i < methy.size() && methy[i] < newBegin) {
+   if (!hasTag(mtag)) return;
+   vector<int32_t> methy = getArrayTag<int32_t>(mtag);
+   int newBegin=idx-getPosition();
+   //assert(newBegin < mehy[methy.size()-2]);
+   size_t i=0;
+   while (i < methy.size() && methy[i] < newBegin) {
+      i += 2;
+   }
+   if (i < methy.size()) {
+      vector<int32_t> newMethy;
+      while (i < methy.size()) {
+         newMethy.push_back(methy[i] - newBegin);
+         newMethy.push_back(methy[i+1]);
          i += 2;
       }
-      if (i < methy.size()) {
-         vector<int32_t> newMethy;
-         while (i < methy.size()) {
-            newMethy.push_back(methy[i] - newBegin);
-            newMethy.push_back(methy[i+1]);
-            i += 2;
-         }
-         if (!EditTag(mtag, newMethy)) {
-            throw logic_error("Failed to update methy tag: " + mtag);
-         }
-      }
-      else { // all methy site before idx need to remove tag
-         removeTag(mtag);
-      }
+      //if (!EditTag(mtag, newMethy)) {
+      //   throw logic_error("Failed to update methy tag: " + mtag);
+      //}
+      editTag(mtag, newMethy); // this is the correct implementation
+   }
+   else { // all methy site before idx need to remove tag
+      removeTag(mtag);
    }
 }
 
 void BamAlignment::chopMethyTagAfter(const string& mtag, int idx) {
    if (!hasTag(mtag)) return;
    vector<int32_t> methy = getArrayTag<int32_t>(mtag);
+   assert(methy.size() % 2 == 0); // should be paired (even)
    int newEnd=idx-getPosition();
    // new end maybe before or after the last methylation site!
    //assert(newEnd < methy[methy.size()-2]);
@@ -4205,9 +4231,10 @@ void BamAlignment::chopMethyTagAfter(const string& mtag, int idx) {
       removeTag(mtag);
    }
    else if (newMethy.size() != methy.size()) {
-      if (!EditTag(mtag, newMethy)) {
-         throw logic_error("falied chopMethyTagAfter with mtag=" + mtag);
-      }
+      //if (!EditTag(mtag, newMethy)) {
+      //   throw logic_error("falied chopMethyTagAfter with mtag=" + mtag);
+      //}
+      editTag(mtag, newMethy);
    }
 }
 
@@ -4226,6 +4253,12 @@ void BamAlignment::chopBefore(int idx) {
          throw runtime_error("invalid BamAlignment before doing chopBefore()");
       }
    }
+   //bool inbug=false;
+   //if (getName() == "S434600481") {
+   //   cerr << *this << endl;
+   //   cerr << __LINE__ << ": idx=" << idx << endl;
+   //   inbug = true;
+   //}
    //assert(hasTag("NM"));
    // truncate XM and XW tag first if they exists
    int ri = getPosition();
@@ -4234,6 +4267,9 @@ void BamAlignment::chopBefore(int idx) {
    int inscnt = 0;
    auto it = CigarData.begin();
    while (it != CigarData.end()) {
+      //if (inbug) {
+      //   cerr << it->getType() << " " << it->getLength() << endl;
+      //}
       if (it->getType() == 'S' || it->getType() == 'H') { // will ignore 
          qi += it->getLength();
       }
@@ -4291,17 +4327,14 @@ void BamAlignment::chopBefore(int idx) {
       newcigar.push_back(*it);
       ++it;
    }
+   //if (inbug) {
+   //   cerr << "idx=" << idx << endl;
+   //}
    // idx maybe changed if falls inside deletion
    chopMethyTagBefore("XM", idx);
    chopMethyTagBefore("XW", idx);
-   //if (!hasTag("NM")) {
-   //   cerr << __LINE__ << ": lost NM tag after chopMethyTagBefore\n";
-   //   throw logic_error("lost NM after chopMethy");
-   //}
    int mismatchCnt=0;
    try { // must do this first before editing other fields
-      //if (inbug)
-      //   cerr << "before chopMDBefore() idx=" << idx << endl;
       if (hasTag("MD")) {
          mismatchCnt = chopMDBefore(idx) + inscnt; // update MD tag
          reduceNMTag(mismatchCnt);
@@ -4311,7 +4344,8 @@ void BamAlignment::chopBefore(int idx) {
       }
    }
    catch (const logic_error& ler) {
-      cerr << *this << endl << __LINE__ << ": idx=" << idx << " pos=" << getPosition() << " inscnt=" << inscnt << " mismatchCnt=" << mismatchCnt << endl;
+      //cerr << *this << endl << __LINE__ << ": idx=" << idx << " pos=" << getPosition() << " inscnt=" << inscnt << " mismatchCnt=" << mismatchCnt << endl;
+      cerr << __LINE__ << ": idx=" << idx << " pos=" << getPosition() << " inscnt=" << inscnt << " mismatchCnt=" << mismatchCnt << endl;
       cerr << ler.what() << endl;
       throw;
    }
@@ -4333,14 +4367,10 @@ void BamAlignment::chopBefore(int idx) {
       throw logic_error("invalid cigar after chopBefore operation()");
    }
    if (!valid()) {
-      cerr << *this << __FILE__ << ":" << __LINE__ << ": invalid bam after " << __func__ << endl;
+      cerr << *this << __FILE__ << ":" << __LINE__ << ": invalid bam after " << __func__ 
+         << " idx=" << idx << endl;
       throw logic_error("bad MD after chopBefore()");
    }
-   //if (!hasTag("NM")) {
-   //   cerr << __LINE__ << ": lost NM tag at end of chopBefore()\n";
-   //   throw logic_error("lost NM at end of chopBefore()");
-   //}
-   //assert(hasTag("NM"));
 }
 
 void BamAlignment::chopAfter(int idx) {
@@ -4362,15 +4392,6 @@ void BamAlignment::chopAfter(int idx) {
    int ri = getPosition();
    int qi = 0;
    vector<CigarOp> newcigar;
-#ifdef DEBUG
-   bool inbug=false;
-   if (getName() == "S612820054") {
-      cerr << *this << endl;
-      cerr << __LINE__ << ":  at start of chopAfter() ri=" << ri
-         << " idx=" << idx << " current end " << getEndPosition() << endl;
-      inbug=true;
-   }
-#endif
    while (c < CigarData.size()) {
       if (CigarData[c].getType() == 'S' || CigarData[c].getType() == 'H') {
          newcigar.push_back(CigarData[c]);
@@ -4450,9 +4471,9 @@ void BamAlignment::chopAfter(int idx) {
    }
    catch (const logic_error& ler) {
       //cerr << endl << *this << __LINE__ << ": idx=" << idx << endl << ler.what() << endl;
-      cerr << *this << endl;
       cerr << __LINE__ << ": idx=" << idx << " mismatchCnt=" << mismatchCnt 
          << " inscnt=" << inscnt << endl << ler.what() << endl;
+      cerr << *this << endl;
       throw;
    }
    // insert size, position will not be affected
@@ -4597,20 +4618,17 @@ void BamAlignment::reduceNMTag(int diff) {
       nmv.first -= static_cast<uint16_t>(diff);
    }
    if (nmv.first < UINT8_MAX) {
-      if (!EditTag("NM", "C", static_cast<uint8_t>(nmv.first))) {
-         throw logic_error(string(__func__) + ":" + to_string(__LINE__) + ":ERROR Failed to edit NM tag");
-      }
+      //if (!EditTag("NM", "C", static_cast<uint8_t>(nmv.first))) {
+      //   throw logic_error(string(__func__) + ":" + to_string(__LINE__) + ":ERROR Failed to edit NM tag");
+      //}
+      editTag("NM", "C", static_cast<uint8_t>(nmv.first));
    }
    else { // if (nmv.first < UINT16_MAX) {
-      if (!EditTag("NM", "S", nmv.first)) {
-         throw logic_error(string(__func__) + ":" + to_string(__LINE__) + ":ERROR Failed to edit NM tag");
-      }
+      //if (!EditTag("NM", "S", nmv.first)) {
+      //   throw logic_error(string(__func__) + ":" + to_string(__LINE__) + ":ERROR Failed to edit NM tag");
+      //}
+      editTag("NM", "S", nmv.first);
    }
-   //else {
-   //   if (!EditTag("NM", "i", static_cast<int32_t>(nmv.first))) {
-   //      throw logic_error(string(__func__) + ":" + to_string(__LINE__) + ":ERROR Failed to edit NM tag");
-   //   }
-   //}
    assert(hasTag("NM"));
 }
 
@@ -4898,27 +4916,31 @@ void BamAlignment::updateNMTag(const string& refseq) {
       cerr << __FILE__ << ":" << __LINE__ << ": edit " << edit 
          << " too large using integer type. Also check for logic error.\n";
       if (hasTag("NM")) {
-         if (!EditTag("NM", "i", edit)) {
-            throw logic_error("Failed to edit NM tag");
-         }
+         //if (!EditTag("NM", "i", edit)) {
+         //   throw logic_error("Failed to edit NM tag");
+         //}
+         editTag("NM", "i", edit);
       }
       else {
-         if (!AddTag("NM", "i", edit)) {
-            throw logic_error("Failed to add NM tag");
-         }
+         //if (!AddTag("NM", "i", edit)) {
+         //   throw logic_error("Failed to add NM tag");
+         //}
+         addTag("NM", "i", edit);
       }
    }
    else {
       //cout << "recalculated edit distance: " << edit << endl;
       if (hasTag("NM")) {
-         if (!EditTag("NM", "C", static_cast<uint8_t>(edit))) {
-            throw logic_error("Failed to edit NM tag");
-         }
+         //if (!EditTag("NM", "C", static_cast<uint8_t>(edit))) {
+         //   throw logic_error("Failed to edit NM tag");
+         //}
+         editTag("NM", "C", static_cast<uint8_t>(edit));
       }
       else {
-         if (!AddTag("NM", "C", static_cast<uint8_t>(edit))) {
-            throw logic_error("Failed to add NM tag");
-         }
+         //if (!AddTag("NM", "C", static_cast<uint8_t>(edit))) {
+         //   throw logic_error("Failed to add NM tag");
+         //}
+         addTag("NM", "C", static_cast<uint8_t>(edit));
       }
    }
 }

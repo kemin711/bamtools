@@ -365,6 +365,9 @@ class API_EXPORT BamReader {
          *  Mentioned in the header or actually used in the bamfile?
         */
         int GetReferenceCount(void) const;
+        int getReferenceCount(void) const {
+           return GetReferenceCount();
+        }
 
         /**
          * @see RefData RefData is a simple typedef in BamAux.h
@@ -379,8 +382,6 @@ class API_EXPORT BamReader {
          * Not sure how others are named, so you have to
          * rely on the index to get the string to be safe.
          * The number after 24 is unreliable.
-         *
-         * Note: this is a bad design using std vector
          */
         const RefVector& GetReferenceData(void) const {
            return d->GetReferenceData();
@@ -392,6 +393,10 @@ class API_EXPORT BamReader {
         const RefVector& getReferenceData(void) const {
            return d->getReferenceData();
         }
+        /**
+         * You should never modify the refvector. This maybe dangerous.
+         * Only library writer need this function.
+         */
         RefVector& getReferenceData(void) {
            return d->getReferenceData();
         }
