@@ -2395,7 +2395,12 @@ std::pair<int,int> BamAlignment::getPairedInterval() const {
          if (b <= b2) { // --R--> <--M--, properly mapped case
             // special case ==R==>
             //              <=M====
-            return make_pair(b, b+abs(getInsertSize())-1);
+            if (b+abs(getInsertSize())-1 >= getEndPosition()) {
+               return make_pair(b, b+abs(getInsertSize())-1);
+            }
+            else {
+               return make_pair(b, getEndPosition());
+            }
          }
          else { // <--M-- --R--> improper head-to-head case
             return make_pair(b2, getEndPosition());
@@ -2410,7 +2415,12 @@ std::pair<int,int> BamAlignment::getPairedInterval() const {
             return make_pair(b, b2 + getMateRefwidth() - 1);
          }
          else { // --M--> <--R-- Proper pair
-            return make_pair(b2, getEndPosition());
+            if (b2 + abs(getInsertSize()) - 1 >= getEndPosition()) {
+               return make_pair(b2, b2 + abs(getInsertSize())-1);
+            }
+            else {
+               return make_pair(b2, getEndPosition());
+            }
          }
       }
       else { //both this and mate on reverse strand

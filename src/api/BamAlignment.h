@@ -871,6 +871,8 @@ class API_EXPORT BamAlignment {
          *  |<------------>|
          *  b              e
          * Should always be [small, large]
+         * |==R1====>|
+         * |<=R2=    | R2 might have been trimmed due to low quality
          * @return [b,e] pair.
          */
         std::pair<int,int> getPairedInterval() const;
