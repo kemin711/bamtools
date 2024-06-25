@@ -1015,6 +1015,12 @@ class API_EXPORT BamAlignment {
          */
         int32_t getReferenceId() const { return RefID; }
         /**
+         * save some typing.
+         */
+        bool sameReferenceId(const BamAlignment& ba) const {
+           return getReferenceId() == ba.getReferenceId();
+        }
+        /**
          * get the fist mapping position in 0-based index on the reference
          * sequence.
          * Soft clips at the beginning does not count, the 
@@ -1129,7 +1135,7 @@ class API_EXPORT BamAlignment {
         /**
          * @return the length of the Cigar segment at 0-based index i
          */
-        unsigned int getCigarLength(unsigned int i) const {
+        int getCigarLength(unsigned int i) const {
            return CigarData[i].getLength();
         }
         /**
@@ -1137,6 +1143,9 @@ class API_EXPORT BamAlignment {
          */
         unsigned int getCigarOperationCount() const {
            return CigarData.size();
+        }
+        const CigarOp& getCigarOp(unsigned int i) const {
+           return CigarData[i];
         }
         /**
          * @return Number of cigar operations
@@ -1352,7 +1361,8 @@ class API_EXPORT BamAlignment {
            SupportData.QuerySequenceLength = qlen; 
         }
         void setQueryLength(int32_t qlen) {  
-           SupportData.QuerySequenceLength = qlen; }
+           SupportData.QuerySequenceLength = qlen; 
+        }
         /**
          * Once query bases is changed the length will also
          * change. There is no need to call setQueryLength()
@@ -1370,6 +1380,7 @@ class API_EXPORT BamAlignment {
         }
         void appendQueryBases(const string& tail) {
             QueryBases.append(tail);
+            SupportData.QuerySequenceLength += tail.size();
         }
         /**
          * At this point I have only implemented the operation on
@@ -1440,6 +1451,7 @@ class API_EXPORT BamAlignment {
         }
         void setCigar(const std::vector<CigarOp> &cd) {
            setCigarData(cd);
+           SupportData.NumCigarOperations=cd.size();
         }
         /**
          * @return the sum of M,D,I segment length that is the
@@ -1764,7 +1776,12 @@ class API_EXPORT BamAlignment {
           * @return the length of the query sequence.
           */
          int32_t getLength() const {
-            assert(QueryBases.size() == SupportData.QuerySequenceLength);
+            //assert(QueryBases.size() == SupportData.QuerySequenceLength);
+            if (QueryBases.size() != SupportData.QuerySequenceLength) {
+               cerr << __FILE__ << ":" << __LINE__ << ":DEBUG forgot to update SupportData.QuerySequenceLength="
+                  << SupportData.QuerySequenceLength << " queryseqlen=" << QueryBases.size() << endl;
+               throw logic_error("BueryBases.size() not the same as SupportData.QuerySequenceLength");
+            }
             return SupportData.QuerySequenceLength;
          }
          /**

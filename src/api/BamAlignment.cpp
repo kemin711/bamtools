@@ -387,7 +387,9 @@ bool BamAlignment::valid() const {
    //cerr << QueryBases.size() << " " << Qualities.size()
    //   << " " << getReferenceWidth() << " " << getReferenceWidth() <<  " ";
    if (QueryBases.size() != Qualities.size()) {
-      cerr << __LINE__ << ": query sequence and quality not the same length\n";
+      cerr << __FILE__ << ":" << __LINE__ << ": " << getName() << " query sequence: " 
+         << QueryBases << endl
+        << " and quality: " << Qualities << endl << " not the same length\n";
       return false;
    }
    if (getReferenceId() == -1 && isMapped()) {
@@ -418,11 +420,11 @@ bool BamAlignment::valid() const {
             else ++i;
          }
          if (del_len != md_del_len) {
-            //cerr << __FILE__ << ":" << __LINE__ << ": query deletion length from Cigar: ";
-            //for (int l : del_len) cerr << l << " ";
-            //cerr << " different from those in MD tag: ";
-            //for (int l : md_del_len) cerr << l << " ";
-            //cerr << endl;
+            cerr << __FILE__ << ":" << __LINE__ << ": query deletion length from Cigar: ";
+            for (int l : del_len) cerr << l << " ";
+            cerr << " different from those in MD tag: ";
+            for (int l : md_del_len) cerr << l << " ";
+            cerr << endl;
             return false;
          }
       }
@@ -2412,7 +2414,12 @@ std::pair<int,int> BamAlignment::getPairedInterval() const {
          if (b < b2) { // <--R-- --M--> this is left
             // <==R==
             //   =M===>
-            return make_pair(b, b2 + getMateRefwidth() - 1);
+            if (getEndPosition() >= b2 + abs(getInsertSize()) - 1) {
+               return make_pair(b, getEndPosition());
+            }
+            else {
+               return make_pair(b, b2 + max(getMateRefwidth(), abs(getInsertSize())) - 1);
+            }
          }
          else { // --M--> <--R-- Proper pair
             if (b2 + abs(getInsertSize()) - 1 >= getEndPosition()) {
@@ -2852,6 +2859,11 @@ pair<int,bool> BamAlignment::isDeletionAtRefloc(int desiredR, int startR) const 
 // insertion can only be addressed by the Base before or after
 // on the reference.
 int BamAlignment::indexRef2Query(int ri) const {
+   //bool inbug=false;
+   //if (getName() == "S23886996") {
+   //   cerr << __LINE__ << ": need to debug difficult case\n";
+   //   inbug=true;
+   //}
    int i=getPosition();
    assert(ri>= i && ri <= getEndPosition());
    int j=0; //i index on reference, j index on query
@@ -2861,8 +2873,14 @@ int BamAlignment::indexRef2Query(int ri) const {
       j += getCigarLength(0);
       ci=1;
    }
+   if (i == ri) {
+      return j;
+   }
    while (i < ri && ci < getCigarSize()) {
-      if ((unsigned int)ri < i+getCigarLength(ci)) { // fall within this segment, done
+      //if (inbug) {
+      //   cerr << "i=" << i << " j=" << j << " cigarlen: " << getCigarType(ci) << " " << getCigarLength(ci) << endl;
+      //}
+      if (ri <= i+getCigarLength(ci)) { // fall within this segment, done
          if  (getCigarType(ci) == 'M') {
             // this is expected segment
             return j + ri -i; // if i falls on the last base of M
@@ -2873,7 +2891,9 @@ int BamAlignment::indexRef2Query(int ri) const {
          }
          else if (getCigarType(ci) == 'I') { // should never reach this state
             //cerr << __FILE__ << ":" << __LINE__ << ":DEBUG should not land inside Insertion\n";
-            throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":DEBUG unreachable code section inside Insertion");
+            //throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":DEBUG unreachable code section inside Insertion");
+            j += getCigarLength(ci); // increment Query index, sequence is hidden
+            ++ci;
          }
          else {
             throw runtime_error(string(__FILE__) + ":" + to_string(__LINE__) 
@@ -2885,8 +2905,10 @@ int BamAlignment::indexRef2Query(int ri) const {
          nextCigar(i,j,ci);
       }
    }
+   cerr << *this << endl << __FILE__ << ":" << __LINE__ << ": ri=" << ri << endl
+      << " need to think a little bit more\n";
    throw logic_error(string(__FILE__) + ":" + to_string(__LINE__)
-         + ":ERROR coding error, cannot fine char at " + to_string(ri));
+         + ":ERROR coding error, cannot find char at " + to_string(ri));
 }
 
 // [b,e] are reference coordinate
@@ -3256,7 +3278,7 @@ char BamAlignment::charAtByRef(int ri) const {
       if (i < ri && ci < getCigarSize() && getCigarType(ci) == 'I') {
          nextCigar(i,j,ci);
       }
-      else if ((unsigned int)ri < i+getCigarLength(ci)) { // fall within this segment, done
+      else if (ri < i+getCigarLength(ci)) { // fall within this segment, done
          if  (getCigarType(ci) == 'M') {
             // this is expected segment
             return QueryBases[j + ri - i];
@@ -3309,7 +3331,7 @@ bool BamAlignment::isDeletionAt(int ri, int len) const {
       if (i < ri && ci < getCigarSize() && getCigarType(ci) == 'I') {
          nextCigar(i,j,ci);
       }
-      else if ((unsigned int)ri < i+getCigarLength(ci)) { // fall within this segment, done
+      else if (ri < i+getCigarLength(ci)) { // fall within this segment, done
          //cout << "ri=" << ri << " less than i+getCigarLength(ci)=" << i+getCigarLength(ci) << endl;
          //cout << "cigar type: " << getCigarType(ci) << endl;
          if  (getCigarType(ci) == 'M') {
@@ -3318,7 +3340,7 @@ bool BamAlignment::isDeletionAt(int ri, int len) const {
          }
          else if (getCigarType(ci) == 'D') {
             if (i == ri) { // must fall on the first base of the DEL segment
-               if (getCigarLength(ci) == (unsigned int)len) {
+               if (getCigarLength(ci) == len) {
                   return true;
                }
                else { // is deletion of different length
@@ -3388,7 +3410,7 @@ bool BamAlignment::isInsertionAt(int ri, const string& seq) const {
                   //throw logic_error("ci=" + to_string(ci) + " ci+1 out of cigar bound");
                   return false;
                }
-               if (getCigarLength(ci+1)+1 == seq.size()) { // same insert size
+               if (getCigarLength(ci+1)+1 == static_cast<int>(seq.size())) { // same insert size
                   if (QueryBases.substr(j+getCigarLength(ci)-1, seq.size()) == seq) {
                      return true;
                   }
