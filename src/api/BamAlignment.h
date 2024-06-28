@@ -339,9 +339,16 @@ class API_EXPORT BamAlignment {
         bool isReverseStrand(void) const {
            return (AlignmentFlag & REVERSE_STRAND) == REVERSE_STRAND; 
         }
+        /**
+         * The query sequence is in the original forward direction.
+         */
         bool isForwardStrand() const {
            return !((AlignmentFlag & REVERSE_STRAND) == REVERSE_STRAND); 
         }
+        /**
+         * The query sequence is the reverse complement of the original
+         * sequence.
+         */
         void setReverseStrand() {
            AlignmentFlag |= REVERSE_STRAND;
         }

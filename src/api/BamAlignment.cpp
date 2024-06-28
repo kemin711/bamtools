@@ -2423,19 +2423,19 @@ std::pair<int,int> BamAlignment::getPairedInterval() const {
          }
          else { // --M--> <--R-- Proper pair
             if (b2 + abs(getInsertSize()) - 1 >= getEndPosition()) {
-               return make_pair(b2, b2 + abs(getInsertSize())-1);
+               return make_pair(min(b,b2), b2 + abs(getInsertSize())-1);
             }
             else {
-               return make_pair(b2, getEndPosition());
+               return make_pair(min(b,b2), getEndPosition());
             }
          }
       }
       else { //both this and mate on reverse strand
          if (b < b2) { // <--R-- <--M--
-            return make_pair(b, b2+getMateRefwidth() -1);
+            return make_pair(b, max(b2+getMateRefwidth()-1, getEndPosition()));
          }
          else { // <--M-- <--R--  this on the right hand side
-            return make_pair(b2, getEndPosition());
+            return make_pair(b2, max(b2+getMateRefwidth()-1, getEndPosition()));
          }
       }
    }
