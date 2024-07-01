@@ -489,6 +489,10 @@ class API_EXPORT BamAlignment {
         void SetIsFirstMate(bool ok);         // sets value of "alignment is first mate" flag
         void SetIsMapped(bool ok);            // sets value of "alignment is mapped" flag
         void SetIsMateMapped(bool ok);        // sets value of "alignment's mate is mapped" flag
+        /**
+         * Only update the flag. For full operation you need to call
+         * makeUnmapped()
+         */
         void setUnmapped() {
             AlignmentFlag |= UNMAPPED;
         }
@@ -1000,6 +1004,9 @@ class API_EXPORT BamAlignment {
          */
         const std::string& getQuality() const { return Qualities; }
         std::string& getQuality() { return Qualities; }
+        /**
+         * @return the quality in reverse order.
+         */
         string getReverseQuality() const;
         /**
          * @return the fastq quality as integer value from 0 to 93
@@ -1762,11 +1769,15 @@ class API_EXPORT BamAlignment {
           *              CigarData, AlignedBases
           *      either set to -1 or clear for string values.
           * tag: NM, MD, MC removed
+          * If reverse strand, then need to revcomp both base and quality
           */
          void makeUnmapped();
          /**
           * Will do all the operation as makeUnmapped() except for
-          * refid, and position
+          * refid, and position. After this operation the refid,pos
+          * are left unchanged. This is useful if you want to 
+          * keep the two mates next to each other in position sorted
+          * bam files.
           */
          void markUnmapped();
          void makeMateUnmapped();
