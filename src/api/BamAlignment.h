@@ -1605,6 +1605,15 @@ class API_EXPORT BamAlignment {
                to_string(getNMValue());
         }
         /**
+         * @return bwa XA tag (chr, +/-pos, CIGAR, NM-value) 
+         * for additional locations of this alignment.
+         */
+        string getXAString() const {
+           return getReferenceName() 
+              + string(1, getStrandChar()) + to_string(getPosition()) 
+              + getCigarString() + to_string(getNMValue());
+        }
+        /**
          * QC function.
          */
         bool valid() const;
