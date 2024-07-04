@@ -596,6 +596,7 @@ class API_EXPORT BamAlignment {
          * Will throw exception.
          */
         template<typename T> void addTag(const std::string& tag, const std::string& type, const T& value);
+        template<typename T> void addTag(const std::string& tag, const char type, const T& value);
         /**
          * Adds a numeric array field to the BAM tags. Deprecated.
          *
@@ -640,6 +641,7 @@ class API_EXPORT BamAlignment {
          * Morden version throwing exception.
          */
         template<typename T> void editTag(const std::string& tag, const std::string& type, const T& value);
+        template<typename T> void editTag(const std::string& tag, const char type, const T& value);
         /**
          *  Edits a BAM tag field containing a numeric array.
          *
@@ -2305,6 +2307,79 @@ inline void BamAlignment::addTag(const std::string& tag, const std::string& type
     }
 }
 
+template<typename T>
+inline void BamAlignment::addTag(const std::string& tag, const char type, const T& value) 
+{
+    // if char data not populated, do that first
+    if (SupportData.HasCoreOnly)
+        BuildCharData();
+    // check tag/type size
+    if (!isValidTagName(tag)) {
+       throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Invalid tag name to add: " + tag);
+    }
+    if (!canStore<T>(type, value)) {
+       cerr << *this << endl;
+       throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR type "
+             + string(1, type) + " cannot store value " + to_string(value) + " in tag: " + tag);
+    }
+    char *p = findTag(tag);
+    if (p != nullptr) {
+       throw logic_error("Tag " + tag + " already exists cannot add again");
+    }
+    size_t prevTDL = TagData.size(); // previous TagData length
+    TagData.resize(prevTDL + Constants::BAM_TAG_TAGSIZE + Constants::BAM_TAG_TYPESIZE +sizeof(T));
+    // p move to TAG NAME filed to write
+    p = TagData.data() + prevTDL;
+    memcpy(p, tag.c_str(), Constants::BAM_TAG_TAGSIZE);
+    p += Constants::BAM_TAG_TAGSIZE;
+    //memcpy(p, type.c_str(), Constants::BAM_TAG_TYPESIZE);
+    *p = type; ++p; 
+    short typeLen = getAtomicTagLength(*p);
+    if (typeLen != sizeof(T)) {
+       throw logic_error("write more code to deal with addTag type and T not same length");
+    }
+    p += Constants::BAM_TAG_TYPESIZE;
+    if (!TagTypeHelper<T>::CanConvertTo(type)) {
+       memcpy(p, &value, sizeof(T));
+    }
+    else {
+       if (type == Constants::BAM_TAG_TYPE_INT8) {
+          int8_t tmpv = value;
+          memcpy(p, &tmpv, 1);
+       }
+       else if (type == Constants::BAM_TAG_TYPE_UINT8) {
+          uint8_t tmpv = value;
+          memcpy(p, &tmpv, 1);
+       }
+       else if (type == Constants::BAM_TAG_TYPE_INT16) {
+          int16_t tmpv = value;
+          memcpy(p, &tmpv, 2);
+       }
+       else if (type == Constants::BAM_TAG_TYPE_UINT16) {
+          uint16_t tmpv = value;
+          memcpy(p, &tmpv, 2);
+       }
+       else if (type == Constants::BAM_TAG_TYPE_INT32) {
+          int32_t tmpv = value;
+          memcpy(p, &tmpv, 3);
+       }
+       else if (type == Constants::BAM_TAG_TYPE_UINT32) {
+          uint32_t tmpv = value;
+          memcpy(p, &tmpv, 3);
+       }
+       else if (type == Constants::BAM_TAG_TYPE_FLOAT) {
+          float tmpv = value;
+          memcpy(p, &tmpv, sizeof(float));
+       }
+       else if (type == Constants::BAM_TAG_TYPE_STRING) {
+          throw logic_error("strin as template specializaiton should not get here");
+       }
+       else {
+          throw logic_error("write more code for new tag type: " + string(1, type));
+       }
+    }
+}
+
 // string specialization
 template<> inline bool BamAlignment::AddTag<std::string>(const std::string& tag,
                               const std::string& type, const std::string& value)
@@ -2345,6 +2420,7 @@ template<> inline bool BamAlignment::AddTag<std::string>(const std::string& tag,
     return true;
 }
 
+// string specialization
 // can use this function to add Hex string, need to use type="H"
 template<> inline void BamAlignment::addTag<std::string>(
       const std::string& tag, const std::string& type, const std::string& value)
@@ -2371,6 +2447,36 @@ template<> inline void BamAlignment::addTag<std::string>(
     memcpy(p, tag.c_str(), Constants::BAM_TAG_TAGSIZE);
     p += Constants::BAM_TAG_TAGSIZE;
     memcpy(p, type.c_str(), Constants::BAM_TAG_TYPESIZE);
+    p += Constants::BAM_TAG_TYPESIZE;
+    memcpy(p, value.c_str(), value.size()+1); // copy the trailing null char terminator of value
+}
+
+template<> inline void BamAlignment::addTag<std::string>(
+      const std::string& tag, const char type, const std::string& value)
+{
+    // if char data not populated, do that first
+    if (SupportData.HasCoreOnly)
+        BuildCharData();
+    // check tag/type size
+    if (!isValidTagName(tag)) {
+       throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR Invalid tag name to add: " + tag);
+    }
+    if (!TagTypeHelper<string>::CanConvertTo(type)) {
+       throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR type "
+             + type + " is not Hex or string type when tag: " + tag);
+    }
+    char *p = findTag(tag);
+    if (p != nullptr) {
+       throw logic_error("Tag " + tag + " already exists cannot add again");
+    }
+    size_t prevTDL = TagData.size(); // previous TagData length
+    TagData.resize(prevTDL + Constants::BAM_TAG_TAGSIZE + Constants::BAM_TAG_TYPESIZE + value.size() + 1);
+    // p move to TAG NAME filed to write
+    p = TagData.data() + prevTDL;
+    memcpy(p, tag.c_str(), Constants::BAM_TAG_TAGSIZE);
+    p += Constants::BAM_TAG_TAGSIZE;
+    //memcpy(p, type.c_str(), Constants::BAM_TAG_TYPESIZE);
+    *p = type; ++p; 
     p += Constants::BAM_TAG_TYPESIZE;
     memcpy(p, value.c_str(), value.size()+1); // copy the trailing null char terminator of value
 }
@@ -2484,6 +2590,20 @@ inline bool BamAlignment::EditTag(const std::string& tag, const std::string& typ
 
 template<typename T>
 inline void BamAlignment::editTag(const std::string& tag, const std::string& type, const T& value) 
+{
+    // if char data not populated, do that first
+    if ( SupportData.HasCoreOnly )
+        BuildCharData();
+    // remove existing tag if present, then append tag with new value
+    if (hasTag(tag)) {
+        removeTag(tag);
+    }
+    //return addTag(tag, type, value);
+    addTag(tag, type, value);
+}
+
+template<typename T>
+inline void BamAlignment::editTag(const std::string& tag, const char type, const T& value) 
 {
     // if char data not populated, do that first
     if ( SupportData.HasCoreOnly )

@@ -22,7 +22,6 @@
 
 namespace BamTools {
 namespace Constants {
-
    const uint8_t BAM_SIZEOF_INT = 4;
 
    // header magic number
