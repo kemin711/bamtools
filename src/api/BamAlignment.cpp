@@ -167,6 +167,9 @@ std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
       else ous << '+';
       ous << sep;
    }
+   if (ba.isUnmapped()) {
+      ous << "unmapped" << sep;
+   }
    ous << "duplicate: " << ba.IsDuplicate() << sep
       << "mate: ";
    if (ba.IsFirstMate()) ous << 1;
@@ -2222,7 +2225,8 @@ int BamAlignment::getAverageQualityScore() const {
 bool BamAlignment::validQScore() const {
    for (string::size_type i=0; i<Qualities.size(); ++i) {
       if (Qualities[i] < '!' || Qualities[i] > '~') { // 33 ! - 126 ~
-         cerr << __LINE__ << ": invalid Q CHAR |" << Qualities[i] << "| " << static_cast<int>(Qualities[i]) << endl;
+         cerr << __FILE__ << ":" << __LINE__ << ": invalid Q CHAR |" << Qualities[i] << "| " 
+            << static_cast<int>(Qualities[i]) << " qname=" << getQueryName() << endl;
          return false;
       }
    }

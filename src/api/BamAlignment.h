@@ -1017,7 +1017,8 @@ class API_EXPORT BamAlignment {
         vector<int> getQualityScore() const;
         int getAverageQualityScore() const;
         /**
-         * Make sure all score are not less than '!' which is 33
+         * Make sure all score are not less than '!' which is 33 and 
+         * not more than 126 ~
          */
         bool validQScore() const;
         /**
@@ -1599,11 +1600,11 @@ class API_EXPORT BamAlignment {
          */
         bool refwidthAgreeWithMD() const;
         string getSAString() const {
-           return getReferenceName() +
-               to_string(getPosition()) +
-               string(1, getStrandChar()) +
-               getCigarString() +
-               to_string(getMapQuality()) +
+           return getReferenceName() + "," +
+               to_string(getPosition()) + "," +
+               string(1, getStrandChar()) + "," +
+               getCigarString() + "," +
+               to_string(getMapQuality()) + "," +
                to_string(getNMValue());
         }
         /**
@@ -1611,9 +1612,9 @@ class API_EXPORT BamAlignment {
          * for additional locations of this alignment.
          */
         string getXAString() const {
-           return getReferenceName() 
+           return getReferenceName() + ","
               + string(1, getStrandChar()) + to_string(getPosition()) 
-              + getCigarString() + to_string(getNMValue());
+              + "," + getCigarString() + "," + to_string(getNMValue());
         }
         /**
          * QC function.
@@ -2231,6 +2232,7 @@ inline bool BamAlignment::AddTag(const std::string& tag, const std::string& type
     return true;
 }
 
+// type is string version
 template<typename T>
 inline void BamAlignment::addTag(const std::string& tag, const std::string& type, const T& value) 
 {
@@ -2448,7 +2450,8 @@ template<> inline void BamAlignment::addTag<std::string>(
     p += Constants::BAM_TAG_TAGSIZE;
     memcpy(p, type.c_str(), Constants::BAM_TAG_TYPESIZE);
     p += Constants::BAM_TAG_TYPESIZE;
-    memcpy(p, value.c_str(), value.size()+1); // copy the trailing null char terminator of value
+    memcpy(p, value.c_str(), value.size()); // copy the trailing null char terminator of value
+    *(p+value.size()) = '\0';
 }
 
 template<> inline void BamAlignment::addTag<std::string>(
@@ -2463,7 +2466,7 @@ template<> inline void BamAlignment::addTag<std::string>(
     }
     if (!TagTypeHelper<string>::CanConvertTo(type)) {
        throw logic_error(string(__FILE__) + ":" + to_string(__LINE__) + ":ERROR type "
-             + type + " is not Hex or string type when tag: " + tag);
+             + string(1,type) + " is not Hex or string type when tag: " + tag);
     }
     char *p = findTag(tag);
     if (p != nullptr) {
@@ -2475,10 +2478,12 @@ template<> inline void BamAlignment::addTag<std::string>(
     p = TagData.data() + prevTDL;
     memcpy(p, tag.c_str(), Constants::BAM_TAG_TAGSIZE);
     p += Constants::BAM_TAG_TAGSIZE;
-    //memcpy(p, type.c_str(), Constants::BAM_TAG_TYPESIZE);
-    *p = type; ++p; 
+    *p = type; 
     p += Constants::BAM_TAG_TYPESIZE;
-    memcpy(p, value.c_str(), value.size()+1); // copy the trailing null char terminator of value
+    // the C++ string may not have the trailing \0 we need to add it 
+    // explicitly
+    memcpy(p, value.c_str(), value.size()); 
+    *(p+value.size()) = '\0';
 }
 
 // implementation had a bug, fixed, will deprecate this version
@@ -2602,9 +2607,14 @@ inline void BamAlignment::editTag(const std::string& tag, const std::string& typ
     addTag(tag, type, value);
 }
 
+// char type version
 template<typename T>
 inline void BamAlignment::editTag(const std::string& tag, const char type, const T& value) 
 {
+    //if (getName() == "S262055") {
+    //    cerr << __LINE__ << ": before edit, TagData " << TagData << endl << " new value: "
+    //        << value << endl;
+    //}
     // if char data not populated, do that first
     if ( SupportData.HasCoreOnly )
         BuildCharData();
@@ -2612,8 +2622,12 @@ inline void BamAlignment::editTag(const std::string& tag, const char type, const
     if (hasTag(tag)) {
         removeTag(tag);
     }
-    //return addTag(tag, type, value);
-    addTag(tag, type, value);
+    addTag(tag, type, value); 
+    //if (getName() == "S262055") {
+    //    cerr << __LINE__ << ": after edit, TagData " << TagData << endl;
+    //    auto x = getTag<string>("XA");
+    //    cerr << x.first << endl;
+    //}
 }
 
 // this versin has a bug need to fix
