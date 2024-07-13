@@ -1037,6 +1037,9 @@ class API_EXPORT BamAlignment {
         bool sameReferenceId(const BamAlignment& ba) const {
            return getReferenceId() == ba.getReferenceId();
         }
+        bool sameReference(const BamAlignment& ba) const {
+           return getReferenceId() == ba.getReferenceId();
+        }
         /**
          * get the fist mapping position in 0-based index on the reference
          * sequence.
@@ -1403,6 +1406,7 @@ class API_EXPORT BamAlignment {
          * At this point I have only implemented the operation on
          * unmapped object. For mapped, the Cigar, position will 
          * also need to be changed. Not sure this is meaningful or not.
+         * After this operation, the object is useless.
          */
         void revcomp();
         /** 
@@ -1805,15 +1809,7 @@ class API_EXPORT BamAlignment {
          /**
           * @return the length of the query sequence.
           */
-         int32_t getLength() const {
-            //assert(QueryBases.size() == SupportData.QuerySequenceLength);
-            if (QueryBases.size() != SupportData.QuerySequenceLength) {
-               cerr << __FILE__ << ":" << __LINE__ << ":DEBUG forgot to update SupportData.QuerySequenceLength="
-                  << SupportData.QuerySequenceLength << " queryseqlen=" << QueryBases.size() << endl;
-               throw logic_error("BueryBases.size() not the same as SupportData.QuerySequenceLength");
-            }
-            return SupportData.QuerySequenceLength;
-         }
+         int32_t getLength() const;
          /**
           * length setter function.
           * This should only be use in conjunction of query base 

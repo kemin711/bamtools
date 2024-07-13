@@ -65,7 +65,6 @@ string BamAlignment::cigarToString(const vector<pair<char,int>>& cg) {
    return osr.str();
 }
 
-
 /// Regular member function part /////
 
 /*! \fn BamAlignment::BamAlignment(const BamAlignment& other)
@@ -155,7 +154,7 @@ BamAlignment& BamAlignment::operator=(BamAlignment&& other) {
 namespace BamTools {
 std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    const string sep="\t";
-   ous << ba.getQueryName() << sep << ba.getAlignmentFlag() << sep 
+   ous << ba.getReferenceName() << sep << ba.getQueryName() << sep << ba.getAlignmentFlag() << sep 
       << ba.getQueryLength() << sep << ba.getPosition() << sep
       << "primary: " << ba.IsPrimaryAlignment() << sep
       << "strand: ";
@@ -387,6 +386,10 @@ bool BamAlignment::hasICigar() const {
 }
 
 bool BamAlignment::valid() const {
+   //if (getName() == "S50341319_ds" || getName() == "S75634330_ds") {
+   //   cerr << *this << endl;
+   //   cerr << __LINE__ << ":DEBUG invalid bam\n";
+   //}
    //cerr << QueryBases.size() << " " << Qualities.size()
    //   << " " << getReferenceWidth() << " " << getReferenceWidth() <<  " ";
    if (QueryBases.size() != Qualities.size()) {
@@ -423,11 +426,13 @@ bool BamAlignment::valid() const {
             else ++i;
          }
          if (del_len != md_del_len) {
+            /*
             cerr << __FILE__ << ":" << __LINE__ << ": query deletion length from Cigar: ";
             for (int l : del_len) cerr << l << " ";
             cerr << " different from those in MD tag: ";
             for (int l : md_del_len) cerr << l << " ";
             cerr << endl;
+            */
             return false;
          }
       }
@@ -460,13 +465,16 @@ bool BamAlignment::validCigar() const {
       cerr << __FILE__ << ":" << __LINE__ << ":ERROR Query Length inconsistent queryLength from cigar=" 
          << cigarQL << " queryLength=" << getLength() << endl;
       cerr << *this << endl;
+      return false;
    }
    if (cigarRL != getReferenceWidth()) {
       cerr << __FILE__ << ":" << __LINE__ << ":ERROR reference length contradict cigar computed: "
          << cigarRL << endl;
       cerr << *this << endl;
+      return false;
    }
-   return cigarQL == getLength() && cigarRL == getReferenceWidth();
+   //return cigarQL == getLength() && cigarRL == getReferenceWidth();
+   return true;
 }
 
 bool BamAlignment::sameCigar(const vector<pair<char,int>>& cigar) const {
@@ -2355,6 +2363,17 @@ std::pair<int,int> BamAlignment::getPairedRange() const {
    return make_pair(b,e);
 }
 
+int32_t BamAlignment::getLength() const {
+   //assert(QueryBases.size() == SupportData.QuerySequenceLength);
+   if (QueryBases.size() != SupportData.QuerySequenceLength) {
+      cerr << __FILE__ << ":" << __LINE__ << ":DEBUG forgot to update SupportData.QuerySequenceLength="
+         << SupportData.QuerySequenceLength << " queryseqlen=" << QueryBases.size() << " for query: "
+         << getName() << endl;
+      throw logic_error("QueryBases.size() not the same as SupportData.QuerySequenceLength");
+   }
+   return SupportData.QuerySequenceLength;
+}
+
 // compute the reference length from the MC tag
 int BamAlignment::getMateRefwidth() const {
    pair<string,bool> mcval = getTag<string>("MC");
@@ -2391,7 +2410,7 @@ std::pair<int,int> BamAlignment::getPairedInterval() const {
          // now figure out which one is on the left (smaller)
          if (b < b2) { // --R--> --M-->
            // this is one the left, mate on right
-           return make_pair(b, b2 + getMateRefwidth() - 1);
+           return make_pair(b, max(b2 + getMateRefwidth() - 1, getEndPosition()));
          }
          else { // --M-->  --R-->
             return make_pair(b2, getEndPosition());
@@ -3590,9 +3609,9 @@ pair<vector<int>, vector<string>> BamAlignment::getMDArray() const {
 bool BamAlignment::refwidthAgreeWithMD() const {
    if (hasTag("MD")) {
       if (getMDWidth() != getReferenceWidth()) {
-         //cerr << *this << endl;
-         //cerr << __FILE__ << ":" << __LINE__ << " refw=" << getReferenceWidth()
-         //     << " mdw=" << getMDWidth() << " not the same\n";
+         cerr << *this << endl;
+         cerr << __FILE__ << ":" << __LINE__ << " refw=" << getReferenceWidth()
+              << " mdw=" << getMDWidth() << " not the same\n";
          return false;
       }
    }
