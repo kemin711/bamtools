@@ -154,7 +154,11 @@ BamAlignment& BamAlignment::operator=(BamAlignment&& other) {
 namespace BamTools {
 std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    const string sep="\t";
-   ous << ba.getReferenceName() << sep << ba.getQueryName() << sep << ba.getAlignmentFlag() << sep 
+   if (ba.rsname.empty()) 
+      ous << "NOREFNAME";
+   else 
+      ous << ba.getReferenceName();
+   ous << sep << ba.getQueryName() << sep << ba.getAlignmentFlag() << sep 
       << ba.getQueryLength() << sep << ba.getPosition() << sep
       << "primary: " << ba.IsPrimaryAlignment() << sep
       << "strand: ";
@@ -426,13 +430,13 @@ bool BamAlignment::valid() const {
             else ++i;
          }
          if (del_len != md_del_len) {
-            /*
-            cerr << __FILE__ << ":" << __LINE__ << ": query deletion length from Cigar: ";
+//#ifdef DEBUG
+            cerr << __FILE__ << ":" << __LINE__ << ": " << getName() << " query deletion length from Cigar: ";
             for (int l : del_len) cerr << l << " ";
             cerr << " different from those in MD tag: ";
             for (int l : md_del_len) cerr << l << " ";
             cerr << endl;
-            */
+//#endif
             return false;
          }
       }
@@ -733,13 +737,14 @@ bool BamAlignment::fix1M() {
       return changed;
    }
    // Check for M_I/D_M_I/D_M case
+   // Estimated mismatch could be wrong, for algorithm simplicity we approximate
    for (int i=2; i+2 < getCigarSize(); ++i) {
       if (getCigarType(i) == 'M' && getCigarType(i-2) == 'M' 
             && getCigarType(i+2) == 'M' && getCigarLength(i) < 3) 
       { 
          if (getCigarType(i-1) == getCigarType(i+1) && 
-                  (getCigarType(i-1) == 'D' && getCigarType(i-1) == 'I')) 
-         {
+                  (getCigarType(i-1) == 'D' || getCigarType(i-1) == 'I')) 
+         { // DMD or IMI
             nmvalue += getCigarLength(i);
             // same I or D, will not recompute MD. Almost impossible.
             if (getCigarLength(i-2) > getCigarLength(i+2)) { // merge 1M with Left M longer
@@ -761,7 +766,7 @@ bool BamAlignment::fix1M() {
             int lenR=getCigarLength(i+1);
             int lenC=getCigarLength(i); // center
             if (lenL < lenR) {
-               nmvalue += (lenC - lenL);
+               nmvalue += (lenC + lenL)*0.75;
                CigarData[i-2].expand(lenC + lenL);
                CigarData[i+1].setLength(lenR - lenL);
                CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+1);
@@ -769,7 +774,7 @@ bool BamAlignment::fix1M() {
                //SupportData.NumCigarOperations -= 2;
             }
             else if (lenL > lenR) {
-               nmvalue += (lenC - lenR);
+               nmvalue += (lenC + lenR)*0.75;
                CigarData[i+2].expand(lenR + lenC);
                CigarData[i-1].setLength(lenL -lenR);
                CigarData.erase(CigarData.begin()+i, CigarData.begin()+i+2);
@@ -777,7 +782,7 @@ bool BamAlignment::fix1M() {
                //SupportData.NumCigarOperations -= 2;
             }
             else { // lengths of segment i-1 and i+1 are identical
-               nmvalue += (lenC - lenL);
+               nmvalue += (lenC + lenL)*0.75; 
                CigarData[i-2].expand(lenC + lenL + getCigarLength(i+2));
                CigarData.erase(CigarData.begin()+i-1, CigarData.begin()+i+3);
             }
@@ -786,6 +791,7 @@ bool BamAlignment::fix1M() {
       }
    }
    if (oldnm != nmvalue) {
+      if (nmvalue < 0) nmvalue = 0;
       if (nmvalue > -1 && nmvalue < UINT8_MAX) {
          //EditTag("NM", "C", static_cast<uint8_t>(nmvalue)); // approximate, exact computation too expensive
          editTag("NM", "C", static_cast<uint8_t>(nmvalue)); // approximate, exact computation too expensive
@@ -796,7 +802,7 @@ bool BamAlignment::fix1M() {
       }
       else {
          cerr << *this << endl;
-         cerr << __FILE__ << ":" << __LINE__ << ": nmvalue=" << nmvalue << " too big\n";
+         cerr << __FILE__ << ":" << __LINE__ << ": oldnm=" << oldnm << " new nmvalue=" << nmvalue << " too big\n";
          throw logic_error("nmvalue " + to_string(nmvalue) + " greater than UMI8_MAX");
       }
       SupportData.NumCigarOperations = CigarData.size();

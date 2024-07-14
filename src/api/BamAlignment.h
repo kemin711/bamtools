@@ -1202,6 +1202,8 @@ class API_EXPORT BamAlignment {
          * the estimated MD tag may be close.
          * In the case of ...57M1I1M1I69M... editing MD tag is almost
          * impossible. So has to be recomputed.
+         * NOTE: need to call recalMD() or recalMDsubseq() if you want the
+         * object to be valid.
          */
         bool fix1M();
         /**
@@ -1630,7 +1632,7 @@ class API_EXPORT BamAlignment {
         void updateMDTag(const pair<vector<int>, vector<string>>& mdvec);
         /**
          * Given the refernce sequence for this object. The MD tag will 
-         * be refreshed with the recomputed valie.
+         * be refreshed with the recomputed value.
          * @param refsq is the whole chromosome sequence.
          */
         void recalMD(const string& refsq);
@@ -1774,6 +1776,7 @@ class API_EXPORT BamAlignment {
           */
          const string& getReferenceName() const {
             if (rsname.empty()) {
+               cerr << __FILE__ << ":" << __LINE__ << ": rsname not loaded need to call setRefvector(BamReader::getReferenceMetaData())\n";
                throw runtime_error(string(__func__) + ": empty rsname, may need to call setRefvector()");
             }
             return rsname.at(getReferenceId()).first;
