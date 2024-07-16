@@ -127,7 +127,7 @@ tuple<string, int, string, int> Utilities::extractRegion(const string& regstr) {
    return res;
 }
 
-/* converted to template
+/* converted to template; now in the header file
 array<int, 4> Utilities::parseRegion(const string& regstr, const BamReader& br) {
    regex singleGenomic("([_A-Za-z0-9]+):(\d+)(?:\.\.|-)(\d+)");
    regex doubleGenomic("([_A-Za-z0-9]+):(\d+)(?:\.\.|-)([_A-Za-z0-9]+):(\d+)");
@@ -208,9 +208,11 @@ bool Utilities::ParseRegionString(
     // -------------------------------
     // parse region string
     // check first for empty string
-    if ( regionString.empty() ) 
+    if ( regionString.empty() ) {
+        cerr << __LINE__ << ":ERROR restionString is empty\n";
         return false;   
-    cerr << "parsing region: " << regionString << " ...\n";
+    }
+    cerr << __LINE__ << ": parsing region: " << regionString << " ...\n";
     try {
        array<int,4> rawreg = parseRegion<BamReader>(regionString, reader);
        region.set(rawreg);
@@ -325,8 +327,8 @@ bool Utilities::ParseRegionString(const string& regionString,
     // parse region string
   
     // check first for empty string
-    if ( regionString.empty() ) {
-        cerr << "parsing region " << regionString << endl;
+    if (regionString.empty()) {
+        cerr << __LINE__ << ":ERROR regionString is empty\n";
         return false;   
     }
     /*
@@ -441,14 +443,13 @@ bool Utilities::ParseRegionString(const string& regionString,
     region.RightPosition = stopPos;
     return true;
     */
-
     try {
        array<int,4> rawreg = parseRegion<BamMultiReader>(regionString, reader);
        region.set(rawreg);
        return true;
     }
     catch (const runtime_error& err) {
-       cerr << __LINE__ << ": failed to parse region string\n";
+       cerr << __LINE__ << ": failed to parse region string: " << regionString << endl;
        return false;
     }
 }

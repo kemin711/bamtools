@@ -180,7 +180,10 @@ typedef std::vector<RefData> RefVector;
 */
 struct API_EXPORT BamRegion {
     int LeftRefID;      //!< reference ID for region's left boundary
-    int LeftPosition;   //!< position for region's left boundary
+    /**
+     * position for region's left boundary. 0-based index.
+     */
+    int LeftPosition;   
     int RightRefID;     //!< reference ID for region's right boundary
     int RightPosition;  //!< position for region's right boundary
     
@@ -188,6 +191,8 @@ struct API_EXPORT BamRegion {
      * constructor from full information.
      * @param leftId left reference id, zero-based index
      * @param leftPos left position zero-indexed position. -1 means to the end.
+     * @param rightId -1 means all the way to the end of the file
+     *     if rightId == leftId, then means the entire leftId.
      */
     BamRegion(const int& leftID   = -1, const int& leftPos  = -1,
               const int& rightID  = -1, const int& rightPos = -1)
@@ -263,7 +268,12 @@ struct API_EXPORT BamRegion {
         return ( RightRefID >= 0 && RightPosition >= 1 );
     }
     bool isSingleReference() const {
-       return LeftRefID == RightRefID && LeftRefID != -1;
+       return LeftRefID == RightRefID && LeftPosition != -1;
+    }
+    friend ostream& operator<<(ostream& ous, const BamRegion& reg) {
+       ous << reg.LeftRefID << ":" << reg.LeftPosition << "-"   
+         << reg.RightRefID << ":" << reg.RightPosition; 
+       return ous;
     }
 };
 

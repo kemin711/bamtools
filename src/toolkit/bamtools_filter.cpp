@@ -578,7 +578,6 @@ void FilterTool::FilterToolPrivate::InitProperties(void) {
 }
 
 bool FilterTool::FilterToolPrivate::ParseCommandLine(void) {
-  
     // add a rule set to filter engine
     const string CMD = "COMMAND_LINE";
     m_filterEngine.addFilter(CMD);
@@ -755,7 +754,7 @@ bool FilterTool::FilterToolPrivate::Run(void) {
 
     // if no region specified, filter entire file 
     BamAlignment al;
-    if ( !m_settings->HasRegion ) {
+    if (!m_settings->HasRegion) {
         while ( reader.GetNextAlignment(al) ) {
             if ( CheckAlignment(al) ) 
                 writer.SaveAlignment(al);
@@ -765,28 +764,28 @@ bool FilterTool::FilterToolPrivate::Run(void) {
     else {
         // if region string parses OK
         BamRegion region;
-        if ( Utilities::ParseRegionString(m_settings->Region, reader, region) ) {
+        cerr << __FILE__ << ":" << __LINE__ << ": parsing region: " << m_settings->Region << endl;
+        if (Utilities::ParseRegionString(m_settings->Region, reader, region)) {
+            cerr << region << endl;
+            cerr << __LINE__ << ": after parsing region\n";
             // attempt to find index files
             reader.LocateIndexes();
             // if index data available for all BAM files, we can use SetRegion
             if ( reader.HasIndexes() ) {
-
                 // attempt to use SetRegion(), if failed report error
-                if ( !reader.SetRegion(region.LeftRefID, region.LeftPosition, region.RightRefID, region.RightPosition) ) {
+                if (!reader.SetRegion(region.LeftRefID, region.LeftPosition, region.RightRefID, region.RightPosition) ) {
                     cerr << "bamtools filter ERROR: set region failed. Check that REGION describes a valid range" << endl;
                     reader.Close();
                     return false;
                 } 
-              
                 // everything checks out, just iterate through specified region, filtering alignments
                 while ( reader.GetNextAlignment(al) )
                     if ( CheckAlignment(al) ) 
                         writer.SaveAlignment(al);
-                }
-            
-            // no index data available, we have to iterate through until we
-            // find overlapping alignments
+            }
             else {
+                // no index data available, we have to iterate through until we
+                // find overlapping alignments
                 while ( reader.GetNextAlignment(al) ) {
                     if ( (al.RefID >= region.LeftRefID)  && 
                           ((al.Position + al.getLength()) >= region.LeftPosition) &&
@@ -807,7 +806,6 @@ bool FilterTool::FilterToolPrivate::Run(void) {
             return false;
         }
     }
-
     // clean up & exit
     reader.Close();
     writer.Close();
@@ -815,14 +813,11 @@ bool FilterTool::FilterToolPrivate::Run(void) {
 }
 
 bool FilterTool::FilterToolPrivate::SetupFilters(void) {
-  
     // set up filter engine with supported properties
     InitProperties();
-    
     // parse script for filter rules, if given
     if ( m_settings->HasScript )
         return ParseScript();
-    
     // otherwise check command line for filters
     else return ParseCommandLine();
 }

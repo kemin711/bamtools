@@ -200,6 +200,8 @@ class API_EXPORT BamReader {
          *  @returns true if reader was able to jump successfully to the region's left boundary
          * 
          *  @see HasIndex(), Jump()
+         *  For single chromosome such as chr4 refid=15, not sure what is the internal
+         *    representation 15:-1, 15:-1?  
          */
         bool SetRegion(const int& leftRefID, const int& leftPos,
                        const int& rightRefID, const int& rightPos);

@@ -1173,6 +1173,9 @@ class API_EXPORT BamAlignment {
         int getCigarSize() const {
            return CigarData.size();
         }
+        int numberOfCigar() const {
+           return CigarData.size();
+        }
         /**
          * @return the number of indel + softclip
          */
@@ -2057,7 +2060,7 @@ class API_EXPORT BamAlignment {
         /**
          * This is much more efficient implementation and design
          * compared to FindTag().
-         * @param tag is the two letter tag name
+         * @param tag is the two letter tag name such as MD
          * @return pointer to the first char of the desired tag
          *   if success otherwise return nullptr.
          */

@@ -68,7 +68,6 @@ static bool IsVersion(char* str) {
 
 // subtool factory method
 AbstractTool* CreateTool(const string& arg) {
-  
     // determine tool type based on arg
     if ( arg == CONVERT )  return new ConvertTool;
     if ( arg == COUNT )    return new CountTool;

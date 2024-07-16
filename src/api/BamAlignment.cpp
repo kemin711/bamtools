@@ -409,6 +409,7 @@ bool BamAlignment::valid() const {
    //return validCigar() && refwidthAgreeWithMD() && QueryBases.size() == Qualities.size();
    // check D segment from MD tag agree with Cigar D if MD tag is present
    if (hasTag("MD")) {
+   //if (HasTag("MD")) {
       vector<int> del_len;
       for (auto& c : CigarData) {
          if (c.isDeletion()) {
@@ -689,8 +690,8 @@ bool BamAlignment::fix1M() {
          changed = true;
       }
    }
-   else if (getCigarType(getCigarSize()-1) == 'S' && getCigarType(getCigarSize()-2) == 'M' 
-         && getCigarType(getCigarSize()-3) == 'D' && getCigarType(getCigarSize()-4) == 'M') 
+   else if (getCigarType(getCigarSize()-4) == 'M' && getCigarType(getCigarSize()-3) == 'D' 
+         && getCigarType(getCigarSize()-2) == 'M' && getCigarType(getCigarSize()-1) == 'S') 
    {
       // 57M2D1M23S
       if (getCigarLength(getCigarSize()-2) < 3) { // approximation, we assum 1M is mismatch to new location
@@ -702,15 +703,15 @@ bool BamAlignment::fix1M() {
          changed = true;
       }
    }
-   else if (getCigarType(getCigarSize()-1) == 'S' && getCigarType(getCigarSize()-2) == 'M' 
-         && getCigarType(getCigarSize()-3) == 'I' && getCigarType(getCigarSize()-4) == 'M') 
+   else if (getCigarType(getCigarSize()-4) == 'M' && getCigarType(getCigarSize()-3) == 'I' 
+         && getCigarType(getCigarSize()-2) == 'M' && getCigarType(getCigarSize()-1) == 'S') 
    {
       if (getCigarLength(getCigarSize()-2) < 3) { // approximation, we assum 1M is mismatch to new location
          // to avoid to recompute idnentity
          // not sure MD use 0 padding for 'I' or not?
          // I state will not change the MD string, so can ignore it
          nmvalue += getCigarLength(getCigarSize()-2);
-         CigarData[3].expand(getCigarLength(getCigarSize()-2));
+         CigarData[getCigarSize()-4].expand(getCigarLength(getCigarSize()-2));
          CigarData[getCigarSize()-1].expand(getCigarLength(getCigarSize()-3));
          CigarData.erase(CigarData.begin()+getCigarSize()-3, CigarData.begin()+getCigarSize()-1);
          changed = true;
@@ -739,8 +740,8 @@ bool BamAlignment::fix1M() {
    // Check for M_I/D_M_I/D_M case
    // Estimated mismatch could be wrong, for algorithm simplicity we approximate
    for (int i=2; i+2 < getCigarSize(); ++i) {
-      if (getCigarType(i) == 'M' && getCigarType(i-2) == 'M' 
-            && getCigarType(i+2) == 'M' && getCigarLength(i) < 3) 
+      if (getCigarType(i) == 'M' && getCigarLength(i) < 3 &&
+            getCigarType(i-2) == 'M' && getCigarType(i+2) == 'M')
       { 
          if (getCigarType(i-1) == getCigarType(i+1) && 
                   (getCigarType(i-1) == 'D' || getCigarType(i-1) == 'I')) 
@@ -1458,6 +1459,10 @@ size_t BamAlignment::getTagWidth(const char* p) const {
          << __func__ << " " << ler.what() << endl;
       throw BamTypeException(string(ler.what()) + " failed getTagWidth()");
    }
+   catch (const logic_error& ler) {
+      cerr << __FILE__ << ":" << __LINE__ << ": tag got wrong type label\n";
+      throw BamTypeException("Tag has a wrong type label");
+   }
 }
 
 void BamAlignment::showTagData(ostream& ous) const {
@@ -1485,19 +1490,28 @@ char* BamAlignment::findTag(const std::string& tag) {
 }
 
 // assume tag data is constructed
-const char* BamAlignment::findTag(const std::string& tag) const
-{
+const char* BamAlignment::findTag(const std::string& tag) const {
    //cerr << __LINE__ << ": finding tag " << tag << endl;
    const char* p = TagData.data();
-   while (*p != '\0') {
-      //cerr << "at " << p << endl;
-      if (tag[0] == *p && tag[1] == *(p+1))
-         return p;
-      p += getTagWidth(p);
+   try {
+      while (static_cast<long unsigned int>(p-TagData.data()) < TagData.size() &&  *p != '\0') {
+         //cerr << "at " << p << endl;
+         if (tag[0] == *p && tag[1] == *(p+1))
+            return p;
+         p += getTagWidth(p);
+      }
+   }
+   catch (BamTypeException& bamerr) {
+      cerr << bamerr.what() << endl;
+      cerr << __LINE__ << ": bam tag " << tag << " for " << getName() << " is constructed incorrectly\n";
+      throw runtime_error("Tag error checke producer program");
+   }
+   catch (exception& er) {
+      cerr << __FILE__ << ":" << __LINE__ << ": " << getName() << " cannot find Tag: " << tag << endl;
+      throw;
    }
    return nullptr;
 }
-
 
 /*! \fn bool BamAlignment::GetArrayTagType(const std::string& tag, char& type) const
     \brief Retrieves the BAM tag type-code for the array elements associated with requested tag name.
@@ -2114,7 +2128,7 @@ size_t BamAlignment::getBasicTagLength(const char* p) const {
       case Constants::BAM_TAG_TYPE_ASCII:
       case Constants::BAM_TAG_TYPE_INT8:
       case Constants::BAM_TAG_TYPE_UINT8:
-         return 1; 
+         return sizeof(uint8_t);  // one byte
       case Constants::BAM_TAG_TYPE_INT16:
       case Constants::BAM_TAG_TYPE_UINT16:
          return sizeof(uint16_t);
@@ -2124,13 +2138,14 @@ size_t BamAlignment::getBasicTagLength(const char* p) const {
          return sizeof(uint32_t); 
       case (Constants::BAM_TAG_TYPE_STRING) :
       case (Constants::BAM_TAG_TYPE_HEX)    :
-      {
+      { // Z
          const char* x=p+1;
          while(*x != '\0') ++x; // x now at null-terminator
          return x - p; // length of data includding \0
       }
       default:
-         throw logic_error(string(*p, 1) + " is not basic Bam TAG type");
+         cerr << __FILE__ << ":" << __LINE__ << ": " << p << endl;
+         throw logic_error(string(1, *p) + " is not basic Bam TAG type");
    }
 }
 
@@ -3616,7 +3631,7 @@ bool BamAlignment::refwidthAgreeWithMD() const {
    if (hasTag("MD")) {
       if (getMDWidth() != getReferenceWidth()) {
          cerr << *this << endl;
-         cerr << __FILE__ << ":" << __LINE__ << " refw=" << getReferenceWidth()
+         cerr << __FILE__ << ":" << __LINE__ << " query=" << getName() << " refw=" << getReferenceWidth()
               << " mdw=" << getMDWidth() << " not the same\n";
          return false;
       }

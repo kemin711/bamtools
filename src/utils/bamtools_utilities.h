@@ -88,13 +88,18 @@ class UTILS_EXPORT Utilities {
          }
         static tuple<string, int, string, int> extractRegion(const string& regstr);
 
+        /**
+         * @param br is only used for reading only.
+         */
         template<class T>
         static array<int, 4> parseRegion(const string& regstr, const T& br) {
+           cerr << __LINE__ << ": parsing region string: " << regstr << endl;
             regex singleGenomic("([_A-Za-z0-9]+):([[:digit:]]+)(?:\\.\\.|-)([[:digit:]]+)");
             regex doubleGenomic("([_A-Za-z0-9]+):([[:digit:]]+)(?:\\.\\.|-)([_A-Za-z0-9]+):([[:digit:]]+)");
             smatch matchResult;
-            array<int,4> res{-1, 0, -1, 0};
+            array<int,4> res{-1, 0, -1, -1};
             if (regex_match(regstr, matchResult, singleGenomic)) {
+               cerr << __LINE__ << ": single genomic specified\n";
               res[0] = br.getReferenceId(matchResult[1]);
               if (res[0] == -1) {
                  throw runtime_error("invalide first genomic id: " + matchResult[1].str());
@@ -105,6 +110,9 @@ class UTILS_EXPORT Utilities {
                  throw runtime_error("invalide start position " + matchResult[2].str() + " on " + matchResult[1].str());
               }
               res[3] = stoi(matchResult[3]);
+              if (res[3] == -1) { 
+                 setToEnd<T>(res[0], res[3], br);
+              }
               if (!validRefpos<T>(res[0], res[3], br)) {
                  cerr << __LINE__ << ": invalid end position " << res[3] << " on " << matchResult[1] << " we will assume the end of it\n";
                  //res[3] = -1;
@@ -113,6 +121,7 @@ class UTILS_EXPORT Utilities {
               }
             }
             else if (regex_match(regstr, matchResult, doubleGenomic)) {
+               cerr << __LINE__ << ": double genomic specified\n";
               res[0] = br.getReferenceId(matchResult[1]);
               if (res[0] == -1) {
                  throw runtime_error("invalide first genomic id: " + matchResult[1].str());
@@ -161,8 +170,11 @@ class UTILS_EXPORT Utilities {
                        throw runtime_error("invalide first genomic name: " + regstr);
                     }
                     res[2] = res[0];
+                    res[1]=0;
+                    setToEnd<T>(res[0], res[3], br);
                }
             }
+            cerr << __LINE__ << ": parseRegion result: " << res[0] << " " << res[1] << " " << res[2] << " " << res[3] << endl;
             return res;
          }
 };
