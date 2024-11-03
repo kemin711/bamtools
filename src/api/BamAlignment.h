@@ -1504,9 +1504,12 @@ class API_EXPORT BamAlignment {
         void setMatePosition(int32_t matepos) { MatePosition = matepos; } 
         /**
          * Sets the insert size which is the 
-         * length of the template. For forward strand, it is positive,
-         * for reverse strand it is negative. This function will automaticall
+         * length of the template. For left-most alignment, it is positive;
+         * for right-most it is negative. This function will automaticall
          * adjust the sign of the value if the user did it wrong.
+         * Only properly paired alignment will have non-zero values.
+         * Thus the left most is also the forwardstrand, and the 
+         * right most is the reverse strand.
          */
         void setInsertSize(int32_t insize); 
         /////// end of setter methods ///////

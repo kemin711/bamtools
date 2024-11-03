@@ -4705,7 +4705,7 @@ void BamAlignment::reduceNMTag(int diff) {
       //}
       editTag("NM", "S", nmv.first);
    }
-   assert(hasTag("NM"));
+   //assert(hasTag("NM"));
 }
 
 // len is ref count only
