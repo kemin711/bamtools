@@ -105,7 +105,8 @@ class API_EXPORT BamAlignment {
            SupportData.QuerySequenceLength=QueryBases.size(); // is this duplicate of QueryLength?
         }
         /**
-         * Convenient constructor with Cigar input for testing
+         * Convenient constructor with Cigar input for testing.
+         * If single then mate_refid is -1.
          */
         BamAlignment(const std::string& qname, int32_t refid, int32_t refpos, uint32_t alnflag, 
               int32_t mrefid, int32_t mrefpos, const std::string& queryseq, const std::string& qstring,
@@ -1989,12 +1990,17 @@ class API_EXPORT BamAlignment {
         * Defined in BamAux.h
         */
         std::vector<CigarOp> CigarData; 
-        /** ID number for reference sequence where alignment's mate was aligned */
+        /** 
+         * ID number for reference sequence where alignment's mate was aligned.
+         * If unpaired -1. For sorting purpose, if mate is unmapped but the current
+         * alignment is mapped, the mateRefId will be same as this one.
+         */
         int32_t MateRefID;          
         /** position (0-based) where alignment's mate starts.
          *  SEELF position [a, b], MATE[c, d]
          *  If mate on the same reference, [a, b] and [c, d]
          *  could be identical.
+         *  If single read or unampped then -1 to indicate the null situation.
          *  */
         int32_t MatePosition;       
         /**
@@ -2268,38 +2274,44 @@ inline void BamAlignment::addTag(const std::string& tag, const std::string& type
     memcpy(p, tag.c_str(), Constants::BAM_TAG_TAGSIZE);
     p += Constants::BAM_TAG_TAGSIZE;
     memcpy(p, type.c_str(), Constants::BAM_TAG_TYPESIZE);
+    //short typeLen = getAtomicTagLength(*p);
     short typeLen = getAtomicTagLength(*p);
     if (typeLen != sizeof(T)) {
-       throw logic_error("write more code to deal with addTag type and T not same length");
+       //throw logic_error("write more code to deal with addTag type and T not same length");
+       cerr << __FILE__ << ":" << __LINE__ << ":WARN T type " << typeid(T).name() << " " << value << " length differ from " << type 
+          << " but small enough can store in stated type" << endl;
     }
     p += Constants::BAM_TAG_TYPESIZE;
     if (!TagTypeHelper<T>::CanConvertTo(type.front())) {
-       memcpy(p, &value, sizeof(T));
+       //memcpy(p, &value, sizeof(T)); // canStore() already rulled out value too large 
+       storeToAs(value, p, type.front());
     }
-    else {
+    else { // T can be converted to type
+       storeToTag(p, value, type.front());
+       /*
        if (type.front() == Constants::BAM_TAG_TYPE_INT8) {
           int8_t tmpv = value;
           memcpy(p, &tmpv, 1);
        }
        else if (type.front() == Constants::BAM_TAG_TYPE_UINT8) {
           uint8_t tmpv = value;
-          memcpy(p, &tmpv, 1);
+          memcpy(p, &tmpv, sizeof(uint8_t));
        }
        else if (type.front() == Constants::BAM_TAG_TYPE_INT16) {
           int16_t tmpv = value;
-          memcpy(p, &tmpv, 2);
+          memcpy(p, &tmpv, sizeof(int16_t));
        }
        else if (type.front() == Constants::BAM_TAG_TYPE_UINT16) {
           uint16_t tmpv = value;
-          memcpy(p, &tmpv, 2);
+          memcpy(p, &tmpv, sizeof(uint16_t));
        }
        else if (type.front() == Constants::BAM_TAG_TYPE_INT32) {
           int32_t tmpv = value;
-          memcpy(p, &tmpv, 3);
+          memcpy(p, &tmpv, sizeof(int32_t));
        }
        else if (type.front() == Constants::BAM_TAG_TYPE_UINT32) {
           uint32_t tmpv = value;
-          memcpy(p, &tmpv, 3);
+          memcpy(p, &tmpv, sizeof(uint32_t));
        }
        else if (type.front() == Constants::BAM_TAG_TYPE_FLOAT) {
           float tmpv = value;
@@ -2311,6 +2323,7 @@ inline void BamAlignment::addTag(const std::string& tag, const std::string& type
        else {
           throw logic_error("write more code for new tag type: " + type);
        }
+       */
     }
 }
 
@@ -2340,16 +2353,21 @@ inline void BamAlignment::addTag(const std::string& tag, const char type, const 
     memcpy(p, tag.c_str(), Constants::BAM_TAG_TAGSIZE);
     p += Constants::BAM_TAG_TAGSIZE;
     //memcpy(p, type.c_str(), Constants::BAM_TAG_TYPESIZE);
-    *p = type; ++p; 
-    short typeLen = getAtomicTagLength(*p);
-    if (typeLen != sizeof(T)) {
-       throw logic_error("write more code to deal with addTag type and T not same length");
-    }
+    short typeLen = getAtomicTagLength(type);
+    *p = type; // ++p; 
     p += Constants::BAM_TAG_TYPESIZE;
+    if (typeLen != sizeof(T)) {
+       //throw logic_error("write more code to deal with addTag type and T not same length");
+       cerr << __FILE__ << ":" << __LINE__ <<  ":WARN addTag() type " << type << " and T " << typeid(T).name() << " not same length. Will try the best" << endl;
+    }
     if (!TagTypeHelper<T>::CanConvertTo(type)) {
-       memcpy(p, &value, sizeof(T));
+       //cerr << "tryont to convert " << typeid(T).name() << " to " << type << endl;
+       //memcpy(p, &value, sizeof(T));
+       storeToAs(value, p, type);
     }
     else {
+       storeToTag(p, value, type);
+       /*
        if (type == Constants::BAM_TAG_TYPE_INT8) {
           int8_t tmpv = value;
           memcpy(p, &tmpv, 1);
@@ -2384,6 +2402,7 @@ inline void BamAlignment::addTag(const std::string& tag, const char type, const 
        else {
           throw logic_error("write more code for new tag type: " + string(1, type));
        }
+       */
     }
 }
 

@@ -409,44 +409,143 @@ bool BamAlignment::valid() const {
    //return validCigar() && refwidthAgreeWithMD() && QueryBases.size() == Qualities.size();
    // check D segment from MD tag agree with Cigar D if MD tag is present
    if (hasTag("MD")) {
-   //if (HasTag("MD")) {
-      vector<int> del_len;
-      for (auto& c : CigarData) {
-         if (c.isDeletion()) {
-            del_len.push_back(c.getLength());
-         }
-      }
-      string mdstr = getStringTag("MD");
-      if (!del_len.empty()) {
-         vector<int> md_del_len;
-         // 92tc15^cgtttctatccgatgatgattccgt1c0^g4g27t1c6
-         string::size_type i=0;
-         while (i < mdstr.size()) {
-            if (mdstr[i] == '^') {
-               ++i;
-               string::size_type b=i;
-               while (!isdigit(mdstr[i])) { ++i; }
-               md_del_len.push_back(i-b);
+      vector<int> MDMseglen_cigar;
+      int len=0;
+      char prevType = 'B';
+      string::size_type i=0;
+      while (i < CigarData.size()) {
+         if (getCigarType(i) == 'M') {
+            if (prevType == 'M') {
+               cerr << *this << endl;
+               throw logic_error("Invalid M => M transition");
             }
-            else ++i;
+            else if (prevType == 'D') {
+               MDMseglen_cigar.push_back(getCigarLength(i-1));
+               len = getCigarLength(i);
+            }
+            else if (prevType == 'I') {
+               len += getCigarLength(i);
+            }
+            else if (prevType == 'B') {
+               len = getCigarLength(i);
+            }
+            else if (prevType == 'S' || prevType == 'H') {
+               len = getCigarLength(i); // S,H same as B
+            }
+            else {
+               cerr << *this << endl;
+               throw logic_error("Invalid " + string(1, prevType) + " => M transition");
+            }
+            prevType = 'M';
          }
-         if (del_len != md_del_len) {
-//#ifdef DEBUG
-            cerr << __FILE__ << ":" << __LINE__ << ": " << getName() << " query deletion length from Cigar: ";
-            for (int l : del_len) cerr << l << " ";
-            cerr << " different from those in MD tag: ";
-            for (int l : md_del_len) cerr << l << " ";
-            cerr << endl;
-//#endif
-            return false;
+         else if (getCigarType(i) == 'D') {
+            if (prevType == 'M') {
+               MDMseglen_cigar.push_back(len);
+               //len = 0; // because D => M is the only path
+               prevType = 'D';
+            }
+            else {
+               cerr << *this << endl;
+               throw logic_error("Invalid " + string(1, prevType) + " => D transition");
+            }
+         }
+         else if (getCigarType(i) == 'I') {
+            if (prevType == 'M') {
+               prevType = 'I';
+            }
+            else {
+               cerr << *this << endl;
+               //cerr << "Invalid " + string(1, prevType) + " => I transition");
+               if (prevType == 'B') {
+                  cerr << __FILE__ << ":" << __LINE__ << ":WARN Alignment starts with I is bad\n";
+               }
+               else if (i == CigarData.size() - 1) {
+                  cerr << __FILE__ << ":" << __LINE__ << ":WARN Alignment ends with I is bad\n";
+               }
+               else if (prevType == 'S') {
+                  cerr << __FILE__ << ":" << __LINE__ << ":WARN Alignment starts with SI is bad\n";
+               }
+               else {
+                  throw logic_error("Invalid " + string(1, prevType) + " => I transition");
+               }
+               //throw logic_error("Invalid " + string(1, prevType) + " => I transition");
+            }
+         }
+         else if (getCigarType(i) == 'S' || getCigarType(i) == 'H') {
+            prevType = getCigarType(i); // => reach end 
+         }
+         ++i;
+      }
+      if (prevType != 'M' && prevType != 'S' && prevType != 'H') {
+         cerr << *this << endl;
+         if (prevType == 'I') {
+            cerr << __FILE__ << ":" << __LINE__ << ":WARN Alignment ends with I is bad\n";
+         }
+         else {
+            throw logic_error("states " + string(1, prevType) + " cannot enter into End state");
          }
       }
-      else { 
-         if (mdstr.find('^') != string::npos) {
-            cerr << __FILE__ << ":" << __LINE__ << ":WARN invalid bam MD tag " 
-               << mdstr << " has query deletion but cigar does not\n";
-            return false;
+      MDMseglen_cigar.push_back(len);
+      /*
+      for (auto& c : CigarData) {
+         if (c.getType() == 'M' || c.getType() == 'D') {
+            MDMseglen_cigar.push_back(c.getLength());
          }
+      }
+      */
+      vector<int> MDMseglen_md;
+      len=0; i=0;
+      string::size_type b;
+      string mdstr = getStringTag("MD");
+      while (i < mdstr.size()) {
+         if (mdstr[i] == '^') {
+            MDMseglen_md.push_back(len);
+            len=0;
+            ++i; // first insert Base
+            b=i;
+            while (i < mdstr.size() && !isdigit(mdstr[i])) { ++i; }
+            if (i == mdstr.size()) {
+               throw logic_error("terninal deletion");
+            }
+            // insert is never at end! otherwise, BUG
+            //while (!isdigit(mdstr[i])) { ++i; }
+            MDMseglen_md.push_back(i-b);
+         }
+         else {
+            b=i;
+            if (isdigit(mdstr[i])) {
+               while (i < mdstr.size() && isdigit(mdstr[i])) { ++i; }
+               len += stoi(mdstr.substr(b, i-b));
+               if (i == mdstr.size()) {
+                  MDMseglen_md.push_back(len);
+                  break;
+               }
+            }
+            else {
+               assert(isalpha(mdstr[i]));
+               while (i < mdstr.size() && isalpha(mdstr[i])) { ++i; }
+               len += (i-b);
+               if (i == mdstr.size()) {
+                  MDMseglen_md.push_back(len);
+                  break;
+               }
+            }
+         }
+      }
+      if (MDMseglen_cigar != MDMseglen_md) {
+//#ifdef DEBUG
+         cerr << __FILE__ << ":" << __LINE__ << ": " << getName() << " cigar: " << getCigarString() 
+               << " and MD tag: " << mdstr << " does not match\n";
+         for (int l : MDMseglen_cigar) {
+            cerr << l << ' ';
+         }
+         cerr << endl;
+         for (int l : MDMseglen_md) {
+            cerr << l << ' ';
+         }
+         cerr << endl;
+//#endif
+         return false;
       }
    }
    return validCigar() && refwidthAgreeWithMD();
@@ -4329,12 +4428,14 @@ void BamAlignment::chopBefore(int idx) {
          throw runtime_error("invalid BamAlignment before doing chopBefore()");
       }
    }
-   //bool inbug=false;
-   //if (getName() == "S434600481") {
-   //   cerr << *this << endl;
-   //   cerr << __LINE__ << ": idx=" << idx << endl;
-   //   inbug = true;
-   //}
+#ifdef DEBUG
+   bool inbug=false;
+   if (getName() == "S123745075_right") {
+      cerr << *this << endl;
+      cerr << __LINE__ << ": idx=" << idx << endl;
+      inbug = true;
+   }
+#endif
    //assert(hasTag("NM"));
    // truncate XM and XW tag first if they exists
    int ri = getPosition();

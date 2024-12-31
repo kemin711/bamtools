@@ -15,10 +15,13 @@
 #include <string>
 #include <limits>
 #include <iostream>
+#include <stdexcept>
+#include <cstring>
 
 /*! \namespace BamTools::Constants
     \brief Provides basic constants for handling BAM files.
 */
+using namespace std;
 
 namespace BamTools {
 namespace Constants {
@@ -195,10 +198,16 @@ struct TagTypeHelper {
 
 template<>
 struct TagTypeHelper<uint8_t> {
+   /**
+    * @return true if type c can be converted to uint8_t
+    */
     static bool CanConvertFrom(const char c) {
         return ( c == Constants::BAM_TAG_TYPE_ASCII ||
                  c == Constants::BAM_TAG_TYPE_UINT8 );
     }
+    /**
+     * @return true if convert uint8_t to c
+     */
     static bool CanConvertTo(const char c) {
         return ( c == Constants::BAM_TAG_TYPE_ASCII  ||
                  c == Constants::BAM_TAG_TYPE_UINT8  ||
@@ -312,13 +321,14 @@ struct TagTypeHelper<std::string> {
     static char TypeCode(void) { return Constants::BAM_TAG_TYPE_STRING; }
 };
 
-    /**
-     * @param c is one of the integer fixed types types
-     */
+/**
+* @param c is one of the integer fixed types types
+*/
 template<class T>
 bool canStore(const char c, const T& val) {
     if (c == Constants::BAM_TAG_TYPE_ASCII) {
-       if (typeid(T) == typeid(char)) return true;
+       //if (typeid(T) == typeid(char)) return true;
+       if constexpr (is_same_v<T, char>) return true;
        else return false;
     }
     else if (c == Constants::BAM_TAG_TYPE_INT8) {
@@ -379,6 +389,153 @@ bool canStore(const char c, const T& val) {
        return false;
     }
  }
+
+/**
+ * save val to p as BamTagType c
+ * If val is larger than c can hold then throw invalid_argument exception.
+ * This version cannot be applied to string type. The template
+ * system restrict to integer type.
+ */
+template<class T>
+void storeToAs(const T& val, char* p, const char c) {
+    if (c == Constants::BAM_TAG_TYPE_ASCII) {
+       if constexpr (std::is_same_v<T, char>) { *p = val; }
+       else {
+          throw std::invalid_argument("T is not char type");
+       }
+    }
+    else if (c == Constants::BAM_TAG_TYPE_INT8) {
+       if (val <= static_cast<T>(INT8_MAX)) {
+          int8_t x = static_cast<int8_t>(val);
+          memcpy(p, reinterpret_cast<char*>(&x), sizeof(int8_t));
+       }
+       else {
+          throw std::invalid_argument("int8_t cannot hold " + to_string(val));
+       }
+    }
+    else if (c == Constants::BAM_TAG_TYPE_UINT8) {
+       if (val <= static_cast<T>(UINT8_MAX)) {
+          uint8_t x = static_cast<uint8_t>(val);
+          memcpy(p, reinterpret_cast<char*>(&x), sizeof(uint8_t));
+       }
+       else {
+          throw std::invalid_argument("uint8_t cannot hold " + to_string(val));
+       }
+    }
+    else if (c == Constants::BAM_TAG_TYPE_INT16) {
+       if (val <= static_cast<T>(INT16_MAX)) { 
+          int16_t x = static_cast<int16_t>(val);
+          memcpy(p, reinterpret_cast<char*>(&x), sizeof(int16_t));
+       }
+       else {
+          throw std::invalid_argument("int16_t cannot hold " + to_string(val));
+       }
+    }
+    else if (c == Constants::BAM_TAG_TYPE_UINT16) {
+       if (val <= static_cast<T>(UINT16_MAX)) {
+          uint16_t x = static_cast<uint16_t>(val);
+          memcpy(p, reinterpret_cast<char*>(&x), sizeof(uint16_t));
+       }
+       else {
+          throw std::invalid_argument("uint16_t cannot hold " + to_string(val));
+       }
+    }
+    else if (c == Constants::BAM_TAG_TYPE_INT32) {
+       if (val <= static_cast<T>(INT32_MAX)) {
+          int32_t x = static_cast<int32_t>(val);
+          memcpy(p, reinterpret_cast<char*>(&x), sizeof(int32_t));
+       }
+       else {
+          throw std::invalid_argument("int32_t cannot hold " + to_string(val));
+       }
+    }
+    else if (c == Constants::BAM_TAG_TYPE_UINT32) {
+       if (val <= static_cast<T>(UINT32_MAX)) {
+          uint32_t x = static_cast<uint32_t>(val);
+          memcpy(p, reinterpret_cast<char*>(&x), sizeof(uint32_t));
+       }
+       else {
+          throw std::invalid_argument("uint32_t cannot hold " + to_string(val));
+       }
+    }
+    else if (c == Constants::BAM_TAG_TYPE_FLOAT) {
+       if (val <= std::numeric_limits<float>::max()) {
+          float x = static_cast<float>(val);
+          memcpy(p, reinterpret_cast<char*>(&x), sizeof(float));
+       }
+       else {
+          throw std::invalid_argument("float cannot hold " + to_string(val));
+       }
+    }
+    else if (c == Constants::BAM_TAG_TYPE_STRING) {
+       throw std::invalid_argument("string type val is prohibited");
+       /*
+       if (typeid(T) == typeid(std::string)) {
+          memcpy(p, val.c_str(), val.size());
+       }
+       else {
+          throw std::invalid_argument("val is not string type");
+       }
+       */
+    }
+    else if (c == Constants::BAM_TAG_TYPE_HEX) {
+       /*
+       if (typeid(T) == typeid(std::string)) {
+          memcpy(p, val.c_str(), val.size());
+       }
+       else {
+          throw std::invalid_argument("val is not hex string type");
+       }
+       */
+       throw std::invalid_argument("hex string type val is prohibited");
+    }
+    else if (c == Constants::BAM_TAG_TYPE_ARRAY) {
+       std::cerr << __FILE__ << ":" << __LINE__ << ": write more complicated code\n";
+       throw std::invalid_argument("cannot deal with ARRAY type");
+    }
+    else {
+       throw std::invalid_argument("cannot deal with unknown type: " + string(1, c));
+    }
+}
+
+// assume caller has checked everything and operation is legal
+template<class T>
+void storeToTag(char* p, const T& value, const char dest_type) {
+   if (dest_type == Constants::BAM_TAG_TYPE_INT8) {
+      int8_t tmpv = static_cast<int8_t>(value);
+      memcpy(p, reinterpret_cast<char*>(&tmpv), sizeof(int8_t));
+   }
+   else if (dest_type == Constants::BAM_TAG_TYPE_UINT8) {
+      uint8_t tmpv = static_cast<uint8_t>(value);
+      memcpy(p, reinterpret_cast<char*>(&tmpv), sizeof(uint8_t));
+   }
+   else if (dest_type == Constants::BAM_TAG_TYPE_INT16) {
+      int16_t tmpv = static_cast<int16_t>(value);
+      memcpy(p, reinterpret_cast<char*>(&tmpv), sizeof(int16_t));
+   }
+   else if (dest_type == Constants::BAM_TAG_TYPE_UINT16) {
+      uint16_t tmpv = static_cast<uint16_t>(value);
+      memcpy(p, reinterpret_cast<char*>(&tmpv), sizeof(uint16_t));
+   }
+   else if (dest_type == Constants::BAM_TAG_TYPE_INT32) {
+      int32_t tmpv = static_cast<int32_t>(value);
+      memcpy(p, reinterpret_cast<char*>(&tmpv), sizeof(int32_t));
+   }
+   else if (dest_type == Constants::BAM_TAG_TYPE_UINT32) {
+      uint32_t tmpv = static_cast<uint32_t>(value);
+      memcpy(p, reinterpret_cast<char*>(&tmpv), sizeof(uint32_t));
+   }
+   else if (dest_type == Constants::BAM_TAG_TYPE_FLOAT) {
+      float tmpv = static_cast<float>(value);
+      memcpy(p, reinterpret_cast<char*>(&tmpv), sizeof(float));
+   }
+   else if (dest_type == Constants::BAM_TAG_TYPE_STRING) {
+      throw logic_error("strin as template specializaiton should not get here");
+   }
+   else {
+      throw logic_error("write more code for new tag type: " + string(1, dest_type));
+   }
+}
 
 //! \endcond
 

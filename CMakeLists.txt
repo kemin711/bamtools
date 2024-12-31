@@ -5,11 +5,10 @@
 # top-level
 # ==========================
 
+# Cmake requirements
+cmake_minimum_required( VERSION 3.10 )
 # set project name
 project( BamTools )
-
-# Cmake requirements
-cmake_minimum_required( VERSION 2.6.4 )
 
 # Force the build directory to be different from source directory
 macro(ENSURE_OUT_OF_SOURCE_BUILD MSG )
@@ -32,6 +31,7 @@ ensure_out_of_source_build( "
 # set BamTools version information
 set(BamTools_VERSION_MAJOR 2)
 set(BamTools_VERSION_MINOR 5)
+
 set(BamTools_VERSION_BUILD 11)
 SET(CPACK_PACKAGE_NAME "bamtools")
 SET(CPACK_PACKAGE_FILE_NAME "bamtools-2.5.11")
@@ -41,6 +41,8 @@ SET(CPACK_PACKAGE_VERSION "2.5.11")
 SET(CPACK_PACKAGE_VERSION_MAJOR "2")
 SET(CPACK_PACKAGE_VERSION_MINOR "5")
 SET(CPACK_PACKAGE_VERSION_PATCH "11")
+SET(CPACK_SOURCE_GENERATOR "TGZ;TBZ2;ZIP")
+set(CPACK_SOURCE_IGNORE_FILES "/build/")
 INCLUDE(CPack)
 
 # set our library and executable destination dirs
@@ -98,4 +100,5 @@ include_directories( src )
 #enable_testing()
 add_subdirectory( src )
 #add_subdirectory( test )
-
+enable_testing()
+add_subdirectory(tests)
