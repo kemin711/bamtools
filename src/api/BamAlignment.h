@@ -923,7 +923,8 @@ class API_EXPORT BamAlignment {
          * @return the length of the matched part of the
          *    the reference.  This is the sum of cigar
          *    string M 
-         *  @see getReferenceWidth
+         * The D segment is not counted.
+         *  @see getReferenceWidth that count D
          */
         int getMatchedReferenceLength() const;
         /**
@@ -976,8 +977,13 @@ class API_EXPORT BamAlignment {
          */
         string getMatchedQuerySequence() const;
         /**
-         * alignment length - (I, H or S)
-         * did not exclude D, could measure entire aligned part
+         * Query length excluding S,H clip. Only the M + I length.
+         * alignment length - (D H or S). 
+         * @return the sum length from M,I segments
+         * The naming of this method may cause confusion when used
+         * with getMatchedQueryLength(). The mirror image is
+         * getReferenceWidth() that is the reference length
+         * M+D. This method is M+I.
          */
         int getMatchedQueryLength() const;
         /**
