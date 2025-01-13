@@ -154,7 +154,7 @@ BamAlignment& BamAlignment::operator=(BamAlignment&& other) {
 namespace BamTools {
 std::ostream& operator<<(std::ostream &ous, const BamAlignment &ba) {
    const string sep="\t";
-   if (ba.rsname.empty()) 
+   if (ba.rsname.empty() || ba.isUnmapped()) 
       ous << "NOREFNAME";
    else 
       ous << ba.getReferenceName();
