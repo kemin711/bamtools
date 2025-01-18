@@ -1682,6 +1682,9 @@ class API_EXPORT BamAlignment {
         void chopBefore(int idx);
         /**
          * Remove alignment after idx, idx will be the last aligned base.
+         *      idx
+         * =====|----
+         * =====|
          * If - strand insert size will be changed.
          * @param idx is the 0-based index on the reference.
          */
