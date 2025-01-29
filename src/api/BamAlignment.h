@@ -1410,6 +1410,14 @@ class API_EXPORT BamAlignment {
            QueryBases = std::move(qseq); 
            setQueryLength(QueryBases.size());
         }
+        void setQuerySequence(const std::string &qseq) { 
+           QueryBases = qseq; 
+           setQueryLength(QueryBases.size());
+        }
+        void setQuerySequence(std::string &&qseq) { 
+           QueryBases = std::move(qseq); 
+           setQueryLength(QueryBases.size());
+        }
         void appendQueryBases(const string& tail) {
             QueryBases.append(tail);
             SupportData.QuerySequenceLength += tail.size();
