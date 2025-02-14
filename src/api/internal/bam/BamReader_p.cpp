@@ -86,7 +86,7 @@ bool BamReaderPrivate::CreateIndex(const BamIndex::IndexType& type) {
 }
 
 // return path & filename of current BAM file
-const string BamReaderPrivate::Filename(void) const {
+const string& BamReaderPrivate::Filename(void) const {
     return m_filename;
 }
 

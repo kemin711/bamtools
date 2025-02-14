@@ -155,6 +155,10 @@ struct API_EXPORT RefData {
     friend bool operator==(const string& refn, const RefData& rd) {
        return refn == rd.RefName;
     }
+    friend ostream& operator<<(ostream& ous, const RefData& rd) {
+       ous << rd.RefName << '\t' << rd.RefLength;
+       return ous;
+    }
 };
 
 /**
@@ -185,7 +189,12 @@ struct API_EXPORT BamRegion {
      */
     int LeftPosition;   
     int RightRefID;     //!< reference ID for region's right boundary
-    int RightPosition;  //!< position for region's right boundary
+    /**
+     * [leftPos, rightPos)
+     * Right position is the desired end + 1
+     * -1 means the end of the entire chromosome.
+     */
+    int RightPosition; 
     
     /**
      * constructor from full information.
@@ -213,6 +222,9 @@ struct API_EXPORT BamRegion {
     BamRegion(const array<int,3>& refid_b_e) 
        : LeftRefID(refid_b_e[0]), LeftPosition(refid_b_e[1]), RightRefID(refid_b_e[0]), RightPosition(refid_b_e[2])
     { }
+    /**
+     * Region on a single chromosome.
+     */
     BamRegion(int refid, int b, int e) 
        : LeftRefID(refid), LeftPosition(b), RightRefID(refid), RightPosition(e)
     { }

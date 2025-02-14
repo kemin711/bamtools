@@ -55,7 +55,13 @@ class BamReaderPrivate {
     public:
         // file operations
         bool Close(void);
-        const std::string Filename(void) const;
+        /**
+         * retrieve the file name
+         */
+        const std::string& Filename(void) const;
+        std::string& Filename(void) {
+           return m_filename;
+        }
         bool IsOpen(void) const;
         /**
          * Open the stream only without opening the index.
@@ -186,6 +192,9 @@ class BamReaderPrivate {
     public:
         // general BAM file data
         int64_t     m_alignmentsBeginOffset;
+        /**
+         * The input bamf file name or path
+         */
         std::string m_filename;
         /**
          * vector of [refname, reflen] index by refid

@@ -30,9 +30,10 @@ bool BamReader::Close(void) {
    return d->Close();
 }
 
-const string BamReader::GetFilename(void) const {
+const string& BamReader::GetFilename(void) const {
    return d->Filename();
 }
+
 bool BamReader::IsOpen(void) const {
    return d->IsOpen();
 }
